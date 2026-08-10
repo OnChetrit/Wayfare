@@ -1,0 +1,32 @@
+.locationPanel {
+  min-width: 0;
+  overflow: hidden;
+  padding: 27px 20px 16px;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--line);
+  background: var(--surface);
+
+  .placesHeading { color: var(--soft-muted); font: 500 11px 'DM Mono', monospace; letter-spacing: .14em; text-transform: uppercase; }
+  .panelHeader { display: flex; justify-content: space-between; align-items: flex-start; }
+  .locationHeading { min-width: 0; display: flex; align-items: baseline; gap: 8px; }
+  h1 { margin: 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 20px; letter-spacing: -.05em; }
+  p { margin: 0; color: var(--muted); font-size: 13px; }
+  .locationHeading p { flex: 0 0 auto; font-size: 12px; white-space: nowrap; }
+  .panelClose { border: 0; color: var(--muted); background: transparent; display: none; }
+  .places { flex: 1; min-height: 0; margin-top: 23px; overflow: auto; border-radius: 10px; transition: .2s ease; }
+  .placesDropActive { background: var(--mint); box-shadow: inset 0 0 0 1px var(--green); }
+  .placesHeading { margin: 0 5px 9px; display: flex; justify-content: space-between; }
+  .placesHeading strong { color: var(--green); }
+  .placeCard { min-height: 58px; margin-bottom: 6px; padding: 7px; display: grid; grid-template-columns: 31px minmax(0, 1fr) 24px; align-items: center; gap: 8px; border: 1px solid transparent; border-radius: 10px; cursor: grab; }
+  .placeCard:hover, .placeCardSelected { border-color: var(--line-strong); background: var(--surface-green); }
+  .placeIcon { width: 31px; height: 31px; border-radius: 9px; display: grid; place-items: center; }
+  .placeCard > span:nth-child(2) { min-width: 0; }
+  .placeCard strong, .placeCard small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .placeCard strong { font-size: 12px; }
+  .placeCard small { margin-top: 4px; color: var(--muted); font-size: 10px; }
+  .placeCard button { width: 24px; height: 24px; border: 0; border-radius: 6px; color: var(--soft-muted); background: transparent; display: grid; place-items: center; }
+  .placeCard button:hover { color: var(--danger); background: var(--danger-surface); }
+  .empty { padding: 12px 6px; text-align: center; line-height: 1.5; }
+  @media (max-width: 700px) { & { position: absolute; z-index: 8; inset: 0; display: none; border: 0; padding: 22px 17px 17px; } &.mobileVisible { display: flex; } .panelClose { display: grid; } }
+}

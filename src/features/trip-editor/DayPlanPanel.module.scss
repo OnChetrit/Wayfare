@@ -1,0 +1,456 @@
+.dayPanel {
+  border-right: 1px solid var(--line);
+  padding: 27px 20px 16px;
+  display: flex;
+  flex-direction: column;
+  .iconButton,
+  .panelClose,
+  .roundAdd {
+    border: 0;
+    color: var(--muted);
+    background: transparent;
+    display: grid;
+    place-items: center;
+  }
+
+  .iconButton:hover,
+  .panelClose:hover {
+    color: var(--ink);
+    background: var(--surface-subtle);
+  }
+
+  &,
+  .placePanel {
+    min-width: 0;
+    overflow: hidden;
+    background: var(--paper);
+  }
+
+  .panelHeader,
+  .libraryHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+
+  .panelHeader {
+    h1 {
+      color: var(--ink);
+      font-size: 20px;
+      line-height: 1.2;
+      letter-spacing: -0.06em;
+    }
+
+    p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    p span {
+      color: var(--coral);
+      padding: 0 3px;
+    }
+  }
+
+  .dayNotesButton {
+    width: 29px;
+    height: 29px;
+    border: 0;
+    border-radius: 7px;
+    display: grid;
+    place-items: center;
+    color: var(--muted);
+    background: transparent;
+
+    &:hover:not(:disabled) {
+      color: var(--ink);
+      background: var(--surface-subtle);
+    }
+
+    &:disabled {
+      cursor: not-allowed;
+      opacity: 0.5;
+    }
+  }
+
+  .libraryHeader {
+    h2 {
+      margin: 7px 0 4px;
+      color: var(--ink);
+      font-size: 20px;
+      line-height: 1.2;
+      letter-spacing: -0.06em;
+    }
+  }
+
+  .panelClose {
+    display: none;
+    width: 29px;
+    height: 29px;
+    border-radius: 50%;
+  }
+
+  .timeline {
+    flex: 1;
+    min-height: 0;
+    margin: 25px 0 8px;
+    overflow: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--line) transparent;
+    padding-block-start: 4px;
+  }
+
+  .timelineItem {
+    display: grid;
+    grid-template-columns: 39px 24px 1fr;
+    min-height: 106px;
+    cursor: pointer;
+  }
+
+  .timelineItemManual {
+    cursor: default;
+  }
+
+  .timelineItemHotel {
+    .scheduleCard {
+      border-color: var(--line);
+      background: var(--surface);
+    }
+  }
+
+  .timelineItemTravel {
+    cursor: default;
+  }
+
+  .timelineItemFlight {
+    cursor: default;
+
+    .scheduleCard {
+      border-color: var(--line-strong);
+      background: var(--surface-green);
+    }
+
+    .categoryPill {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+  }
+
+  .flightDeparture {
+    .timelineDot {
+      color: #fff;
+      background: var(--green);
+    }
+  }
+
+  .flightArrival {
+    .timelineDot {
+      color: #fff;
+      background: var(--coral);
+    }
+
+    .scheduleCard {
+      border-color: color-mix(in srgb, var(--coral) 45%, var(--line));
+      background: color-mix(in srgb, var(--coral) 9%, var(--surface));
+    }
+  }
+
+  .flightPlaneDeparture {
+    transform: rotate(-24deg);
+  }
+
+  .flightPlaneArrival {
+    transform: rotate(24deg);
+  }
+
+  .travelCard {
+    position: relative;
+    z-index: 1;
+    min-width: 0;
+    margin: -3px 0 13px 10px;
+    padding: 11px 12px 10px;
+    border: 1px dashed var(--line-strong);
+    border-radius: 12px;
+    color: var(--ink);
+    text-align: left;
+    background: var(--surface-green);
+    transition: 0.2s ease;
+
+    &:hover {
+      border-color: var(--green);
+      background: var(--mint);
+      box-shadow: var(--shadow-soft);
+      transform: translateY(-1px);
+    }
+
+    strong,
+    & > span {
+      display: block;
+    }
+
+    strong {
+      margin-top: 9px;
+      font-size: 13px;
+    }
+
+    & > span:not(.categoryPill):not(.travelAction) {
+      margin-top: 4px;
+      color: var(--muted);
+      font:
+        11px 'DM Mono',
+        monospace;
+      line-height: 1.45;
+    }
+  }
+
+  .travelAction {
+    margin-top: 9px;
+    color: var(--green);
+    font-size: 11px;
+    font-weight: 700;
+  }
+
+  .timelineTime {
+    padding-top: 4px;
+    color: var(--muted);
+    font:
+      500 12px 'DM Mono',
+      monospace;
+  }
+
+  .timelineTrack {
+    position: relative;
+    display: flex;
+    justify-content: center;
+  }
+
+  .timelineDot {
+    z-index: 1;
+    width: 24px;
+    height: 24px;
+    border-radius: 8px;
+    display: grid;
+    place-items: center;
+    color: white;
+    font-size: 14px;
+    box-shadow: 0 0 0 3px white;
+  }
+
+  .timelineLine {
+    position: absolute;
+    top: 30px;
+    bottom: -7px;
+    width: 1px;
+    background: var(--line);
+  }
+
+  .scheduleCard {
+    min-width: 0;
+    margin: -3px 0 13px 10px;
+    padding: 11px 12px 10px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--surface-strong);
+    transition: 0.2s ease;
+
+    & > strong {
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 13px;
+    }
+
+    & > span {
+      display: block;
+      margin-top: 4px;
+      color: var(--muted);
+      font:
+        11px 'DM Mono',
+        monospace;
+    }
+  }
+
+  .flightDetails {
+    margin-top: 8px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+  }
+
+  .flightDetailTag {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    padding: 3px 5px;
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    color: var(--muted);
+    background: var(--surface);
+    font:
+      10px 'DM Mono',
+      monospace;
+  }
+
+  .scheduleCard:hover {
+    border-color: var(--line-strong);
+    box-shadow: var(--shadow-soft);
+    transform: translateY(-1px);
+  }
+
+  .timelineItemSelected {
+    .scheduleCard {
+      border-color: var(--line-strong);
+      box-shadow: var(--shadow-soft);
+      transform: translateY(-1px);
+    }
+
+    .cardControls {
+      height: 25px;
+      margin-top: 6px;
+      opacity: 1;
+    }
+  }
+
+  .scheduleCardTop {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 7px;
+  }
+
+  .categoryPill {
+    padding: 3px 6px;
+    border-radius: 5px;
+    font-size: 11px;
+    font-weight: 700;
+  }
+
+  .cardControls {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    height: 0;
+    overflow: hidden;
+    opacity: 0;
+    transition: 0.2s ease;
+
+    button {
+      border: 0;
+      border-radius: 5px;
+      padding: 5px;
+      color: var(--muted);
+      background: var(--surface-subtle);
+      font-size: 11px;
+    }
+
+    button:hover {
+      color: var(--green);
+      background: var(--mint);
+    }
+
+    button:last-child {
+      margin-left: auto;
+      color: var(--danger);
+      background: transparent;
+    }
+  }
+
+  .scheduleCard:hover .cardControls {
+    height: 25px;
+    margin-top: 6px;
+    opacity: 1;
+  }
+
+  .emptyDay {
+    padding: 24px 8px;
+    text-align: center;
+
+    strong {
+      display: block;
+      font-size: 14px;
+    }
+
+    p {
+      margin: 7px 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.6;
+    }
+  }
+
+  .emptyIcon {
+    width: 36px;
+    height: 36px;
+    margin: 0 auto 10px;
+    display: grid;
+    place-items: center;
+    border-radius: 12px;
+    color: var(--green);
+    background: var(--mint);
+  }
+
+  .addActivity {
+    flex: 0 0 auto;
+    width: 100%;
+    padding: 10px;
+    border: 1px dashed var(--line-strong);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    color: var(--green);
+    background: var(--surface-green);
+    font-size: 12px;
+    font-weight: 700;
+
+    &:hover {
+      border-color: var(--green);
+      background: var(--mint);
+    }
+
+    &:disabled {
+      cursor: not-allowed;
+      opacity: 0.5;
+    }
+  }
+
+  @media (max-width: 700px) {
+    &,
+    .placePanel {
+      position: absolute;
+      z-index: 8;
+      inset: 0;
+      display: none;
+      border: 0;
+      padding: 22px 17px 17px;
+    }
+
+    &.mobileVisible,
+    .placePanel.mobileVisible {
+      display: flex;
+    }
+
+    &.mobileVisible + .mapPanel,
+    .placePanel.mobileVisible ~ .mapPanel {
+      display: none;
+    }
+
+    .panelClose {
+      display: grid;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .scheduleCard,
+    .placeCard,
+    .marker,
+    .cardControls {
+      transition: none;
+    }
+  }
+}

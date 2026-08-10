@@ -1,0 +1,549 @@
+.topbar {
+  height: 72px;
+  flex: 0 0 72px;
+  display: flex;
+  align-items: center;
+  padding: 0 28px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface-glass);
+  position: relative;
+  z-index: 30;
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    width: 230px;
+    font-weight: 800;
+    font-size: 22px;
+    letter-spacing: -0.06em;
+  }
+
+  .brandMark {
+    width: 29px;
+    height: 29px;
+    border-radius: 10px;
+    display: grid;
+    place-items: center;
+    color: white;
+    background: var(--green-button);
+    transform: rotate(-7deg);
+
+    svg {
+      transform: rotate(7deg);
+    }
+  }
+
+  .headerOptions {
+    min-width: 0;
+    flex: 1;
+    display: flex;
+    align-items: center;
+  }
+
+  .tripHeading {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .tripLoading {
+    display: grid;
+    gap: 7px;
+  }
+
+  .tripSelectorSkeleton,
+  .avatarSkeleton {
+    display: block;
+    border-radius: 999px;
+    background: linear-gradient(
+      100deg,
+      var(--surface-subtle) 28%,
+      var(--surface-strong) 44%,
+      var(--surface-subtle) 60%
+    );
+    background-size: 220% 100%;
+    animation: shimmer 1.5s ease-in-out infinite;
+  }
+
+  .tripSelectorSkeleton {
+    width: min(270px, 33vw);
+    height: 20px;
+  }
+
+  .tripTitle {
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+
+  .tripSelector {
+    max-width: min(420px, 42vw);
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    border: 0;
+    color: var(--ink);
+    background: transparent;
+    text-align: left;
+
+    &:hover {
+      color: var(--green-dark);
+    }
+
+    .tripTitle {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+  }
+
+  .tripsMenu {
+    position: absolute;
+    top: calc(100% + 16px);
+    left: -12px;
+    z-index: 20;
+    width: min(310px, calc(100vw - 30px));
+    padding: 10px;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    background: var(--surface);
+    box-shadow: 0 16px 38px rgba(33, 54, 45, 0.14);
+  }
+
+  .tripsMenuHeader {
+    padding: 5px 8px 9px;
+    display: flex;
+    justify-content: space-between;
+    color: var(--soft-muted);
+    font:
+      500 11px 'DM Mono',
+      monospace;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+
+    span:last-child {
+      color: var(--green);
+      font-variant-numeric: tabular-nums;
+    }
+  }
+
+  .tripsList {
+    max-height: min(300px, 45vh);
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .tripOption {
+    min-height: 51px;
+    padding: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    border-radius: 9px;
+    color: var(--ink);
+    text-decoration: none;
+
+    &:hover,
+    &.tripOptionActive {
+      background: var(--mint);
+    }
+
+    svg {
+      flex: 0 0 auto;
+      color: var(--green);
+    }
+  }
+
+  .tripOptionCopy {
+    min-width: 0;
+    display: grid;
+    gap: 3px;
+
+    strong,
+    small {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    strong {
+      font-size: 13px;
+    }
+
+    small {
+      color: var(--soft-muted);
+      font-size: 11px;
+    }
+  }
+
+  .noTrips {
+    padding: 12px 8px;
+    color: var(--muted);
+    font-size: 12px;
+  }
+
+  .newTripLink,
+  .newTripButton {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--green);
+    text-decoration: none;
+    font-size: 12px;
+    font-weight: 700;
+
+    &:hover {
+      color: var(--green-dark);
+    }
+  }
+
+  .newTripLink {
+    width: 100%;
+    margin-top: 4px;
+    padding: 10px 8px 7px;
+    border-top: 1px solid var(--line);
+  }
+
+  .newTripButton {
+    min-height: 32px;
+    padding: 0 10px;
+    border: 1px solid var(--line-strong);
+    border-radius: 8px;
+    background: var(--surface-green);
+  }
+
+  .tripDot {
+    color: var(--coral);
+    padding: 0 3px;
+  }
+
+  .workspaceViewToggle {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    z-index: 1;
+    margin-left: 0;
+    transform: translate(-50%, -50%);
+    padding: 3px;
+    display: flex;
+    flex: 0 0 auto;
+    gap: 2px;
+    border: 1px solid rgba(218, 229, 220, 0.94);
+    border-radius: 10px;
+    background: var(--surface-subtle);
+
+    button {
+      min-width: 70px;
+      min-height: 28px;
+      padding: 0 9px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      border: 0;
+      border-radius: 7px;
+      color: var(--muted);
+      background: transparent;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    button:hover,
+    .workspaceViewActive {
+      color: var(--green-dark);
+      background: var(--surface-strong);
+      box-shadow: 0 2px 6px rgba(33, 54, 45, 0.08);
+    }
+  }
+
+  .topActions {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .iconButton,
+  .panelClose,
+  .moreButton,
+  .roundAdd {
+    border: 0;
+    color: var(--muted);
+    background: transparent;
+    display: grid;
+    place-items: center;
+  }
+
+  .iconButton {
+    width: 35px;
+    height: 35px;
+    border-radius: 50%;
+  }
+
+  .iconButton:hover,
+  .iconButtonActive,
+  .panelClose:hover,
+  .moreButton:hover {
+    color: var(--ink);
+    background: var(--surface-subtle);
+  }
+
+  .iconButtonActive {
+    color: var(--green-dark);
+    background: var(--mint);
+  }
+
+  .avatar {
+    width: 31px;
+    height: 31px;
+    border: 0;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    color: var(--green-dark);
+    background: var(--mint);
+    font:
+      700 12px 'DM Mono',
+      monospace;
+    text-decoration: none;
+  }
+
+  .avatarSkeleton {
+    width: 31px;
+    height: 31px;
+    flex: 0 0 31px;
+    border-radius: 50%;
+  }
+
+  .actionLabel {
+    display: none;
+  }
+
+  .mobileMenuButton {
+    display: none;
+    border: 1px solid var(--line-strong);
+    border-radius: 10px;
+    color: var(--green-dark);
+    background: var(--surface-green);
+  }
+
+  @media (max-width: 1180px) {
+    .brand {
+      width: 180px;
+    }
+  }
+
+  @media (max-width: 900px) {
+    & {
+      padding: 0 18px;
+    }
+
+    .brand {
+      width: 145px;
+    }
+
+    .tripSelector {
+      max-width: 330px;
+    }
+  }
+
+  @media (max-width: 700px) {
+    & {
+      height: 62px;
+      flex-basis: 62px;
+      padding: 0 15px;
+    }
+
+    .brand {
+      position: relative;
+      z-index: 11;
+      width: auto;
+    }
+
+    .headerOptions {
+      position: absolute;
+      top: calc(100% + 10px);
+      right: 12px;
+      left: 12px;
+      z-index: 10;
+      max-height: min(430px, calc(100dvh - 84px));
+      padding: 18px;
+      display: none;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 16px;
+      overflow-y: auto;
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      background: var(--surface);
+      box-shadow: 0 24px 54px rgba(33, 54, 45, 0.22);
+    }
+
+    .headerOptionsOpen {
+      display: flex;
+    }
+
+    .mobileMenuBackdrop {
+      position: fixed;
+      z-index: 9;
+      inset: 0;
+      display: block;
+      border: 0;
+      background: rgba(27, 42, 35, 0.38);
+      backdrop-filter: blur(3px);
+      cursor: default;
+    }
+
+    .mobileMenuButton {
+      position: relative;
+      z-index: 11;
+      width: 38px;
+      height: 38px;
+      margin-left: auto;
+      display: grid;
+      place-items: center;
+    }
+
+    .tripHeading {
+      margin: 0;
+      min-width: 0;
+      width: 100%;
+      gap: 6px;
+    }
+
+    .tripLoading {
+      gap: 8px;
+    }
+
+    .tripSelectorSkeleton {
+      width: min(260px, 62vw);
+      height: 42px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+    }
+
+    .tripTitle {
+      font-size: 18px;
+    }
+
+    .topActions {
+      width: 100%;
+      margin-left: 0;
+      padding-top: 16px;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 9px;
+      border-top: 1px solid var(--line);
+    }
+
+    .newTripButton {
+      grid-column: 1 / -1;
+      min-height: 42px;
+      padding: 0 12px;
+      justify-content: center;
+      border-color: var(--green-button);
+      color: white;
+      background: var(--green-button);
+
+      &:hover {
+        color: white;
+        background: var(--green-dark);
+      }
+    }
+
+    .tripSelector {
+      width: 100%;
+      max-width: none;
+      min-height: 42px;
+      padding: 0 10px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--surface-subtle);
+
+      .tripTitle {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+    }
+
+    .tripsMenu {
+      top: calc(100% + 8px);
+      right: 0;
+      left: 0;
+      width: auto;
+    }
+
+    .workspaceViewToggle {
+      position: static;
+      width: 100%;
+      margin: 0;
+      transform: none;
+
+      button {
+        min-width: 0;
+        width: auto;
+        min-height: 42px;
+        flex: 1;
+        padding: 0;
+
+        span {
+          display: inline;
+        }
+      }
+    }
+
+    .iconButton {
+      width: auto;
+      height: 42px;
+      padding: 0 12px;
+      display: flex;
+      justify-content: flex-start;
+      gap: 8px;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      background: var(--surface-subtle);
+    }
+
+    .iconButton.mobileMenuExcluded {
+      display: none;
+    }
+
+    .avatar {
+      grid-column: 1 / -1;
+      width: auto;
+      height: 42px;
+      padding: 0 12px;
+      display: flex;
+      justify-content: flex-start;
+      gap: 8px;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      background: var(--surface-subtle);
+    }
+
+    .avatarSkeleton {
+      grid-column: 1 / -1;
+      width: auto;
+      height: 42px;
+      min-height: 42px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+    }
+
+    .actionLabel {
+      display: inline;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-family: 'Plus Jakarta Sans', Arial, sans-serif;
+      font-size: 12px;
+      font-weight: 700;
+    }
+  }
+}

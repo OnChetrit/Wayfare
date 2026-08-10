@@ -1,0 +1,135 @@
+.timelineEditor {
+  box-sizing: border-box;
+  border: 1px solid var(--line);
+  background: var(--surface-glass-solid);
+  border-radius: 12px;
+  width: min(100%, 520px);
+  max-height: min(720px, calc(100dvh - 32px));
+  margin: auto;
+  padding: 15px;
+  overflow: auto;
+  box-shadow: 0 12px 28px #21362d26;
+
+  &::backdrop {
+    background: var(--backdrop);
+    backdrop-filter: blur(3px);
+  }
+
+  .timelineSelectionSummary {
+    color: var(--green-dark);
+    background: var(--mint);
+    border-radius: 6px;
+    margin: 4px 0 8px;
+    padding: 7px 8px;
+    font:
+      11px 'DM Mono',
+      monospace;
+  }
+
+  .timelineEditorHeader {
+    color: var(--ink);
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 11px;
+    font-size: 14px;
+    display: flex;
+  }
+
+  .editorIconButton {
+    width: 22px;
+    height: 22px;
+    color: inherit;
+    background: var(--surface-glass);
+    border: 0;
+    border-radius: 5px;
+    flex: none;
+    place-items: center;
+    display: grid;
+
+    &:hover {
+      background: var(--surface-strong);
+    }
+  }
+
+  label {
+    color: var(--muted);
+    gap: 5px;
+    margin-top: 9px;
+    font:
+      500 11px 'DM Mono',
+      monospace;
+    display: grid;
+  }
+
+  input,
+  select,
+  textarea {
+    border: 1px solid var(--line);
+    width: 100%;
+    min-height: 31px;
+    color: var(--ink);
+    background: var(--surface-control);
+    border-radius: 6px;
+    outline: 0;
+    padding: 6px 8px;
+    font:
+      13px 'Plus Jakarta Sans',
+      sans-serif;
+  }
+
+  input,
+  select,
+  textarea {
+    &:focus {
+      box-shadow: var(--focus);
+      border-color: var(--line-strong);
+    }
+  }
+
+  .editorTwoColumns {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    display: grid;
+  }
+
+  .timelineEditorActions {
+    justify-content: flex-end;
+    gap: 7px;
+    margin-top: 13px;
+    display: flex;
+  }
+
+  .editorCancelButton,
+  .editorDeleteButton,
+  .editorSaveButton {
+    border-radius: 6px;
+    min-height: 30px;
+    padding: 0 10px;
+    font-size: 11px;
+    font-weight: 700;
+  }
+
+  .editorCancelButton {
+    border: 1px solid var(--line);
+    color: var(--muted);
+    background: var(--surface-strong);
+  }
+
+  .editorSaveButton {
+    border: 1px solid var(--green);
+    color: #fff;
+    background: var(--green-button);
+
+    &:disabled {
+      cursor: not-allowed;
+      opacity: 0.45;
+    }
+  }
+
+  .editorDeleteButton {
+    margin-right: auto;
+    border: 1px solid var(--danger-line);
+    color: var(--danger);
+    background: var(--surface-strong);
+  }
+}

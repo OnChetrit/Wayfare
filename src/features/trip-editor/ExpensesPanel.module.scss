@@ -1,0 +1,570 @@
+.panel {
+  position: relative;
+  grid-column: 1 / -1;
+  min-width: 0;
+  overflow: auto;
+  padding: 30px clamp(20px, 4vw, 58px) 48px;
+  background: var(--paper);
+}
+
+.header,
+.listHeader,
+.formHeader,
+.categoryLabel,
+.expenseRow,
+.missingNotice {
+  display: flex;
+  align-items: center;
+}
+
+.header {
+  justify-content: space-between;
+  gap: 24px;
+  max-width: 1160px;
+  margin: 0 auto 26px;
+}
+
+.header h1,
+.listHeader h2,
+.categoryCard h2,
+.form h2 {
+  margin: 0;
+  color: var(--ink);
+  font-family: var(--display);
+  font-weight: 500;
+}
+
+.header h1 {
+  font-size: clamp(28px, 4vw, 43px);
+  letter-spacing: -0.06em;
+}
+
+.header p {
+  margin: 7px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.addButton,
+.emptyState button,
+.saveButton,
+.cancelButton {
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+  font: inherit;
+}
+
+.addButton,
+.saveButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 10px 14px;
+  color: white;
+  background: var(--green-button);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.summaryGrid,
+.contentGrid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 12px;
+  max-width: 1160px;
+  margin: 0 auto 14px;
+}
+
+.summaryCard {
+  min-width: 0;
+  padding: 17px 18px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.summaryCardTotal {
+  grid-column: span 3;
+  padding: 18px 20px 16px;
+  border-color: var(--line-strong);
+  background: linear-gradient(135deg, var(--surface-green), var(--surface));
+  box-shadow: 0 8px 24px rgba(23, 121, 93, 0.07);
+}
+
+.summaryCard span,
+.summaryCard small {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.totalHeading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.totalHeading > span {
+  color: var(--green-dark);
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.totalHeading > small {
+  flex: 0 0 auto;
+  padding: 4px 7px;
+  border-radius: 999px;
+  color: var(--green-dark);
+  background: var(--mint);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.totalAmounts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 28px;
+  margin: 14px 0 10px;
+}
+
+.totalAmount {
+  display: grid;
+  min-width: min(100%, 148px);
+  gap: 3px;
+}
+
+.totalAmount strong,
+.totalEmpty {
+  display: block;
+  margin: 0;
+  color: var(--ink);
+  font-size: clamp(23px, 2.4vw, 31px);
+  font-weight: 650;
+  letter-spacing: -0.045em;
+  line-height: 1.1;
+}
+
+.totalAmount span {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.totalEmpty {
+  margin: 18px 0 13px;
+}
+
+.totalFooter {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.summaryCard strong {
+  display: block;
+  margin: 11px 0 5px;
+  color: var(--ink);
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.06em;
+}
+
+.summaryCardTotal strong {
+  color: var(--ink);
+  font-size: 28px;
+}
+
+.missingNotice {
+  gap: 9px;
+  max-width: 1160px;
+  margin: 0 auto 14px;
+  padding: 11px 14px;
+  border: 1px solid var(--warning-line);
+  border-radius: 9px;
+  color: var(--warning);
+  background: var(--warning-surface);
+  font-size: 12px;
+}
+
+.contentGrid {
+  grid-template-columns: minmax(0, 1.7fr) minmax(260px, 0.8fr);
+  align-items: start;
+}
+
+.expenseListCard,
+.categoryCard {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.expenseListCard {
+  overflow: hidden;
+}
+
+.listHeader {
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 20px;
+  border-bottom: 1px solid var(--line);
+}
+
+.listHeader h2,
+.categoryCard h2 {
+  font-size: 22px;
+  letter-spacing: -0.06em;
+}
+
+.listHeader select,
+.form select,
+.form input,
+.form textarea {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--line-strong);
+  border-radius: 7px;
+  color: var(--ink);
+  background: var(--paper);
+  font: inherit;
+  font-size: 12px;
+}
+
+.listHeader select {
+  width: auto;
+  padding: 8px 10px;
+}
+
+.expenseRows {
+  display: grid;
+}
+
+.expenseRow {
+  gap: 12px;
+  min-width: 0;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--line);
+}
+
+.expenseRow:last-child {
+  border-bottom: 0;
+}
+
+.expenseIcon {
+  display: grid;
+  flex: 0 0 32px;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border-radius: 8px;
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.expenseCopy {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+  flex: 1;
+}
+
+.expenseCopy strong {
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.expenseCopy span {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.expenseAmount {
+  color: var(--ink);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.rowActions {
+  display: flex;
+  gap: 4px;
+}
+
+.rowActions button,
+.formHeader button {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  place-items: center;
+  border: 0;
+  border-radius: 6px;
+  color: var(--muted);
+  background: transparent;
+  cursor: pointer;
+}
+
+.rowActions button:hover,
+.formHeader button:hover {
+  color: var(--ink);
+  background: var(--paper);
+}
+
+.categoryCard {
+  padding: 20px;
+}
+
+.categoryRows {
+  display: grid;
+  gap: 17px;
+  margin-top: 23px;
+}
+
+.categoryRow {
+  display: grid;
+  gap: 8px;
+}
+
+.categoryLabel {
+  gap: 7px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.categoryLabel svg {
+  color: var(--accent);
+}
+
+.categoryLabel strong {
+  margin-left: auto;
+  color: var(--ink);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.barTrack {
+  height: 5px;
+  overflow: hidden;
+  border-radius: 99px;
+  background: var(--paper);
+}
+
+.barTrack span {
+  display: block;
+  height: 100%;
+  min-width: 0;
+  border-radius: inherit;
+  background: var(--accent);
+}
+
+.emptyState {
+  display: grid;
+  min-height: 230px;
+  padding: 30px;
+  place-items: center;
+  align-content: center;
+  gap: 8px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.emptyState strong {
+  color: var(--ink);
+  font-size: 14px;
+}
+
+.emptyState p {
+  margin: 0 0 7px;
+  font-size: 12px;
+}
+
+.emptyState button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 8px 11px;
+  color: var(--ink);
+  background: var(--paper);
+  font-size: 12px;
+}
+
+.formBackdrop {
+  position: fixed;
+  z-index: 30;
+  inset: 0;
+  display: grid;
+  padding: 20px;
+  place-items: center;
+  background: #17241e55;
+}
+
+.form {
+  display: grid;
+  width: min(460px, 100%);
+  max-height: min(720px, calc(100dvh - 40px));
+  overflow: auto;
+  gap: 14px;
+  padding: 22px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+  box-shadow: var(--shadow-soft);
+}
+
+.formHeader {
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 2px;
+}
+
+.form h2 {
+  font-size: 25px;
+}
+
+.formHeader button {
+  background: var(--paper);
+}
+
+.form label {
+  display: grid;
+  gap: 6px;
+  color: var(--ink);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.form label span {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.form input,
+.form select,
+.form textarea {
+  padding: 9px 10px;
+}
+
+.form textarea {
+  resize: vertical;
+}
+
+.formColumns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.error {
+  margin: 0;
+  color: var(--danger);
+  font-size: 12px;
+}
+
+.formActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.cancelButton {
+  padding: 10px 14px;
+  color: var(--ink);
+  background: var(--paper);
+  font-size: 12px;
+}
+
+@media (max-width: 900px) {
+  .summaryGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .summaryCardTotal {
+    grid-column: span 2;
+  }
+
+  .contentGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  .panel {
+    padding: 22px 14px 32px;
+  }
+
+  .header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .addButton {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .summaryGrid {
+    gap: 8px;
+  }
+
+  .summaryCard {
+    padding: 13px;
+  }
+
+  .summaryCard strong {
+    font-size: 20px;
+  }
+
+  .summaryCardTotal {
+    padding: 15px;
+  }
+
+  .totalAmounts {
+    gap: 10px 18px;
+    margin: 12px 0 9px;
+  }
+
+  .totalAmount strong,
+  .totalEmpty {
+    font-size: 23px;
+  }
+
+  .listHeader {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .listHeader select {
+    width: 100%;
+  }
+
+  .expenseRow {
+    flex-wrap: wrap;
+    padding: 13px 14px;
+  }
+
+  .expenseCopy {
+    max-width: calc(100% - 48px);
+  }
+
+  .expenseAmount {
+    margin-left: 44px;
+  }
+
+  .rowActions {
+    margin-left: auto;
+  }
+
+  .formColumns {
+    grid-template-columns: 1fr;
+  }
+}

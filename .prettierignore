@@ -1,0 +1,9 @@
+node_modules
+.next
+out
+dist
+coverage
+tsconfig.tsbuildinfo
+next-env.d.ts
+supabase/.branches
+supabase/.temp

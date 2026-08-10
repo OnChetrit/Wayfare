@@ -1,0 +1,80 @@
+.app {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--paper);
+
+  .timelineError {
+    position: fixed;
+    right: 24px;
+    bottom: 20px;
+    z-index: 20;
+    max-width: min(360px, calc(100% - 48px));
+    padding: 10px 13px;
+    border: 1px solid var(--danger-line);
+    border-radius: 8px;
+    color: var(--danger);
+    background: var(--danger-surface);
+    box-shadow: var(--shadow-soft);
+    font-size: 12px;
+  }
+
+  .workspace {
+    display: grid;
+    grid-template-columns: 268px minmax(420px, 1fr) 300px;
+    flex: auto;
+    min-height: 550px;
+  }
+
+  .workspaceTimeline {
+    grid-template-columns: minmax(0, 1fr) 300px;
+  }
+
+  .mapLoading {
+    display: grid;
+    min-height: 100%;
+    place-items: center;
+    color: var(--muted-foreground, #66736d);
+    background: var(--paper);
+    font-size: 14px;
+  }
+
+  @media (max-width: 1180px) {
+    .workspace {
+      grid-template-columns: 245px minmax(340px, 1fr) 275px;
+    }
+
+    .workspaceTimeline {
+      grid-template-columns: minmax(0, 1fr) 275px;
+    }
+  }
+
+  @media (max-width: 900px) {
+    .workspace {
+      grid-template-columns: 220px minmax(300px, 1fr) 250px;
+    }
+
+    .workspaceTimeline {
+      grid-template-columns: minmax(0, 1fr) 250px;
+    }
+  }
+
+  @media (max-width: 700px) {
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+
+    .workspace {
+      display: block;
+      position: relative;
+      height: auto;
+      min-height: 0;
+      flex: 1 1 0;
+    }
+
+    .workspaceTimeline {
+      display: block;
+    }
+  }
+}
