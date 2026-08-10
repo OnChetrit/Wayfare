@@ -1,0 +1,614 @@
+.timelineView {
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--paper);
+}
+
+.timelineHeader {
+  min-height: 105px;
+  padding: 31px 42px 21px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface-glass);
+}
+
+.dayKicker {
+  color: var(--soft-muted);
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+.timelineHeader h1 {
+  margin-top: 7px;
+  font-size: 26px;
+  letter-spacing: -0.06em;
+}
+
+.timelineHeader p {
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.timelineSummary {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--green-dark);
+  font:
+    12px 'DM Mono',
+    monospace;
+  white-space: nowrap;
+}
+
+.timelineHeaderTools {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.timelineSummary span {
+  padding: 7px 9px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: var(--surface-green);
+}
+
+.timelineLayoutToggle {
+  padding: 3px;
+  display: flex;
+  gap: 2px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface-subtle);
+
+  button {
+    min-height: 28px;
+    padding: 0 9px;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    border: 0;
+    border-radius: 7px;
+    color: var(--muted);
+    background: transparent;
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  button:hover,
+  .timelineLayoutActive {
+    color: var(--green-dark);
+    background: var(--surface-strong);
+    box-shadow: 0 2px 6px rgba(33, 54, 45, 0.08);
+  }
+}
+
+.timelineScroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  touch-action: pan-y;
+  padding: 28px 42px 50px;
+  background: var(--paper);
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
+}
+
+.timelineScrollHorizontal {
+  display: flex;
+  align-items: stretch;
+  gap: 16px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  touch-action: pan-x pan-y;
+}
+
+.daySection {
+  position: relative;
+  display: grid;
+  grid-template-columns: 35px minmax(0, 680px);
+  gap: 16px;
+  max-width: 790px;
+  margin: 0 auto;
+  padding-bottom: 25px;
+}
+
+.daySectionHorizontal {
+  flex: 0 0 320px;
+  width: 320px;
+  max-width: none;
+  min-height: 100%;
+  margin: 0;
+  padding-bottom: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.daySectionHorizontal .dayRail {
+  min-height: 32px;
+  flex: 0 0 32px;
+}
+
+.daySectionHorizontal .dayRailLine {
+  top: 13px;
+  right: -16px;
+  bottom: auto;
+  left: calc(50% + 16px);
+  width: auto;
+  height: 1px;
+}
+
+.daySectionHorizontal + .daySectionHorizontal .dayRail::before {
+  content: '';
+  position: absolute;
+  top: 13px;
+  right: calc(50% + 16px);
+  left: -16px;
+  height: 1px;
+  background: var(--line);
+}
+
+.daySectionHorizontal .dayContent {
+  min-height: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 14px;
+  border: 1px solid var(--line);
+  background: var(--surface-glass);
+}
+
+.daySectionHorizontal.daySectionDropTarget .dayContent {
+  border-color: var(--line-strong);
+}
+
+.daySectionHorizontal .dayHeader {
+  min-height: 63px;
+}
+
+.daySectionHorizontal .dayActions {
+  align-items: flex-start;
+}
+
+.daySectionHorizontal .activityList {
+  flex: 1;
+  min-height: 105px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
+  padding-block-start: 4px;
+}
+
+.daySectionHorizontal .emptyDay {
+  flex: 1;
+  min-height: 105px;
+}
+
+.dayRail {
+  position: relative;
+  display: flex;
+  justify-content: center;
+}
+
+.dayRailDot {
+  z-index: 1;
+  width: 27px;
+  height: 27px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  color: var(--green);
+  background: var(--surface-green);
+  font:
+    12px 'DM Mono',
+    monospace;
+}
+
+.daySectionSelected .dayRailDot {
+  color: white;
+  border-color: var(--green);
+  background: var(--green-button);
+}
+
+.dayRailLine {
+  position: absolute;
+  top: 35px;
+  bottom: 0;
+  width: 1px;
+  background: var(--line);
+}
+
+.dayContent {
+  min-width: 0;
+  padding: 2px 0 5px;
+  border-radius: 17px;
+  transition: background-color 180ms ease;
+}
+
+.daySectionDropTarget .dayContent {
+  background: var(--mint);
+}
+
+.dayHeader {
+  min-height: 50px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.dayHeadingButton {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
+  border: 0;
+  color: var(--ink);
+  background: transparent;
+  text-align: left;
+}
+
+.dayHeadingButton:hover strong {
+  color: var(--green);
+}
+
+.dayHeadingButton strong {
+  font-size: 20px;
+  letter-spacing: -0.06em;
+  transition: color 160ms ease;
+}
+
+.dayActions {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.activityCount {
+  color: var(--soft-muted);
+  font:
+    12px 'DM Mono',
+    monospace;
+}
+
+.dayActionButton {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--muted);
+  background: var(--surface-strong);
+}
+
+.dayActionButton:hover {
+  color: var(--green);
+  border-color: var(--line-strong);
+  background: var(--mint);
+}
+
+.dayNote {
+  max-width: 100%;
+  margin: 0 0 10px;
+  padding: 8px 10px;
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  border: 1px solid var(--warning-line);
+  border-radius: 9px;
+  color: var(--warning);
+  background: var(--warning-surface);
+  text-align: left;
+  font-size: 13px;
+}
+
+.dayNote span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.activityList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.activityCard {
+  min-height: 63px;
+  padding: 10px 12px 10px 8px;
+  display: grid;
+  grid-template-columns: 17px 52px 32px minmax(0, 1fr) 20px 20px;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface-strong);
+  box-shadow: 0 3px 12px rgba(33, 54, 45, 0.03);
+  cursor: grab;
+  transition: 180ms ease;
+}
+
+.activityCard:hover,
+.activityCardSelected {
+  border-color: var(--line-strong);
+  box-shadow: var(--shadow-soft);
+  transform: translateY(-1px);
+}
+
+.activityCard:active {
+  cursor: grabbing;
+}
+
+.dragHandle {
+  color: var(--soft-muted);
+}
+
+.activityTime {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--muted);
+  font:
+    12px 'DM Mono',
+    monospace;
+}
+
+.activityIcon {
+  width: 31px;
+  height: 31px;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  font-size: 18px;
+}
+
+.activityDetails {
+  min-width: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  border: 0;
+  color: var(--ink);
+  background: transparent;
+  text-align: left;
+}
+
+.activityDetails strong,
+.activityDetails span {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.activityDetails strong {
+  font-size: 14px;
+}
+
+.activityDetails span {
+  margin-top: 4px;
+  color: var(--muted);
+  font:
+    12px 'DM Mono',
+    monospace;
+}
+
+.placeMarker {
+  color: var(--green);
+}
+
+.activityRemove {
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 6px;
+  color: var(--soft-muted);
+  background: transparent;
+}
+
+.activityRemove:hover,
+.activityRemove:focus-visible {
+  color: var(--danger);
+  background: var(--danger-surface);
+}
+
+.flightCard {
+  grid-template-columns: 17px 52px 32px minmax(0, 1fr) auto;
+  cursor: default;
+  border-color: rgba(95, 143, 135, 0.32);
+  background: var(--surface-green);
+}
+
+.flightCard:hover {
+  transform: none;
+  border-color: rgba(95, 143, 135, 0.48);
+  box-shadow: 0 3px 12px rgba(33, 54, 45, 0.03);
+}
+
+.flightSpacer {
+  width: 17px;
+}
+
+.flightCard .activityIcon {
+  color: #4e806c;
+  background: #6a9c8818;
+}
+
+.flightDeparture .activityIcon,
+.flightDeparture .flightLabel {
+  color: var(--green-dark);
+  background: color-mix(in srgb, var(--green) 14%, transparent);
+}
+
+.flightArrival {
+  border-color: color-mix(in srgb, var(--coral) 45%, var(--line));
+  background: color-mix(in srgb, var(--coral) 9%, var(--surface));
+}
+
+.flightArrival:hover {
+  border-color: color-mix(in srgb, var(--coral) 60%, var(--line));
+}
+
+.flightArrival .activityIcon,
+.flightArrival .flightLabel {
+  color: var(--coral);
+  background: color-mix(in srgb, var(--coral) 14%, transparent);
+}
+
+.flightPlaneDeparture {
+  transform: rotate(-24deg);
+}
+
+.flightPlaneArrival {
+  transform: rotate(24deg);
+}
+
+.flightLabel {
+  padding: 4px 6px;
+  border-radius: 6px;
+  color: #4e806c;
+  background: #6a9c8818;
+  font:
+    10px 'DM Mono',
+    monospace;
+  text-transform: uppercase;
+}
+
+.flightDetails {
+  max-width: 100%;
+  margin-top: 5px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.flightDetailTag {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 2px 5px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  color: var(--muted);
+  background: var(--surface);
+  font:
+    10px 'DM Mono',
+    monospace;
+}
+
+.emptyDay {
+  min-height: 61px;
+  padding: 0 15px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  border: 1px dashed var(--line-strong);
+  border-radius: 11px;
+  color: var(--soft-muted);
+  background: var(--surface-glass);
+  font-size: 13px;
+  transition: 180ms ease;
+}
+
+.emptyDayDropTarget,
+.daySectionDropTarget .emptyDay {
+  border-color: var(--green);
+  color: var(--green);
+  background: var(--mint);
+}
+
+.dropHint {
+  padding: 7px 12px 0;
+  color: var(--green);
+  font:
+    12px 'DM Mono',
+    monospace;
+}
+
+@media (max-width: 1100px) {
+  .timelineHeader,
+  .timelineScroll {
+    padding-right: 28px;
+    padding-left: 28px;
+  }
+}
+
+@media (max-width: 700px) {
+  .timelineView {
+    height: 100%;
+    min-height: 0;
+  }
+
+  .timelineHeader {
+    min-height: 106px;
+    padding: 23px 17px 16px;
+  }
+
+  .timelineHeader h1 {
+    font-size: 22px;
+  }
+
+  .timelineHeader p {
+    max-width: 260px;
+    line-height: 1.45;
+  }
+
+  .timelineSummary {
+    display: none;
+  }
+
+  .timelineHeaderTools {
+    gap: 0;
+  }
+
+  .timelineLayoutToggle {
+    button {
+      padding: 0 7px;
+      font-size: 11px;
+    }
+  }
+
+  .timelineScroll {
+    padding: 21px 15px 35px;
+  }
+
+  .daySection {
+    grid-template-columns: 28px minmax(0, 1fr);
+    gap: 9px;
+  }
+
+  .daySectionHorizontal {
+    flex-basis: calc(100vw - 78px);
+    width: calc(100vw - 78px);
+  }
+
+  .activityCard {
+    grid-template-columns: 14px 45px 30px minmax(0, 1fr) 16px 18px;
+    gap: 6px;
+    padding-right: 8px;
+  }
+
+  .activityTime {
+    font-size: 12px;
+  }
+}

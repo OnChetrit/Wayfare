@@ -1,0 +1,173 @@
+.googleMapFrame {
+  &,
+  .googleMap {
+    position: absolute;
+    inset: 0;
+  }
+
+  .googleMap {
+    z-index: 1;
+  }
+
+  .googleMapMessage {
+    position: absolute;
+    z-index: 2;
+    top: 50%;
+    left: 50%;
+    max-width: 250px;
+    padding: 12px 15px;
+    border: 1px solid rgba(227, 234, 228, 0.95);
+    border-radius: 10px;
+    color: var(--muted);
+    background: var(--surface-glass-strong);
+    box-shadow: var(--shadow-soft);
+    font-size: 12px;
+    line-height: 1.5;
+    text-align: center;
+    transform: translate(-50%, -50%);
+  }
+
+  .googleMapError {
+    position: absolute;
+    z-index: 4;
+    top: 76px;
+    left: 24px;
+    max-width: 300px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    color: var(--danger);
+    background: var(--danger-surface);
+    font-size: 11px;
+  }
+
+  .googleMarker {
+    width: 31px;
+    height: 31px;
+    border: 3px solid white;
+    border-radius: 50% 50% 50% 4px;
+    color: white;
+    display: grid;
+    place-items: center;
+    box-shadow: 0 3px 8px rgba(39, 71, 53, 0.22);
+    cursor: pointer;
+    font-size: 14px;
+    transform: rotate(-45deg);
+    transition: 0.2s ease;
+
+    span {
+      transform: rotate(45deg);
+    }
+
+    &[data-selected='true'] {
+      width: 39px;
+      height: 39px;
+      box-shadow: 0 5px 12px rgba(39, 71, 53, 0.28);
+    }
+
+    &[data-hovered='true'] {
+      width: 43px;
+      height: 43px;
+      z-index: 2;
+      box-shadow: 0 6px 15px rgba(39, 71, 53, 0.34);
+    }
+
+    &[data-scheduled='true'] {
+      outline: 2px dashed rgba(23, 121, 93, 0.45);
+      outline-offset: 4px;
+    }
+  }
+
+  .mapTexture {
+    position: absolute;
+    inset: -15%;
+    opacity: 0.82;
+    background-image:
+      linear-gradient(
+        32deg,
+        transparent 46%,
+        var(--map-road) 47%,
+        var(--map-road) 48%,
+        transparent 49%
+      ),
+      linear-gradient(
+        118deg,
+        transparent 45%,
+        var(--map-road-soft) 46%,
+        var(--map-road-soft) 47%,
+        transparent 48%
+      ),
+      linear-gradient(
+        72deg,
+        transparent 46%,
+        var(--map-road-land) 47%,
+        var(--map-road-land) 48%,
+        transparent 49%
+      ),
+      linear-gradient(
+        150deg,
+        transparent 46%,
+        var(--map-road-soft) 47%,
+        var(--map-road-soft) 48%,
+        transparent 49%
+      );
+    background-size:
+      147px 107px,
+      190px 156px,
+      125px 93px,
+      211px 173px;
+    transform: rotate(-7deg) scale(1.1);
+
+    &::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(
+          ellipse at 53% 50%,
+          transparent 0 28%,
+          var(--map-ring) 29% 30%,
+          transparent 31%
+        ),
+        radial-gradient(ellipse at 83% 78%, var(--map-landmark) 0 13%, transparent 13.5%);
+    }
+  }
+
+  .mapZoom {
+    position: absolute;
+    right: 20px;
+    bottom: 21px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border: 1px solid rgba(214, 226, 216, 0.95);
+    border-radius: 9px;
+    background: var(--surface-strong);
+    box-shadow: 0 4px 12px rgba(57, 79, 63, 0.08);
+
+    button {
+      width: 29px;
+      height: 29px;
+      border: 0;
+      color: var(--muted);
+      background: var(--surface-strong);
+      font-size: 22px;
+      line-height: 1;
+    }
+
+    button + button {
+      border-top: 1px solid var(--line);
+    }
+
+    button:hover {
+      color: var(--green);
+      background: var(--surface-green);
+    }
+  }
+
+  @media (max-width: 700px) {
+    .mapZoom {
+      right: 15px;
+      bottom: 15px;
+    }
+  }
+}

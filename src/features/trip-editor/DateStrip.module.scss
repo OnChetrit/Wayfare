@@ -1,0 +1,231 @@
+.dateScroller {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  max-width: 910px;
+  margin: 0 auto;
+  padding: 0 1px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  scroll-behavior: smooth;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+
+  .stripContent {
+    width: max(100%, var(--trip-strip-min-width));
+    padding: 0 1px;
+  }
+
+  .locationRow,
+  .daysRow {
+    display: grid;
+    grid-template-columns: repeat(var(--trip-day-count), minmax(92px, 1fr));
+    gap: 9px;
+  }
+
+  .locationRow {
+    position: relative;
+    height: 42px;
+    margin-bottom: 8px;
+    display: grid;
+    grid-template-columns: var(--trip-location-grid-template);
+
+    button {
+      min-width: 0;
+      min-height: 42px;
+      padding: 5px 9px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      color: var(--green-dark);
+      background: var(--surface-green);
+      text-align: left;
+      cursor: pointer;
+      transition: 0.2s ease;
+
+      &:hover {
+        border-color: var(--line);
+        background: var(--mint);
+      }
+    }
+
+    span,
+    small {
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    span {
+      font-size: 14px;
+      font-weight: 700;
+    }
+    small {
+      margin-top: 2px;
+      color: var(--soft-muted);
+      font:
+        9px 'DM Mono',
+        monospace;
+    }
+    .locationCardActive {
+      border-color: var(--green);
+      color: white;
+      background: var(--green-button);
+      box-shadow: 0 5px 13px rgba(23, 121, 93, 0.16);
+
+      &:hover {
+        border-color: var(--green);
+        background: var(--green-button);
+      }
+    }
+    .locationCardActive small {
+      color: rgba(255, 255, 255, 0.72);
+    }
+
+    .locationCardDropTarget {
+      border-color: var(--green);
+      box-shadow: 0 0 0 2px rgba(23, 121, 93, 0.2);
+    }
+  }
+
+  .noTripDates {
+    flex: 1;
+    color: var(--muted);
+    text-align: center;
+    font-size: 13px;
+  }
+
+  .dateCard {
+    width: auto;
+    min-height: 76px;
+    border: 1px solid transparent;
+    border-radius: 14px;
+    padding: 10px 11px;
+    text-align: left;
+    color: var(--muted);
+    background: var(--surface-green);
+    display: flex;
+    flex-direction: column;
+
+    display: grid;
+    grid-template-areas:
+      '. day'
+      'date activities';
+
+    gap: 2px;
+    transition: 0.2s ease;
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
+    cursor: pointer;
+
+    &:hover {
+      border-color: var(--line);
+      background: var(--mint);
+    }
+
+    span {
+      font:
+        500 11px 'DM Mono',
+        monospace;
+      letter-spacing: 0.1em;
+      grid-area: day;
+      justify-self: flex-end;
+    }
+
+    strong {
+      color: var(--ink);
+      font-size: 24px;
+      line-height: 1.15;
+      letter-spacing: -0.06em;
+      grid-area: date;
+      align-self: flex-end;
+    }
+
+    small {
+      color: var(--soft-muted);
+      font-size: 14px;
+      line-height: 1.15;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      grid-area: activities;
+      justify-self: flex-end;
+      align-self: flex-end;
+    }
+  }
+
+  .dateCardActive {
+    color: white;
+    border-color: var(--green);
+    background: var(--green-button);
+    box-shadow: 0 5px 13px rgba(23, 121, 93, 0.16);
+
+    &:hover {
+      border-color: var(--green);
+      background: var(--green-button);
+    }
+
+    strong,
+    small {
+      color: white;
+    }
+
+    small {
+      opacity: 0.68;
+    }
+  }
+
+  .dateCardDropTarget {
+    border-color: var(--green);
+    background: var(--success-surface);
+    box-shadow: 0 0 0 2px rgba(23, 121, 93, 0.18);
+
+    strong,
+    small {
+      color: var(--green-dark);
+    }
+  }
+
+  @media (max-width: 700px) {
+    & {
+      padding: 0;
+    }
+
+    .locationRow,
+    .daysRow {
+      gap: 5px;
+    }
+
+    .locationRow {
+      margin-bottom: 6px;
+    }
+
+    .dateCard {
+      min-height: 62px;
+      gap: 1px;
+      padding: 5px 4px;
+      border-radius: 10px;
+
+      strong {
+        font-size: 20px;
+      }
+
+      small {
+        font-size: 10px;
+        line-height: 1;
+      }
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .dateCard,
+    .locationRow button {
+      transition: none;
+    }
+  }
+}

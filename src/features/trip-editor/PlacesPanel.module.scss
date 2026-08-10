@@ -1,0 +1,762 @@
+.placePanel {
+  position: relative;
+  z-index: 10;
+  border-left: 1px solid var(--line);
+  padding: 12px 17px 17px;
+  display: flex;
+  flex-direction: column;
+
+  .iconButton,
+  .panelClose,
+  .moreButton,
+  .roundAdd {
+    border: 0;
+    color: var(--muted);
+    background: transparent;
+    display: grid;
+    place-items: center;
+  }
+
+  .dayPanel,
+  & {
+    min-width: 0;
+    overflow: hidden;
+    background: var(--paper);
+  }
+
+  .panelHeader,
+  .libraryHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+
+  .libraryHeader {
+    h2 {
+      color: var(--ink);
+      font-size: 22px;
+      line-height: 1.2;
+      letter-spacing: -0.06em;
+    }
+
+    h2 span {
+      color: var(--soft-muted);
+      font:
+        400 14px 'DM Mono',
+        monospace;
+      vertical-align: 2px;
+      margin-left: 3px;
+    }
+  }
+
+  .libraryToolbar {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .roundAdd {
+    width: 30px;
+    height: 30px;
+    color: var(--green);
+    border: 1px solid var(--line-strong);
+    border-radius: 50%;
+    background: var(--mint);
+
+    &:hover {
+      color: white;
+      background: var(--green-button);
+    }
+  }
+
+  .importForm {
+    margin-top: 14px;
+    padding: 11px;
+    border: 1px solid var(--line-strong);
+    border-radius: 10px;
+    background: var(--mint);
+
+    label {
+      color: var(--green-dark);
+      font:
+        700 11px 'DM Mono',
+        monospace;
+    }
+
+    input {
+      width: 100%;
+      min-height: 32px;
+      margin-top: 7px;
+      padding: 0 8px;
+      border: 1px solid var(--line-strong);
+      border-radius: 7px;
+      color: var(--ink);
+      background: var(--surface-strong);
+      outline: 0;
+      font-size: 13px;
+    }
+
+    input:focus {
+      border-color: var(--green);
+      box-shadow: var(--focus);
+    }
+
+    p {
+      margin: 7px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.4;
+    }
+  }
+
+  .importActions {
+    justify-content: flex-end;
+    gap: 6px;
+    margin-top: 10px;
+    display: flex;
+  }
+
+  .importCancel,
+  .importSubmit {
+    min-height: 27px;
+    padding: 0 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 700;
+  }
+
+  .importCancel {
+    border: 1px solid var(--line-strong);
+    color: var(--muted);
+    background: var(--surface-strong);
+  }
+
+  .importSubmit {
+    border: 1px solid var(--green);
+    color: white;
+    background: var(--green-button);
+
+    &:disabled {
+      cursor: wait;
+      opacity: 0.55;
+    }
+  }
+
+  .importError,
+  .importNotice {
+    margin-top: 8px;
+    padding: 7px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    line-height: 1.4;
+  }
+
+  .importError {
+    color: var(--danger);
+    background: var(--danger-surface);
+  }
+
+  .importNotice {
+    color: var(--green-dark);
+    background: var(--mint);
+  }
+
+  .searchContainer {
+    display: flex;
+    gap: 12px;
+    justify-content: space-between;
+    align-items: center;
+
+    .librarySearch {
+      width: 100%;
+      height: 36px;
+      padding: 0 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border: 0;
+      border-radius: 9px;
+      color: var(--soft-muted);
+      background: var(--mint);
+
+      input {
+        min-width: 0;
+        flex: 1;
+        border: 0;
+        outline: 0;
+        color: var(--ink);
+        background: transparent;
+        font-size: 13px;
+
+        &::placeholder {
+          color: var(--soft-muted);
+        }
+
+        &:focus-visible {
+          box-shadow: none;
+        }
+      }
+    }
+  }
+
+  .settingsMenuWrap {
+    position: relative;
+    flex: 0 0 auto;
+  }
+
+  .settingsButton {
+    position: relative;
+    width: 30px;
+    height: 30px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    display: grid;
+    place-items: center;
+    color: var(--muted);
+    background: var(--surface-control);
+    transition: 0.2s ease;
+
+    &:hover,
+    &[aria-expanded='true'] {
+      border-color: var(--line-strong);
+      color: var(--green);
+      background: var(--mint);
+    }
+  }
+
+  .settingsBadge {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    min-width: 15px;
+    height: 15px;
+    padding: 0 3px;
+    border: 2px solid var(--surface-control);
+    border-radius: 999px;
+    display: grid;
+    place-items: center;
+    color: white;
+    background: var(--green-button);
+    font:
+      700 9px 'DM Mono',
+      monospace;
+    line-height: 1;
+  }
+
+  .settingsDialog {
+    width: min(calc(100% - 32px), 360px);
+    max-height: min(600px, calc(100dvh - 32px));
+    margin: auto;
+    padding: 20px;
+    overflow: auto;
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    color: var(--ink);
+    background: var(--surface);
+    box-shadow: 0 24px 80px rgba(24, 33, 29, 0.2);
+
+    &::backdrop {
+      background: var(--backdrop);
+      backdrop-filter: blur(3px);
+    }
+  }
+
+  .settingsDialogHeader {
+    margin-bottom: 14px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+
+    h2 {
+      margin: 6px 0 0;
+      font-size: 22px;
+      letter-spacing: -0.06em;
+    }
+  }
+
+  .settingsDialogClose {
+    width: 29px;
+    height: 29px;
+    border: 0;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    color: var(--muted);
+    background: transparent;
+
+    &:hover {
+      background: var(--surface-subtle);
+    }
+  }
+
+  .settingsSection {
+    padding: 8px;
+
+    & + & {
+      border-top: 1px solid var(--line);
+    }
+  }
+
+  .settingsLabel {
+    margin-bottom: 7px;
+    display: block;
+    color: var(--soft-muted);
+    font:
+      500 10px 'DM Mono',
+      monospace;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .settingsChoices,
+  .categoryChoices {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+  }
+
+  .settingsChoices button,
+  .categoryChoices button {
+    min-height: 29px;
+    padding: 0 8px;
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--muted);
+    background: var(--surface-control);
+    font-size: 11px;
+
+    &:hover,
+    &.settingActive {
+      border-color: var(--line-strong);
+      color: var(--green);
+      background: var(--mint);
+    }
+  }
+
+  .settingsSwitch {
+    width: 100%;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    border: 0;
+    color: var(--ink);
+    background: transparent;
+    text-align: left;
+
+    strong,
+    small {
+      display: block;
+    }
+
+    strong {
+      font-size: 12px;
+    }
+
+    small {
+      margin-top: 3px;
+      color: var(--soft-muted);
+      font:
+        10px 'DM Mono',
+        monospace;
+    }
+
+    .switchTrack {
+      position: relative;
+      width: 28px;
+      height: 17px;
+      flex: 0 0 auto;
+      border-radius: 999px;
+      background: var(--soft-muted);
+      transition: 0.2s ease;
+    }
+
+    .switchThumb {
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+      background: var(--surface-strong);
+      box-shadow: 0 1px 3px rgba(39, 71, 53, 0.2);
+      transition: 0.2s ease;
+    }
+
+    .switchOn {
+      background: var(--green-button);
+
+      .switchThumb {
+        transform: translateX(11px);
+      }
+    }
+  }
+
+  .resetSettings {
+    width: calc(100% - 16px);
+    min-height: 30px;
+    margin: 0 8px 8px;
+    border: 0;
+    border-radius: 7px;
+    color: var(--muted);
+    background: var(--surface-control);
+    font-size: 11px;
+
+    &:hover {
+      color: var(--green);
+      background: var(--mint);
+    }
+  }
+
+  .clearSearch {
+    flex: 0 0 auto;
+    padding: 2px;
+    display: grid;
+    place-items: center;
+    border: 0;
+    border-radius: 50%;
+    color: var(--soft-muted);
+    background: transparent;
+    cursor: pointer;
+
+    &:hover {
+      color: var(--ink);
+      background: var(--surface-subtle);
+    }
+  }
+
+  .placeList {
+    flex: 1;
+    overflow: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--line) transparent;
+  }
+
+  .selectedSection {
+    padding-block: 13px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .sectionToggle {
+    width: 100%;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border: 0;
+    color: inherit;
+    background: transparent;
+    text-align: left;
+    font: inherit;
+    letter-spacing: inherit;
+    text-transform: inherit;
+
+    &:hover {
+      color: var(--green);
+    }
+
+    svg {
+      color: var(--soft-muted);
+      transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+  }
+
+  .sectionHeadingMeta {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .selectedSectionCollapsed {
+    .sectionToggle svg {
+      transform: rotate(-90deg);
+    }
+
+    .selectedPlaceListWrapper {
+      grid-template-rows: 0fr;
+      opacity: 0;
+    }
+  }
+
+  .selectedPlaceListWrapper {
+    display: grid;
+    grid-template-rows: 1fr;
+    opacity: 1;
+    transition:
+      grid-template-rows 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+      opacity 0.2s ease;
+
+    & > .selectedPlaceList {
+      min-height: 0;
+      overflow: hidden;
+    }
+  }
+
+  .availableSection {
+    padding-top: 13px;
+  }
+
+  .sectionHeading {
+    margin: 0 5px 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    color: var(--soft-muted);
+    font:
+      500 11px 'DM Mono',
+      monospace;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+
+    strong {
+      color: var(--green);
+      font-variant-numeric: tabular-nums;
+    }
+  }
+
+  .selectedPlaceCard {
+    min-height: 58px;
+    margin-bottom: 4px;
+    padding-top: 7px;
+    padding-bottom: 7px;
+
+    .placeInfo small {
+      color: var(--green);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 10px;
+      letter-spacing: 0;
+    }
+  }
+
+  .selectedPlaceList {
+    .placeCard:last-child {
+      margin-bottom: 0;
+    }
+  }
+
+  .placeCard {
+    position: relative;
+    min-height: 65px;
+    margin-bottom: 7px;
+    padding: 10px 7px 10px 5px;
+    display: grid;
+    grid-template-columns: 31px minmax(0, 1fr);
+    align-items: center;
+    gap: 7px;
+    border: 1px solid transparent;
+    border-radius: 11px;
+    cursor: grab;
+    transition: 0.2s ease;
+  }
+
+  .placeCard:hover,
+  .placeCardSelected {
+    border-color: var(--line-strong);
+    background: var(--surface-green);
+  }
+
+  .placeCard:active {
+    cursor: grabbing;
+  }
+
+  .placeIcon {
+    width: 31px;
+    height: 31px;
+    border-radius: 9px;
+    display: grid;
+    place-items: center;
+    font-size: 17px;
+  }
+
+  .placeInfo {
+    min-width: 0;
+
+    strong,
+    span,
+    small {
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    strong {
+      font-size: 12px;
+    }
+
+    & > span {
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    small {
+      margin-top: 5px;
+      color: var(--soft-muted);
+      font:
+        11px 'DM Mono',
+        monospace;
+    }
+
+    i {
+      color: var(--soft-muted);
+      font-style: normal;
+      padding: 0 3px;
+    }
+  }
+
+  .placeCard:has(.placeActions) .placeInfo {
+    box-sizing: border-box;
+    transition: padding-right 0.2s ease;
+  }
+
+  .placeAdd {
+    width: 23px;
+    height: 23px;
+    border: 1px solid #d7e9df;
+    border-radius: 7px;
+    display: grid;
+    place-items: center;
+    color: var(--green);
+    background: var(--surface-strong);
+
+    &:hover {
+      color: white;
+      background: var(--green-button);
+    }
+  }
+
+  .placeActions {
+    position: absolute;
+    top: 50%;
+    right: 7px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    opacity: 0;
+    pointer-events: none;
+    transform: translate(4px, -50%);
+    transition:
+      opacity 0.2s ease,
+      transform 0.2s ease;
+  }
+
+  .placeCard:hover .placeActions,
+  .placeCard:focus-within .placeActions {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(-50%);
+  }
+
+  .placeCard:has(.placeActions):hover .placeInfo,
+  .placeCard:has(.placeActions):focus-within .placeInfo {
+    padding-right: 80px;
+  }
+
+  .favoriteButton,
+  .deleteButton {
+    width: 23px;
+    height: 23px;
+    border: 1px solid transparent;
+    border-radius: 7px;
+    display: grid;
+    place-items: center;
+    background: transparent;
+  }
+
+  .favoriteButton {
+    color: var(--soft-muted);
+  }
+
+  .favoriteButton:hover,
+  .favoriteActive {
+    color: var(--warning);
+    border-color: var(--warning-line);
+    background: var(--warning-surface);
+  }
+
+  .deleteButton {
+    color: var(--soft-muted);
+
+    &:hover {
+      color: var(--danger);
+      border-color: var(--danger-line);
+      background: var(--danger-surface);
+    }
+  }
+
+  .noPlaces {
+    padding: 28px 9px;
+    color: var(--muted);
+    text-align: center;
+    font-size: 13px;
+  }
+
+  @media (max-width: 900px) {
+    & {
+      padding-left: 12px;
+      padding-right: 12px;
+    }
+
+    .placeCard {
+      grid-template-columns: 31px minmax(0, 1fr);
+    }
+  }
+
+  @media (hover: none) {
+    .placeActions {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateY(-50%);
+    }
+
+    .placeCard:has(.placeActions) .placeInfo {
+      padding-right: 80px;
+    }
+  }
+
+  @media (max-width: 700px) {
+    .dayPanel,
+    & {
+      position: absolute;
+      z-index: 8;
+      inset: 0;
+      display: none;
+      border: 0;
+      padding: 22px 17px 17px;
+    }
+
+    .dayPanel.mobileVisible,
+    &.mobileVisible {
+      display: flex;
+    }
+
+    .dayPanel.mobileVisible + .mapPanel,
+    &.mobileVisible ~ .mapPanel {
+      display: none;
+    }
+
+    & {
+      padding-top: 25px;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .scheduleCard,
+    .placeCard,
+    .marker,
+    .cardControls,
+    .selectedPlaceListWrapper,
+    .sectionToggle {
+      svg {
+        transition: none;
+      }
+    }
+  }
+}

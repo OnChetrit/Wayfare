@@ -1,0 +1,42 @@
+.mobileNav {
+  display: none;
+
+  button {
+    border: 0;
+    border-radius: 9px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    color: var(--soft-muted);
+    background: transparent;
+    font-size: 11px;
+
+    span {
+      display: grid;
+      place-items: center;
+    }
+
+    &:hover,
+    &.mobileNavActive {
+      color: var(--green);
+      background: var(--mint);
+    }
+  }
+}
+
+@media (max-width: 700px) {
+  .mobileNav {
+    position: sticky;
+    z-index: 20;
+    bottom: 0;
+    height: 64px;
+    flex: 0 0 64px;
+    padding: 7px 10px 4px;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    border-top: 1px solid var(--line);
+    background: var(--surface-glass-strong);
+  }
+}

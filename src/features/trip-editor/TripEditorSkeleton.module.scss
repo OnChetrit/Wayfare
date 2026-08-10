@@ -1,0 +1,581 @@
+.app {
+  position: relative;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  color: var(--ink);
+  background: var(--paper);
+}
+
+.line,
+.rowIcon {
+  display: block;
+  border-radius: 999px;
+  background: linear-gradient(
+    100deg,
+    var(--surface-subtle) 28%,
+    var(--surface-strong) 44%,
+    var(--surface-subtle) 60%
+  );
+  background-size: 220% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+.line {
+  height: 10px;
+}
+
+.dateBar {
+  z-index: 10;
+  position: relative;
+  display: grid;
+  grid-template-columns: 31px minmax(0, 1fr) 31px;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 24px;
+  flex: none;
+  border-bottom: 1px solid var(--line);
+  background: var(--paper);
+}
+
+.dateNavButton,
+.expandButton,
+.roundButton,
+.action,
+.filterButton,
+.mapControls button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--line);
+  color: var(--muted);
+  background: var(--surface-strong);
+}
+
+.dateNavButton {
+  width: 31px;
+  height: 31px;
+  border-radius: 50%;
+}
+
+.dateViews {
+  width: min(910px, calc(100% - 188px));
+  min-width: 0;
+  justify-self: center;
+}
+
+.locationRow,
+.dateTabs {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.locationRow {
+  margin-bottom: 8px;
+}
+
+.locationCard {
+  min-height: 42px;
+  padding: 5px 9px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--surface-green);
+}
+
+.locationCard:nth-child(1) {
+  grid-column: span 2;
+}
+.locationCard:nth-child(2) {
+  grid-column: span 2;
+}
+.locationCard:nth-child(3) {
+  display: none;
+}
+.locationText {
+  width: 68%;
+  height: 12px;
+}
+
+.dateTab {
+  min-height: 76px;
+  padding: 10px 11px;
+  display: grid;
+  grid-template-areas: '. weekday' 'number .';
+  gap: 6px;
+  border: 1px solid transparent;
+  border-radius: 14px;
+  background: var(--surface-green);
+}
+
+.dateWeekday {
+  width: 28px;
+  height: 9px;
+  grid-area: weekday;
+  justify-self: end;
+}
+.dateNumber {
+  width: 34px;
+  height: 24px;
+  grid-area: number;
+  align-self: end;
+}
+
+.expandButton {
+  position: absolute;
+  top: 50%;
+  right: 67px;
+  min-width: 82px;
+  height: 35px;
+  gap: 6px;
+  padding: 0 10px;
+  border-radius: 18px;
+  font-size: 12px;
+  font-weight: 700;
+  transform: translateY(-50%);
+}
+
+.editorWorkspace {
+  display: grid;
+  grid-template-columns: 268px minmax(420px, 1fr) 300px;
+  flex: auto;
+  min-height: 550px;
+}
+
+.sidePanel {
+  min-width: 0;
+  padding: 20px 16px;
+  border-right: 1px solid var(--line);
+  background: var(--paper);
+}
+
+.sidePanel:last-child {
+  border-right: 0;
+  border-left: 1px solid var(--line);
+}
+
+.sidePanelHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+
+  h2 {
+    margin: 0;
+    color: var(--ink);
+    font-size: 17px;
+    letter-spacing: -0.04em;
+  }
+}
+
+.roundButton {
+  width: 32px;
+  height: 32px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+}
+
+.savedPlacesPanel {
+  padding: 12px 17px 17px;
+
+  .sidePanelHeader h2 {
+    margin: 7px 0 4px;
+    font-size: 22px;
+    line-height: 1.2;
+    letter-spacing: -0.06em;
+  }
+}
+
+.placesControls {
+  display: flex;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.placesSearch {
+  height: 36px;
+  min-width: 0;
+  flex: 1;
+  padding: 0 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 9px;
+  color: var(--soft-muted);
+  background: var(--mint);
+
+  input {
+    min-width: 0;
+    flex: 1;
+    border: 0;
+    outline: 0;
+    color: var(--ink);
+    background: transparent;
+    font-size: 13px;
+
+    &::placeholder {
+      color: var(--soft-muted);
+      opacity: 1;
+    }
+  }
+}
+
+.placesFilterButton {
+  width: 30px;
+  height: 30px;
+  flex: 0 0 auto;
+  align-self: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  background: var(--surface-control);
+}
+
+.rowList {
+  display: grid;
+  gap: 15px;
+  margin-top: 24px;
+}
+.listRow,
+.expenseRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.rowIcon {
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+  border-radius: 9px;
+}
+.rowTitle {
+  width: 105px;
+}
+.rowDetail {
+  width: 72px;
+  height: 8px;
+  margin-top: 7px;
+}
+
+.mapPanel {
+  position: relative;
+  overflow: hidden;
+  background:
+    linear-gradient(28deg, transparent 47%, var(--map-road-soft) 48% 49%, transparent 50%) 0 0 /
+      160px 130px,
+    linear-gradient(118deg, transparent 48%, var(--map-road-soft) 49% 50%, transparent 51%) 0 0 /
+      180px 150px,
+    var(--map-background);
+}
+
+.mapLabel {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--muted);
+  background: var(--surface-glass-strong);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.mapControls {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  display: grid;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-glass-strong);
+
+  button {
+    width: 32px;
+    height: 32px;
+    border: 0;
+    border-bottom: 1px solid var(--line);
+    font-size: 18px;
+  }
+  button:last-child {
+    border-bottom: 0;
+  }
+}
+
+.expensesWorkspace {
+  width: 100%;
+  overflow: auto;
+  padding: 30px clamp(20px, 4vw, 58px) 48px;
+  background: var(--paper);
+}
+
+.expensesHero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  max-width: 1160px;
+  margin: 0 auto 26px;
+}
+
+.expensesIntro {
+  h1 {
+    margin: 0;
+    font-family: var(--display);
+    font-size: clamp(28px, 4vw, 43px);
+    font-weight: 500;
+    letter-spacing: -0.06em;
+  }
+  p {
+    margin: 7px 0 0;
+    color: var(--muted);
+    font-size: 13px;
+  }
+}
+
+.action {
+  gap: 7px;
+  padding: 10px 14px;
+  border: 0;
+  border-radius: 8px;
+  color: white;
+  background: var(--green-button);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.summaryGrid,
+.contentGrid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 12px;
+  max-width: 1160px;
+  margin: 0 auto 14px;
+}
+
+.summaryCard,
+.expenseListCard,
+.categoryCard {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.summaryCard {
+  grid-column: span 1;
+  padding: 17px 18px;
+}
+.summaryCardTotal {
+  grid-column: span 3;
+  padding: 18px 20px 16px;
+  border-color: var(--line-strong);
+  background: linear-gradient(135deg, var(--surface-green), var(--surface));
+}
+.summaryCard > span,
+.summaryCard small {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+}
+.totalHeading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--green-dark);
+  font-size: 11px;
+  font-weight: 700;
+}
+.totalCount {
+  width: 56px;
+  height: 20px;
+}
+.totalValue {
+  width: 154px;
+  height: 31px;
+  margin-top: 14px;
+}
+.totalSubValue {
+  width: 92px;
+  height: 10px;
+  margin: 7px 0 11px;
+}
+.summaryValue {
+  width: 102px;
+  height: 23px;
+  margin: 11px 0 8px;
+}
+
+.contentGrid {
+  grid-template-columns: minmax(0, 1.7fr) minmax(260px, 0.8fr);
+  align-items: start;
+}
+.expenseListCard {
+  overflow: hidden;
+}
+.listHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 20px;
+  border-bottom: 1px solid var(--line);
+}
+.listHeader h2,
+.categoryCard h2 {
+  margin: 0;
+  font-family: var(--display);
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: -0.06em;
+}
+.filterButton {
+  padding: 8px 10px;
+  border-radius: 7px;
+  font-size: 12px;
+}
+.expenseRows {
+  display: grid;
+}
+.expenseRow {
+  min-width: 0;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--line);
+}
+.expenseRow:last-child {
+  border-bottom: 0;
+}
+.expenseCopy {
+  min-width: 0;
+  flex: 1;
+}
+.amount {
+  width: 60px;
+}
+.categoryCard {
+  padding: 20px;
+}
+.categoryRows {
+  display: grid;
+  gap: 17px;
+  margin-top: 23px;
+}
+.categoryRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.categoryValue {
+  width: 58px;
+  height: 11px;
+}
+
+.status {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+
+@keyframes shimmer {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -120% 0;
+  }
+}
+
+@media (max-width: 1180px) {
+  .editorWorkspace {
+    grid-template-columns: 245px minmax(340px, 1fr) 275px;
+  }
+  .expandButton {
+    right: 58px;
+  }
+}
+
+@media (max-width: 900px) {
+  .editorWorkspace {
+    grid-template-columns: 220px minmax(300px, 1fr) 250px;
+  }
+}
+
+@media (max-width: 700px) {
+  .app {
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+  }
+  .dateBar {
+    padding: 10px 14px;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .dateNavButton,
+  .expandButton {
+    display: none;
+  }
+  .dateViews {
+    width: 100%;
+  }
+  .locationRow {
+    display: none;
+  }
+  .dateTabs {
+    gap: 5px;
+  }
+  .dateTab {
+    min-height: 62px;
+    padding: 5px 4px;
+    border-radius: 10px;
+  }
+  .editorWorkspace {
+    display: block;
+    min-height: 0;
+  }
+  .sidePanel {
+    display: none;
+  }
+  .mapPanel {
+    height: 100%;
+    min-height: 420px;
+  }
+  .expensesWorkspace {
+    padding: 28px 16px;
+  }
+  .expensesHero {
+    align-items: flex-start;
+  }
+  .summaryGrid,
+  .contentGrid {
+    grid-template-columns: 1fr;
+  }
+  .summaryCard,
+  .summaryCardTotal {
+    grid-column: auto;
+  }
+  .categoryCard {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .line,
+  .rowIcon {
+    animation: none;
+  }
+}

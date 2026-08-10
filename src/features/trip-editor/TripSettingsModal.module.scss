@@ -1,0 +1,391 @@
+.settingsDialog {
+  width: min(calc(100% - 32px), 470px);
+  max-height: min(720px, calc(100dvh - 32px));
+  margin: auto;
+  padding: 25px;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  color: var(--ink);
+  background: var(--surface);
+  box-shadow: 0 24px 80px rgba(24, 33, 29, 0.2);
+
+  &::backdrop {
+    background: var(--backdrop);
+    backdrop-filter: blur(3px);
+  }
+}
+
+.dialogHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 23px;
+
+  h2 {
+    margin: 0;
+    font-size: 23px;
+    letter-spacing: -0.06em;
+  }
+}
+
+.dialogClose {
+  width: 29px;
+  height: 29px;
+  border: 0;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  background: transparent;
+}
+
+.dialogClose:hover,
+.cancelButton:hover {
+  background: var(--surface-subtle);
+}
+
+.settingsGroup {
+  margin: 0 0 20px;
+  padding: 0;
+  border: 0;
+  display: grid;
+  gap: 12px;
+
+  legend {
+    margin-bottom: 10px;
+    color: var(--soft-muted);
+    font:
+      500 11px 'DM Mono',
+      monospace;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+  }
+
+  legend svg {
+    vertical-align: -2px;
+    margin-right: 4px;
+  }
+
+  label {
+    display: grid;
+    gap: 6px;
+    color: var(--muted);
+    font:
+      500 12px 'DM Mono',
+      monospace;
+  }
+
+  label span {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  input,
+  select {
+    width: 100%;
+    height: 42px;
+    padding: 0 11px;
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    outline: 0;
+    color: var(--ink);
+    background: var(--surface-control);
+    font:
+      14px 'Plus Jakarta Sans',
+      sans-serif;
+  }
+
+  input:focus,
+  select:focus {
+    border-color: var(--line-strong);
+    box-shadow: var(--focus);
+  }
+}
+
+.flightGroup {
+  padding: 15px 14px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface-control);
+}
+
+.groupHint {
+  margin: -3px 0 2px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.flightSearchFields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 9px;
+}
+
+.flightSearchButton,
+.addFlightButton,
+.removeFlightButton {
+  border: 0;
+  cursor: pointer;
+}
+
+.flightSearchButton {
+  height: 38px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  color: white;
+  background: var(--green-button);
+  font-size: 12px;
+  font-weight: 700;
+
+  &:hover {
+    background: var(--green-button-hover);
+  }
+}
+
+.flightResults,
+.savedFlights {
+  display: grid;
+  gap: 7px;
+}
+
+.flightResults {
+  margin-top: 4px;
+}
+
+.savedFlights {
+  margin-top: 5px;
+  padding-top: 13px;
+  border-top: 1px solid var(--line);
+}
+
+.resultsLabel {
+  color: var(--soft-muted);
+  font:
+    500 10px 'DM Mono',
+    monospace;
+  letter-spacing: 0.12em;
+}
+
+.flightResult,
+.savedFlight {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--surface-strong);
+}
+
+.flightResult > div:first-child,
+.savedFlightDetails {
+  min-width: 0;
+  flex: 1;
+}
+
+.flightResult strong,
+.savedFlight strong {
+  display: block;
+  color: var(--ink);
+  font-size: 13px;
+}
+
+.flightResult span,
+.savedFlight span {
+  display: block;
+  margin-top: 3px;
+  overflow: hidden;
+  color: var(--muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font:
+    11px 'DM Mono',
+    monospace;
+}
+
+.addFlightButton {
+  min-width: 57px;
+  height: 27px;
+  padding: 0 7px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  color: var(--green-dark);
+  background: var(--mint);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.savedFlightIcon {
+  width: 27px;
+  height: 27px;
+  border-radius: 7px;
+  display: grid;
+  place-items: center;
+  color: var(--green);
+  background: var(--success-surface);
+}
+
+.removeFlightButton {
+  width: 27px;
+  height: 27px;
+  border-radius: 6px;
+  display: grid;
+  place-items: center;
+  color: var(--danger);
+  background: var(--danger-surface);
+
+  &:hover {
+    background: var(--danger-surface);
+  }
+}
+
+.flightSearchButton:disabled,
+.addFlightButton:disabled,
+.removeFlightButton:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
+.flightError {
+  margin: 0;
+  color: var(--danger);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.dateFields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.dialogError {
+  margin: -2px 0 14px;
+  color: var(--danger);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.dialogActions {
+  display: flex;
+  gap: 9px;
+}
+
+.dangerZone {
+  margin-top: 22px;
+  padding: 14px;
+  border: 1px solid color-mix(in srgb, var(--danger) 35%, var(--line));
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  background: var(--danger-surface);
+
+  h3,
+  p {
+    margin: 0;
+  }
+
+  h3 {
+    color: var(--danger);
+    font-size: 13px;
+  }
+
+  p {
+    margin-top: 3px;
+    color: var(--muted);
+    font-size: 11px;
+    line-height: 1.45;
+  }
+
+  button {
+    flex: 0 0 auto;
+    height: 32px;
+    padding: 0 10px;
+    border: 1px solid var(--danger);
+    border-radius: 7px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    color: var(--danger);
+    background: var(--surface-strong);
+    font-size: 11px;
+    font-weight: 700;
+  }
+
+  button:hover {
+    color: white;
+    background: var(--danger);
+  }
+
+  button:disabled {
+    cursor: wait;
+    opacity: 0.65;
+  }
+}
+
+.saveButton,
+.cancelButton {
+  height: 40px;
+  padding: 0 13px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.saveButton {
+  flex: 1;
+  border: 0;
+  color: white;
+  background: var(--green-button);
+
+  &:hover {
+    background: var(--green-button-hover);
+  }
+}
+
+.cancelButton {
+  border: 1px solid var(--line);
+  color: var(--muted);
+  background: var(--surface-strong);
+}
+
+.saveButton:disabled,
+.cancelButton:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+@media (max-width: 480px) {
+  .settingsDialog {
+    padding: 21px;
+  }
+
+  .dateFields {
+    grid-template-columns: 1fr;
+  }
+
+  .flightSearchFields {
+    grid-template-columns: 1fr;
+  }
+
+  .dangerZone {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

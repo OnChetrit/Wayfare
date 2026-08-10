@@ -1,0 +1,89 @@
+.shell {
+  position: relative;
+  min-height: 100dvh;
+}
+
+.header {
+  position: absolute;
+  z-index: 1;
+  top: 0;
+  right: 0;
+  left: 0;
+  width: min(100% - 64px, 1180px);
+  height: 84px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: transparent;
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--ink);
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.06em;
+  text-decoration: none;
+}
+
+.brandMark {
+  width: 29px;
+  height: 29px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  color: white;
+  background: var(--green-button);
+  transform: rotate(-7deg);
+
+  svg {
+    transform: rotate(7deg);
+  }
+}
+
+.prompt {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 13px;
+
+  a {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    color: var(--green-dark);
+    font-weight: 700;
+    text-decoration: none;
+  }
+}
+
+@media (max-width: 780px) {
+  .header {
+    width: min(100% - 36px, 1180px);
+    height: 72px;
+  }
+}
+
+@media (max-width: 480px) {
+  .prompt {
+    gap: 0;
+    font-size: 12px;
+
+    > span {
+      display: none;
+    }
+
+    a {
+      min-height: 34px;
+      padding: 0 10px;
+      border: 1px solid var(--line-strong);
+      border-radius: 9px;
+      background: var(--surface-green);
+      white-space: nowrap;
+    }
+  }
+}

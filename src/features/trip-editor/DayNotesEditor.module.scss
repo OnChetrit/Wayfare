@@ -1,0 +1,139 @@
+.editor {
+  width: min(calc(100% - 32px), 410px);
+  max-height: min(680px, calc(100dvh - 32px));
+  margin: auto;
+  padding: 22px;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  color: var(--ink);
+  background: var(--surface);
+  box-shadow: 0 24px 80px rgba(24, 33, 29, 0.2);
+
+  &::backdrop {
+    background: var(--backdrop);
+    backdrop-filter: blur(3px);
+  }
+
+  .header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 20px;
+
+    h2 {
+      margin: 0 0 4px;
+      color: var(--ink);
+      font-size: 23px;
+      letter-spacing: -0.06em;
+    }
+
+    p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+  }
+
+  .closeButton {
+    width: 29px;
+    height: 29px;
+    border: 0;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    color: var(--muted);
+    background: transparent;
+
+    &:hover {
+      color: var(--ink);
+      background: var(--surface-subtle);
+    }
+  }
+
+  label {
+    display: grid;
+    gap: 6px;
+    color: var(--ink);
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  textarea {
+    width: 100%;
+    box-sizing: border-box;
+    min-height: 150px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 10px;
+    color: var(--ink);
+    outline: none;
+    resize: vertical;
+    background: var(--surface-strong);
+    font: inherit;
+    font-size: 13px;
+    line-height: 1.5;
+
+    &:focus {
+      border-color: var(--line-strong);
+      box-shadow: 0 0 0 3px #dff1e7;
+    }
+  }
+
+  .labelWithIcon {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .error {
+    margin: 12px 0 0;
+    color: var(--danger);
+    font-size: 12px;
+  }
+
+  .actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 22px;
+
+    button {
+      border-radius: 8px;
+      padding: 9px 13px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+  }
+
+  .cancelButton {
+    border: 1px solid var(--line);
+    color: var(--muted);
+    background: var(--surface-strong);
+  }
+
+  .saveButton {
+    border: 1px solid var(--green);
+    color: white;
+    background: var(--green-button);
+
+    &:hover {
+      background: var(--green-button-hover);
+    }
+  }
+}
+
+@media (max-width: 700px) {
+  .editor {
+    max-height: calc(100dvh - 88px);
+  }
+}
+
+@media (max-width: 480px) {
+  .editor {
+    width: calc(100% - 20px);
+    border-radius: 14px;
+    padding: 18px;
+  }
+}

@@ -1,0 +1,191 @@
+.block {
+  display: block;
+  border-radius: 999px;
+  background: linear-gradient(
+    100deg,
+    var(--surface-subtle) 28%,
+    var(--surface-strong) 44%,
+    var(--surface-subtle) 60%
+  );
+  background-size: 220% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+.landingPage,
+.authPage {
+  position: relative;
+  min-height: calc(100dvh - 84px);
+  overflow: hidden;
+  background:
+    radial-gradient(
+      circle at 92% 11%,
+      color-mix(in srgb, var(--mint) 80%, transparent),
+      transparent 23rem
+    ),
+    var(--paper);
+}
+
+.landingHero {
+  width: min(100% - 40px, 1120px);
+  margin: 0 auto;
+  padding: 46px 0 70px;
+  display: grid;
+  gap: 47px;
+}
+
+.badge {
+  width: 172px;
+  height: 28px;
+}
+.landingTitle {
+  width: min(100%, 570px);
+  height: clamp(46px, 11vw, 66px);
+  margin-top: 24px;
+}
+.landingTitleShort {
+  width: min(78%, 440px);
+  height: clamp(46px, 11vw, 66px);
+  margin-top: 12px;
+}
+.landingCopy {
+  width: min(100%, 500px);
+  height: 16px;
+  margin-top: 28px;
+}
+.landingCopyShort {
+  width: min(82%, 410px);
+  height: 16px;
+  margin-top: 10px;
+}
+.landingButton {
+  width: 150px;
+  height: 48px;
+  margin-top: 30px;
+}
+.tripPreview {
+  width: min(100%, 500px);
+  min-height: 306px;
+  padding: 30px;
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  background: var(--surface-glass-strong);
+  box-shadow: var(--shadow-soft);
+}
+.previewHeader {
+  width: 58%;
+  height: 39px;
+}
+.previewRow {
+  width: 100%;
+  height: 54px;
+  margin-top: 25px;
+}
+.previewRowShort {
+  width: 74%;
+  height: 54px;
+  margin-top: 18px;
+}
+
+.authPage {
+  width: min(100% - 64px, 1060px);
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(390px, 440px);
+  align-items: center;
+  gap: clamp(48px, 10vw, 130px);
+  padding: 42px 0 70px;
+  background:
+    radial-gradient(
+      circle at 8% 8%,
+      color-mix(in srgb, var(--mint) 82%, transparent),
+      transparent 26rem
+    ),
+    var(--paper);
+}
+
+.authStory {
+  max-width: 490px;
+}
+.authTitle {
+  width: 100%;
+  max-width: 450px;
+  height: clamp(44px, 5vw, 66px);
+  margin-top: 24px;
+}
+.authTitleShort {
+  width: 72%;
+  max-width: 330px;
+  height: clamp(44px, 5vw, 66px);
+  margin-top: 12px;
+}
+.authCopy {
+  width: 90%;
+  height: 15px;
+  margin-top: 28px;
+}
+.authCopyShort {
+  width: 70%;
+  height: 15px;
+  margin-top: 10px;
+}
+.authCard {
+  padding: clamp(28px, 4vw, 42px);
+  border: 1px solid var(--line);
+  border-radius: 26px;
+  background: var(--surface-glass-strong);
+  box-shadow: 0 24px 70px rgba(33, 54, 45, 0.11);
+}
+.cardTitle {
+  width: 70%;
+  height: 34px;
+}
+.cardCopy {
+  width: 85%;
+  height: 14px;
+  margin-top: 15px;
+}
+.button {
+  width: 100%;
+  height: 46px;
+  margin-top: 27px;
+}
+.divider {
+  width: 100%;
+  height: 1px;
+  margin-top: 25px;
+}
+.field {
+  width: 100%;
+  height: 46px;
+  margin-top: 15px;
+}
+.status {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+@media (min-width: 840px) {
+  .landingHero {
+    grid-template-columns: 1.1fr 0.9fr;
+    align-items: center;
+    padding-top: 84px;
+  }
+}
+@media (max-width: 780px) {
+  .landingPage,
+  .authPage {
+    min-height: calc(100dvh - 72px);
+  }
+  .authPage {
+    width: min(100% - 36px, 460px);
+    grid-template-columns: minmax(0, 1fr);
+    padding: 28px 0 44px;
+  }
+  .authStory {
+    display: none;
+  }
+}

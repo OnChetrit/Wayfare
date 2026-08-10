@@ -1,0 +1,185 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+:root {
+  color-scheme: light;
+  --ink: #18211d;
+  --muted: #78817c;
+  --soft-muted: #a4ada7;
+  --paper: #f8f9f5;
+  --surface: #ffffff;
+  --surface-strong: #ffffff;
+  --surface-control: #fbfcfa;
+  --surface-subtle: #f0f3ef;
+  --surface-tint: #f5f9f6;
+  --surface-green: #f3faf6;
+  --surface-glass: rgba(255, 255, 255, 0.8);
+  --surface-glass-strong: rgba(255, 255, 255, 0.94);
+  --surface-glass-solid: rgba(255, 255, 255, 0.97);
+  --line: #e7ebe5;
+  --line-strong: #cfe5da;
+  --green: #17795d;
+  --green-dark: #0d5945;
+  --green-button: #17795d;
+  --green-button-hover: #0d5945;
+  --mint: #e4f2ec;
+  --coral: #e8795d;
+  --yellow: #eab64c;
+  --blue: #5d9bd2;
+  --purple: #9b7bc4;
+  --danger: #9a4e3c;
+  --danger-surface: #fff0eb;
+  --danger-line: #f0d4cd;
+  --warning: #8c6740;
+  --warning-surface: #fff8e4;
+  --warning-line: #ead8b7;
+  --surface-warm: #fff1dc;
+  --success-surface: #e2f2e9;
+  --backdrop: rgba(24, 33, 29, 0.28);
+  --map-background: #e2ece4;
+  --map-road: rgba(255, 255, 255, 0.8);
+  --map-road-soft: rgba(255, 255, 255, 0.65);
+  --map-road-land: rgba(194, 211, 197, 0.65);
+  --map-ring: rgba(164, 194, 172, 0.18);
+  --map-landmark: #b9dbcf;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 32px;
+  --radius-sm: 10px;
+  --radius-md: 16px;
+  --radius-lg: 22px;
+  --shadow-soft: 0 8px 30px rgba(33, 54, 45, 0.07);
+  --focus: 0 0 0 3px rgba(23, 121, 93, 0.2);
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --ink: #edf5ef;
+  --muted: #a9b8ae;
+  --soft-muted: #7e9185;
+  --paper: #090f0b;
+  --surface: #17211b;
+  --surface-strong: #1d2a22;
+  --surface-control: #1b2820;
+  --surface-subtle: #223128;
+  --surface-tint: #1b3328;
+  --surface-green: #1d3b2e;
+  --surface-glass: rgba(23, 33, 27, 0.86);
+  --surface-glass-strong: rgba(23, 33, 27, 0.96);
+  --surface-glass-solid: rgba(23, 33, 27, 0.98);
+  --line: #2d3d33;
+  --line-strong: #3b604c;
+  --green: #4ab58b;
+  --green-dark: #91d9b6;
+  --green-button: #1f7658;
+  --green-button-hover: #186148;
+  --mint: #1b3b2e;
+  --coral: #f08b70;
+  --yellow: #e8bd5d;
+  --blue: #75addf;
+  --purple: #b294d7;
+  --danger: #f0a294;
+  --danger-surface: #422521;
+  --danger-line: #75453e;
+  --warning: #e1b878;
+  --warning-surface: #40351e;
+  --warning-line: #76603a;
+  --surface-warm: #40351e;
+  --success-surface: #204635;
+  --backdrop: rgba(0, 0, 0, 0.56);
+  --map-background: #1d2a24;
+  --map-road: rgba(65, 82, 71, 0.8);
+  --map-road-soft: rgba(53, 70, 60, 0.7);
+  --map-road-land: rgba(76, 103, 87, 0.62);
+  --map-ring: rgba(76, 117, 94, 0.3);
+  --map-landmark: #3d6a59;
+  --shadow-soft: 0 8px 30px rgba(0, 0, 0, 0.28);
+  --focus: 0 0 0 3px rgba(74, 181, 139, 0.28);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  color: var(--ink);
+  background: var(--paper);
+  font-family: 'Plus Jakarta Sans', Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -webkit-text-size-adjust: 105%;
+  text-size-adjust: 105%;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+/* Keep date fields and native selects visually consistent across every form. */
+.wayfareDateInput {
+  min-height: 42px !important;
+  padding: 0 42px 0 13px !important;
+  border: 1px solid var(--line-strong) !important;
+  border-radius: 11px !important;
+  color: var(--ink) !important;
+  background: linear-gradient(145deg, var(--surface-strong), var(--surface-control)) !important;
+  cursor: pointer;
+}
+
+.wayfareDateInput:hover {
+  border-color: var(--line-strong) !important;
+}
+
+.wayfareDateInput:focus {
+  border-color: var(--green) !important;
+  box-shadow: var(--focus) !important;
+}
+
+.wayfareDateInput::-webkit-calendar-picker-indicator {
+  width: 16px;
+  height: 16px;
+  margin-right: -27px;
+  padding: 5px;
+  border-radius: 6px;
+  opacity: 0.72;
+  cursor: pointer;
+}
+
+select:not([multiple]) {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  padding-right: 38px !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2317795d' stroke-width='2.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: right 12px center !important;
+  background-size: 14px !important;
+  cursor: pointer;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:focus-visible,
+input:focus-visible {
+  outline: none;
+  box-shadow: var(--focus);
+}
+
+::selection {
+  background: var(--mint);
+  color: var(--green-dark);
+}
