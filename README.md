@@ -1,35 +1,44 @@
 # Wayfare
 
-Wayfare is a map-first self-trip planner built from the product plan in `../Trip Planner IDE Plan.md`.
+Wayfare is a map-first travel planner for building self-guided trips. It brings saved places, daily schedules, flights, stays, and expenses into one responsive trip workspace.
 
-The app requires Supabase for authentication and data persistence. It includes the trip editor shell, date navigation, saved-place library, scheduling, and a responsive mobile mode.
+**Live site:** [wayfare-one-wine.vercel.app](https://wayfare-one-wine.vercel.app)
+
+## Highlights
+
+- Create trips and organise each day on an itinerary.
+- Save places and schedule them more than once without duplicating the source place.
+- Manage stays, flights, and trip expenses.
+- Use Supabase authentication and persistence, Google Maps/Places search, and AeroDataBox flight data.
+
+## Screenshots
+
+| Desktop | Detail | Mobile |
+| --- | --- | --- |
+| ![Wayfare desktop view](docs/screenshots/desktop-home.png) | ![Wayfare desktop detail](docs/screenshots/desktop-detail.png) | ![Wayfare mobile view](docs/screenshots/mobile-home.png) |
 
 ## Run locally
 
-```bash
+### Prerequisites
+
+- Node.js 20+
+- A Supabase project
+- Google Maps Platform credentials
+- A RapidAPI key for AeroDataBox if you want flight search
+
+~~~bash
 npm install
+cp .env.example .env.local
 npm run dev
-```
+~~~
 
-Then open [http://localhost:3000](http://localhost:3000).
+Open http://localhost:3000. Populate the variables named in .env.example, then apply the Supabase migrations in supabase/migrations.
 
-## Supabase setup
+## Scripts
 
-Create a Supabase project, copy its Project URL and Publishable key into `.env.local` using the names in `.env.example`, then apply `supabase/migrations/20260809132242_wayfare_foundation.sql` in the Supabase SQL Editor. The migration creates the trip foundation tables and enables Row Level Security. Open `/login` or `/signup` to test email/password auth.
-
-To enable Google sign-in, enable Google under Supabase Dashboard → Authentication → Providers, add the Supabase callback URL shown there to Google Cloud Console, and add these app callback URLs under Authentication → URL Configuration:
-
-```text
-http://localhost:3000/auth/callback
-https://your-production-domain.com/auth/callback
-```
-
-For email confirmation with SSR cookies, set the Supabase Confirm signup email template to use `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email`.
-
-The live map uses two Google Maps Platform credentials: `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` is a browser-restricted Maps JavaScript key, and `GOOGLE_MAPS_SERVER_API_KEY` is a server-only key used by `/api/places` for Places API (New) Text Search. Enable Maps JavaScript API, Places API (New), and billing in Google Cloud. Set `NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID` to a map ID so Advanced Markers can render.
-
-Flight search uses AeroDataBox through RapidAPI. Add the RapidAPI key to `.env.local` as `AERODATABOX_API_KEY`; `AERODATABOX_API_HOST=aerodatabox.p.rapidapi.com` is optional because it is the default. Keep both variables server-only. Apply the latest Supabase migration before opening a trip with flights.
-
-## Current domain model
-
-`SavedPlace` is the reusable library record. `ScheduleItem` is a dated occurrence of that saved place. A place can therefore be scheduled more than once without duplicating its library record.
+~~~bash
+npm run dev
+npm run lint
+npm run typecheck
+npm run build
+~~~
