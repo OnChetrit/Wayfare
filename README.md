@@ -21,33 +21,67 @@ These are real captures of the authenticated trip workspace, shown at desktop an
 - Stays, flights, and shared expenses alongside the plan
 - Google Maps and Places search integration
 - Email/password and Google sign-in through Supabase
-- A responsive mobile experience
+- An iPhone-first Expo app with native map, tabs, sheets, haptics, secure session storage, and offline edits
+- Shareable Editor/Viewer invitations with owner-controlled membership
+
+## Workspace layout
+
+- `apps/web` — the existing Next.js application and protected server integrations
+- `apps/mobile` — the Expo Router iOS app
+- `packages/domain` — shared validation, trip contracts, totals, and offline queue ordering
+- `supabase/migrations` — the RLS-backed data model, including invitations
 
 ## Run locally
 
 ```bash
 npm install
-npm run dev
+npm run dev:web
 ```
 
 Then open [http://localhost:3000](http://localhost:3000).
 
+For the native app, copy [`apps/mobile/.env.example`](apps/mobile/.env.example) to `apps/mobile/.env`, add only its public values, then run:
+
+```bash
+npm run dev:mobile
+```
+
+Start in Expo Go for auth, planner, and offline flows. The native Google map and Google OAuth redirect require an iOS development build:
+
+```bash
+cd apps/mobile
+npx eas build --profile development --platform ios
+```
+
+`EXPO_PUBLIC_GOOGLE_MAPS_IOS_KEY` must be a platform-restricted iOS key; it is distinct from the web Maps JavaScript key. Server-only Google Places and AeroDataBox keys remain in the web app environment.
+
 ## Supabase setup
 
-Create a Supabase project, copy its Project URL and Publishable key into `.env.local` using the names in `.env.example`, then apply `supabase/migrations/20260809132242_wayfare_foundation.sql` in the Supabase SQL Editor. The migration creates the trip foundation tables and enables Row Level Security. Open `/login` or `/signup` to test email/password auth.
+Create a Supabase project, copy its Project URL and Publishable key into the repository `.env.local` using `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, then apply every migration in `supabase/migrations` in timestamp order. The workspace-aware Next config continues to load this repository-level file. The migrations create the trip foundation, RLS policies, and shareable invitation functions. Open `/login` or `/signup` to test email/password auth.
 
 To enable Google sign-in, enable Google under Supabase Dashboard → Authentication → Providers, add the Supabase callback URL shown there to Google Cloud Console, and add these app callback URLs under Authentication → URL Configuration:
 
 ```text
 http://localhost:3000/auth/callback
 https://your-production-domain.com/auth/callback
+wayfare://auth/callback
 ```
 
 For email confirmation with SSR cookies, set the Supabase Confirm signup email template to use `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email`.
 
 The live map uses two Google Maps Platform credentials: `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` is a browser-restricted Maps JavaScript key, and `GOOGLE_MAPS_SERVER_API_KEY` is a server-only key used by `/api/places` for Places API (New) Text Search. Enable Maps JavaScript API, Places API (New), and billing in Google Cloud. Set `NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID` to a map ID so Advanced Markers can render.
 
-Flight search uses AeroDataBox through RapidAPI. Add the RapidAPI key to `.env.local` as `AERODATABOX_API_KEY`; `AERODATABOX_API_HOST=aerodatabox.p.rapidapi.com` is optional because it is the default. Keep both variables server-only. Apply the latest Supabase migration before opening a trip with flights.
+Flight search uses AeroDataBox through RapidAPI. Add the RapidAPI key to `.env.local` as `AERODATABOX_API_KEY`; `AERODATABOX_API_HOST=aerodatabox.p.rapidapi.com` is optional because it is the default. Keep both variables server-only. Protected web routes accept the browser cookie session or a mobile Supabase bearer token, so the app never receives server credentials.
+
+## Verification
+
+```bash
+npm run typecheck
+npm test
+npm run build
+```
+
+The shared test suite covers date validation, currency-separated totals, queue ordering, and bearer token parsing. Validate authentication/deep links, RLS permissions, invitation redemption, offline recovery, viewer/editor roles, Google Places, and flight lookup on an iPhone before publishing an internal EAS build.
 
 ## Current domain model
 
