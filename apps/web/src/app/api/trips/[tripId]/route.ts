@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
+import { tripEditorTripSchema } from '@wayfare/domain';
 import { requireRouteUser } from '@/lib/supabase/route-auth';
+import { getTripEditorTrip } from '@/lib/trips/home-data';
 
 const tripSettingsSchema = z
   .object({
@@ -41,6 +43,31 @@ function toTripDays(rows: TripDayRow[]) {
       notes: row.notes ?? undefined,
     };
   });
+}
+
+export async function GET(_request: Request, context: { params: Promise<{ tripId: string }> }) {
+  const { tripId } = await context.params;
+  const auth = await requireRouteUser();
+  if (auth instanceof NextResponse) return auth;
+
+  try {
+    const trip = await getTripEditorTrip(auth.supabase, tripId);
+    if (!trip) return NextResponse.json({ error: 'Trip not found' }, { status: 404 });
+
+    const parsed = tripEditorTripSchema.safeParse(trip);
+    if (!parsed.success)
+      return NextResponse.json(
+        { error: 'Trip data did not match the editor contract.' },
+        { status: 500 },
+      );
+
+    return NextResponse.json({ trip: parsed.data });
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Could not load the trip.' },
+      { status: 500 },
+    );
+  }
 }
 
 export async function PATCH(request: Request, context: { params: Promise<{ tripId: string }> }) {

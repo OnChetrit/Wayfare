@@ -1,9 +1,14 @@
 node_modules
+.agents
+.expo
+apps/mobile/.expo
+**/.expo/**
 .next
 out
 dist
 coverage
 tsconfig.tsbuildinfo
 next-env.d.ts
+apps/mobile/expo-env.d.ts
 supabase/.branches
 supabase/.temp

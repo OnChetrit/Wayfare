@@ -6,11 +6,7 @@ import { requireRouteUser } from '@/lib/supabase/route-auth';
 const idSchema = z.uuid();
 const bodySchema = z.object({ savedPlaceId: z.uuid() });
 
-async function isTripLocation(
-  tripId: string,
-  segmentId: string,
-  supabase: SupabaseClient,
-) {
+async function isTripLocation(tripId: string, segmentId: string, supabase: SupabaseClient) {
   const { data, error } = await supabase
     .from('trip_location_segments')
     .select('id')
@@ -37,7 +33,10 @@ export async function POST(
     if (!(await isTripLocation(tripId, segmentId, auth.supabase)))
       return NextResponse.json({ error: 'Trip location not found' }, { status: 404 });
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : 'Could not read location' }, { status: 400 });
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Could not read location' },
+      { status: 400 },
+    );
   }
 
   const { data, error } = await auth.supabase
@@ -64,7 +63,10 @@ export async function DELETE(
     if (!(await isTripLocation(tripId, segmentId, auth.supabase)))
       return NextResponse.json({ error: 'Trip location not found' }, { status: 404 });
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : 'Could not read location' }, { status: 400 });
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Could not read location' },
+      { status: 400 },
+    );
   }
   const { data, error } = await auth.supabase
     .from('trip_location_segment_places')

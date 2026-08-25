@@ -18,6 +18,12 @@ export const scheduleUpdateSchema = z
   .object({
     date: z.iso.date(),
     startTime: timeSchema,
+    duration: z.number().int().min(15).max(1440).optional(),
+    sortOrder: z.number().int().nonnegative().optional(),
+    note: z.string().trim().max(1000).nullable().optional(),
+    title: z.string().trim().max(200).nullable().optional(),
+    category: scheduleCategorySchema.nullable().optional(),
+    savedPlaceId: z.uuid().nullable().optional(),
     amount: z.number().finite().nonnegative().nullable().optional(),
     currency: currencySchema.optional(),
   })

@@ -20,7 +20,7 @@ export async function requireRouteUser(): Promise<
   const {
     data: { user },
     error: userError,
-  } = await supabase.auth.getUser();
+  } = await supabase.auth.getUser(accessToken);
   if (userError || !user) {
     return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
   }

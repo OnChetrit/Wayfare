@@ -4,3 +4,7 @@
 
 expo-env.d.ts
 # @end expo-cli
+
+# Expo Continuous Native Generation: do not commit prebuilt projects.
+ios/
+android/

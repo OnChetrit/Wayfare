@@ -1206,9 +1206,7 @@ export function TripEditor({
   return (
     <main className={styles.app} ref={editorRef} data-day-panel={selectedDate ? 'open' : 'closed'}>
       {!currentTrip ? (
-        <AddTripFlow
-          preferences={user.preferences}
-        />
+        <AddTripFlow preferences={user.preferences} />
       ) : (
         <>
           {mode !== 'expenses' && (

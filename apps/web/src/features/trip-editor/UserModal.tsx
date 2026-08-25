@@ -52,7 +52,7 @@ export function UserModal({ open, user, onClose, onThemeChange }: UserModalProps
 
   async function logout() {
     setBusy(true);
-    const { error } = await createClient().auth.signOut();
+    const { error } = await createClient().auth.signOut({ scope: 'local' });
     if (error) {
       setMessage(error.message);
       setBusy(false);

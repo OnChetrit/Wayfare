@@ -32,13 +32,27 @@ export async function PATCH(
   const { data: item, error: itemError } = await auth.supabase
     .from('schedule_items')
     .select(
-      'id, trip_day_id, saved_place_id, duration_minutes, title_override, category, notes, amount, currency, trip_days!inner(trip_id)',
+      'id, trip_day_id, saved_place_id, duration_minutes, sort_order, title_override, category, notes, amount, currency, trip_days!inner(trip_id)',
     )
     .eq('id', scheduleId)
     .eq('trip_days.trip_id', tripId)
     .maybeSingle();
   if (itemError || !item) {
     return NextResponse.json({ error: 'Schedule item not found' }, { status: 404 });
+  }
+
+  if (result.data.savedPlaceId) {
+    const { data: savedPlace } = await auth.supabase
+      .from('saved_places')
+      .select('id')
+      .eq('id', result.data.savedPlaceId)
+      .eq('trip_id', tripId)
+      .maybeSingle();
+    if (!savedPlace)
+      return NextResponse.json(
+        { error: 'Saved place does not belong to this trip' },
+        { status: 400 },
+      );
   }
 
   const { error: updateError } = await auth.supabase
@@ -51,6 +65,14 @@ export async function PATCH(
         trip.default_time_zone,
       ),
       time_zone: trip.default_time_zone,
+      ...(result.data.duration === undefined ? {} : { duration_minutes: result.data.duration }),
+      ...(result.data.sortOrder === undefined ? {} : { sort_order: result.data.sortOrder }),
+      ...(result.data.note === undefined ? {} : { notes: result.data.note }),
+      ...(result.data.title === undefined ? {} : { title_override: result.data.title }),
+      ...(result.data.category === undefined ? {} : { category: result.data.category }),
+      ...(result.data.savedPlaceId === undefined
+        ? {}
+        : { saved_place_id: result.data.savedPlaceId }),
       ...(result.data.amount !== undefined
         ? {
             amount: result.data.amount,
@@ -64,13 +86,24 @@ export async function PATCH(
   return NextResponse.json({
     schedule: {
       id: item.id,
-      savedPlaceId: item.saved_place_id,
+      savedPlaceId:
+        result.data.savedPlaceId === undefined ? item.saved_place_id : result.data.savedPlaceId,
       date: result.data.date,
       startTime: result.data.startTime,
-      duration: item.duration_minutes ?? 60,
-      title: item.title_override ?? undefined,
-      category: item.category ?? undefined,
-      note: item.notes ?? undefined,
+      duration: result.data.duration ?? item.duration_minutes ?? 60,
+      sortOrder: result.data.sortOrder ?? item.sort_order ?? 0,
+      title:
+        result.data.title === undefined
+          ? (item.title_override ?? undefined)
+          : (result.data.title ?? undefined),
+      category:
+        result.data.category === undefined
+          ? (item.category ?? undefined)
+          : (result.data.category ?? undefined),
+      note:
+        result.data.note === undefined
+          ? (item.notes ?? undefined)
+          : (result.data.note ?? undefined),
       amount:
         result.data.amount !== undefined
           ? (result.data.amount ?? undefined)

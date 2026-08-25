@@ -3,6 +3,7 @@ import {
   currencyTotals,
   makeTripDays,
   sortQueueOperations,
+  tripEditorTripResponseSchema,
   tripInputSchema,
   type Expense,
 } from '../src';
@@ -80,5 +81,29 @@ describe('shared domain contracts', () => {
         },
       ]).map(operation => operation.id),
     ).toEqual(['first', 'later']);
+  });
+
+  it('validates the camel-case trip editor API contract', () => {
+    const id = '018f7f0e-7c54-7b24-a9d2-4e3683c98f41';
+    expect(
+      tripEditorTripResponseSchema.parse({
+        trip: {
+          id,
+          name: 'Rome',
+          startDate: '2026-10-10',
+          endDate: '2026-10-12',
+          destinationLabel: 'Rome, Italy',
+          defaultTimeZone: 'Europe/Rome',
+          defaultCurrency: 'EUR',
+          days: [],
+          places: [],
+          schedule: [],
+          locationSegments: [],
+          stays: [],
+          flights: [],
+          expenses: [],
+        },
+      }).trip.id,
+    ).toBe(id);
   });
 });

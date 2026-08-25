@@ -124,6 +124,7 @@ export type ScheduleItem = {
   date: string;
   startTime: string;
   duration: number;
+  sortOrder?: number;
   note?: string;
   title?: string;
   category?: PlaceCategory;
@@ -258,6 +259,161 @@ export type TripMember = {
   email?: string;
   name?: string;
 };
+
+/** Runtime contracts shared by API clients. Keep API-shaped trip data camel-cased. */
+export const tripSummarySchema = z.object({
+  id: z.uuid(),
+  name: z.string(),
+  startDate: z.iso.date(),
+  endDate: z.iso.date(),
+  destinationLabel: z.string().nullable(),
+});
+
+export const tripDaySchema = z.object({
+  id: z.uuid(),
+  date: z.iso.date(),
+  label: z.string(),
+  weekday: z.string(),
+  shortDate: z.string(),
+  notes: z.string().optional(),
+});
+
+export const savedPlaceSchema = z.object({
+  id: z.uuid(),
+  name: z.string(),
+  subtitle: z.string(),
+  category: placeCategorySchema,
+  emoji: z.string(),
+  color: z.string(),
+  lat: z.number().finite(),
+  lng: z.number().finite(),
+  rating: z.number().finite().optional(),
+  provider: z.enum(['GOOGLE', 'CUSTOM']).optional(),
+  providerPlaceId: z.string().optional(),
+  googleMapsUri: z.string().optional(),
+  photos: z
+    .array(
+      z.object({
+        url: z.string(),
+        attributions: z.array(z.object({ name: z.string(), uri: z.string().optional() })),
+      }),
+    )
+    .optional(),
+  isFavorite: z.boolean().optional(),
+  comment: z.string().optional(),
+  locationSegmentIds: z.array(z.uuid()).optional(),
+});
+
+export const scheduleItemSchema = z.object({
+  id: z.uuid(),
+  savedPlaceId: z.uuid().nullable(),
+  date: z.iso.date(),
+  startTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
+  duration: z.number().int().positive(),
+  sortOrder: z.number().int().nonnegative().optional(),
+  note: z.string().optional(),
+  title: z.string().optional(),
+  category: placeCategorySchema.optional(),
+  amount: z.number().finite().optional(),
+  currency: currencyCodeSchema.optional(),
+});
+
+export const locationSegmentSchema = z.object({
+  id: z.uuid(),
+  tripId: z.uuid(),
+  locationName: z.string(),
+  country: z.string().optional(),
+  area: z.string().optional(),
+  latitude: z.number().finite().optional(),
+  longitude: z.number().finite().optional(),
+  startDate: z.iso.date(),
+  endDate: z.iso.date(),
+});
+
+export const staySchema = z.object({
+  id: z.uuid(),
+  tripId: z.uuid(),
+  name: z.string(),
+  savedPlaceId: z.uuid().nullable(),
+  address: z.string().optional(),
+  locationLabel: z.string().optional(),
+  price: z.string().optional(),
+  priceAmount: z.number().finite().optional(),
+  priceCurrency: currencyCodeSchema.optional(),
+  cancellationTime: z.string().optional(),
+  checkInDate: z.iso.date(),
+  checkOutDate: z.iso.date(),
+  checkInTime: z.string().optional(),
+  checkOutTime: z.string().optional(),
+  confirmationNumber: z.string().optional(),
+  secretCode: z.string().optional(),
+  notes: z.string().optional(),
+});
+
+export const tripFlightSchema = z.object({
+  id: z.uuid(),
+  tripId: z.uuid(),
+  flightNumber: z.string(),
+  airlineName: z.string().optional(),
+  airlineIata: z.string().optional(),
+  airlineIcao: z.string().optional(),
+  departureDate: z.iso.date(),
+  arrivalDate: z.iso.date().optional(),
+  departureAirportIata: z.string().optional(),
+  departureAirportIcao: z.string().optional(),
+  departureAirportName: z.string().optional(),
+  departureTimeZone: z.string().optional(),
+  arrivalAirportIata: z.string().optional(),
+  arrivalAirportIcao: z.string().optional(),
+  arrivalAirportName: z.string().optional(),
+  arrivalTimeZone: z.string().optional(),
+  scheduledDepartureLocal: z.string(),
+  scheduledDepartureUtc: z.iso.datetime({ offset: true }),
+  scheduledArrivalLocal: z.string().optional(),
+  scheduledArrivalUtc: z.iso.datetime({ offset: true }).optional(),
+  revisedDepartureLocal: z.string().optional(),
+  revisedArrivalLocal: z.string().optional(),
+  departureTerminal: z.string().optional(),
+  departureGate: z.string().optional(),
+  departureCheckInDesk: z.string().optional(),
+  arrivalTerminal: z.string().optional(),
+  arrivalGate: z.string().optional(),
+  arrivalBaggageBelt: z.string().optional(),
+  status: z.string(),
+  durationMinutes: z.number().int().positive().optional(),
+  aircraftModel: z.string().optional(),
+  aircraftRegistration: z.string().optional(),
+  lastUpdatedUtc: z.iso.datetime({ offset: true }).optional(),
+});
+
+export const expenseSchema = z.object({
+  id: z.uuid(),
+  tripId: z.uuid(),
+  title: z.string(),
+  category: expenseCategorySchema,
+  amount: z.number().finite(),
+  currency: currencyCodeSchema,
+  expenseDate: z.iso.date(),
+  notes: z.string().optional(),
+  stayId: z.uuid().optional(),
+  flightId: z.uuid().optional(),
+  scheduleItemId: z.uuid().optional(),
+});
+
+export const tripEditorTripSchema = z.object({
+  ...tripSummarySchema.shape,
+  defaultTimeZone: z.string(),
+  defaultCurrency: currencyCodeSchema,
+  days: z.array(tripDaySchema),
+  places: z.array(savedPlaceSchema),
+  schedule: z.array(scheduleItemSchema),
+  locationSegments: z.array(locationSegmentSchema),
+  stays: z.array(staySchema),
+  flights: z.array(tripFlightSchema),
+  expenses: z.array(expenseSchema),
+});
+
+export const tripEditorTripResponseSchema = z.object({ trip: tripEditorTripSchema });
 
 export type TripInvitation = {
   id: string;

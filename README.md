@@ -21,14 +21,14 @@ These are real captures of the authenticated trip workspace, shown at desktop an
 - Stays, flights, and shared expenses alongside the plan
 - Google Maps and Places search integration
 - Email/password and Google sign-in through Supabase
-- An iPhone-first Expo app with native map, tabs, sheets, haptics, secure session storage, and offline edits
+- An iPhone-first Expo app with native map, tabs, sheets, haptics, secure session storage, and cached online-first reads
 - Shareable Editor/Viewer invitations with owner-controlled membership
 
 ## Workspace layout
 
 - `apps/web` — the existing Next.js application and protected server integrations
 - `apps/mobile` — the Expo Router iOS app
-- `packages/domain` — shared validation, trip contracts, totals, and offline queue ordering
+- `packages/domain` — shared validation and trip contracts
 - `supabase/migrations` — the RLS-backed data model, including invitations
 
 ## Run locally
@@ -46,7 +46,7 @@ For the native app, copy [`apps/mobile/.env.example`](apps/mobile/.env.example) 
 npm run dev:mobile
 ```
 
-Start in Expo Go for auth, planner, and offline flows. The native Google map and Google OAuth redirect require an iOS development build:
+Start in Expo Go for auth and planner flows. The native Google map and Google OAuth redirect require an iOS development build:
 
 ```bash
 cd apps/mobile
@@ -81,7 +81,7 @@ npm test
 npm run build
 ```
 
-The shared test suite covers date validation, currency-separated totals, queue ordering, and bearer token parsing. Validate authentication/deep links, RLS permissions, invitation redemption, offline recovery, viewer/editor roles, Google Places, and flight lookup on an iPhone before publishing an internal EAS build.
+The shared test suite covers date validation, currency-separated totals, query behavior, and bearer token parsing. Validate authentication/deep links, RLS permissions, viewer/editor roles, Google Places, and flight lookup on an iPhone before publishing an internal EAS build. Cached data remains visible while offline, but edits require reconnection.
 
 ## Current domain model
 

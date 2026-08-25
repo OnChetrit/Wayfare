@@ -1,8 +1,7 @@
 import type { DragEvent } from 'react';
 
 export type TimelineDragPayload =
-  | { type: 'place'; placeId: string }
-  | { type: 'activity'; itemId: string };
+  { type: 'place'; placeId: string } | { type: 'activity'; itemId: string };
 
 const TIMELINE_DRAG_TYPE = 'application/x-wayfare-timeline';
 

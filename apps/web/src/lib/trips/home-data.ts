@@ -1,5 +1,6 @@
 import { isSupabaseConfigured } from '@/lib/supabase/config';
 import { createClient } from '@/lib/supabase/server';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { flightFromDatabase, flightSelect } from '@/lib/trips/flights';
 import { expenseFromDatabase, expenseSelect } from '@/lib/trips/expenses';
 import { categoryMeta } from '@/features/trip-editor/data';
@@ -146,6 +147,166 @@ function stayFromDatabase(row: {
   };
 }
 
+export async function getTripEditorTrip(
+  supabase: SupabaseClient,
+  tripId: string,
+): Promise<TripEditorTrip | null> {
+  const { data: tripRow, error: tripError } = await supabase
+    .from('trips')
+    .select(
+      'id, name, start_date, end_date, destination_label, default_time_zone, default_currency',
+    )
+    .eq('id', tripId)
+    .maybeSingle();
+  if (tripError) throw new Error(`Could not load trip: ${tripError.message}`);
+  if (!tripRow) return null;
+
+  const [
+    { data: dayRows, error: daysError },
+    { data: placeRows, error: placesError },
+    { data: locationSegmentRows, error: locationsError },
+    { data: stayRows, error: staysError },
+    { data: flightRows, error: flightsError },
+    { data: expenseRows, error: expensesError },
+  ] = await Promise.all([
+    supabase.from('trip_days').select(tripDaySelect).eq('trip_id', tripRow.id).order('local_date'),
+    supabase
+      .from('saved_places')
+      .select(
+        'id, provider, provider_place_id, category, custom_name, custom_latitude, custom_longitude, is_favorite, user_notes',
+      )
+      .eq('trip_id', tripRow.id),
+    supabase
+      .from('trip_location_segments')
+      .select(
+        'id, trip_id, location_name, country, area, latitude, longitude, start_date, end_date',
+      )
+      .eq('trip_id', tripRow.id)
+      .order('start_date'),
+    supabase
+      .from('stays')
+      .select(
+        'id, trip_id, name, saved_place_id, address, location_label, price, price_amount, price_currency, cancellation_time, check_in_date, check_out_date, check_in_time, check_out_time, confirmation_number, secret_code, notes',
+      )
+      .eq('trip_id', tripRow.id)
+      .order('check_in_date'),
+    supabase
+      .from('trip_flights')
+      .select(flightSelect)
+      .eq('trip_id', tripRow.id)
+      .order('departure_date')
+      .order('scheduled_departure_utc'),
+    supabase
+      .from('trip_expenses')
+      .select(expenseSelect)
+      .eq('trip_id', tripRow.id)
+      .order('expense_date')
+      .order('created_at'),
+  ]);
+  for (const error of [
+    daysError,
+    placesError,
+    locationsError,
+    staysError,
+    flightsError,
+    expensesError,
+  ]) {
+    if (error) throw new Error(`Could not load trip itinerary: ${error.message}`);
+  }
+
+  const days = (dayRows ?? []).map(toTripDay);
+  const places = (placeRows ?? [])
+    .map(placeFromDatabase)
+    .filter((place): place is SavedPlace => place !== null);
+  const placeIds = places.map(place => place.id);
+  const locationSegmentIds = (locationSegmentRows ?? []).map(segment => segment.id);
+  const [locationPlacesResult, scheduleResult] = await Promise.all([
+    locationSegmentIds.length
+      ? supabase
+          .from('trip_location_segment_places')
+          .select('location_segment_id, saved_place_id')
+          .in('location_segment_id', locationSegmentIds)
+      : Promise.resolve({ data: [], error: null }),
+    dayRows?.length
+      ? supabase
+          .from('schedule_items')
+          .select(
+            'id, trip_day_id, saved_place_id, start_at_utc, duration_minutes, sort_order, title_override, category, notes, amount, currency',
+          )
+          .in(
+            'trip_day_id',
+            dayRows.map(row => row.id),
+          )
+          .order('sort_order')
+      : Promise.resolve({ data: [], error: null }),
+  ]);
+  const { data: locationPlaceRows, error: locationPlaceError } = locationPlacesResult;
+  const { data: scheduleRows, error: scheduleError } = scheduleResult;
+  if (locationPlaceError)
+    throw new Error(`Could not load location places: ${locationPlaceError.message}`);
+  if (scheduleError) throw new Error(`Could not load schedule: ${scheduleError.message}`);
+
+  const placeIdSet = new Set(placeIds);
+  const locationSegmentIdsByPlace = new Map<string, string[]>();
+  (locationPlaceRows ?? []).forEach(row => {
+    if (!placeIdSet.has(row.saved_place_id)) return;
+    const ids = locationSegmentIdsByPlace.get(row.saved_place_id) ?? [];
+    ids.push(row.location_segment_id);
+    locationSegmentIdsByPlace.set(row.saved_place_id, ids);
+  });
+  places.forEach(place => {
+    place.locationSegmentIds = locationSegmentIdsByPlace.get(place.id) ?? [];
+  });
+
+  const dayById = new Map((dayRows ?? []).map(row => [row.id, row.local_date]));
+  const schedule = (scheduleRows ?? []).flatMap(row => {
+    const date = dayById.get(row.trip_day_id);
+    if (!date || (row.saved_place_id && !placeIds.includes(row.saved_place_id))) return [];
+    const time = row.start_at_utc
+      ? new Intl.DateTimeFormat('en-GB', {
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false,
+          timeZone: tripRow.default_time_zone ?? 'Europe/Madrid',
+        }).format(new Date(row.start_at_utc))
+      : '09:00';
+    return [
+      {
+        id: row.id,
+        savedPlaceId: row.saved_place_id,
+        date,
+        startTime: time,
+        duration: row.duration_minutes ?? 60,
+        sortOrder: row.sort_order ?? 0,
+        note: row.notes ?? undefined,
+        title: row.title_override ?? undefined,
+        category: row.category ? categoryFromDatabase(row.category) : undefined,
+        amount: row.amount == null ? undefined : Number(row.amount),
+        currency: row.currency ?? undefined,
+      },
+    ];
+  });
+
+  return {
+    id: tripRow.id,
+    name: tripRow.name,
+    startDate: tripRow.start_date,
+    endDate: tripRow.end_date,
+    destinationLabel: tripRow.destination_label,
+    defaultTimeZone: tripRow.default_time_zone,
+    defaultCurrency: tripRow.default_currency,
+    days,
+    places,
+    schedule,
+    locationSegments: (locationSegmentRows ?? []).map(locationSegmentFromDatabase),
+    stays: (stayRows ?? []).map(stayFromDatabase),
+    flights: (flightRows ?? []).map(flightFromDatabase),
+    expenses: (expenseRows ?? []).map(row =>
+      expenseFromDatabase(row as Parameters<typeof expenseFromDatabase>[0]),
+    ),
+  };
+}
+
 export async function getHomeData(selectedTripId?: string): Promise<{
   user: TripEditorUser | null;
   trip: TripEditorTrip | null;
@@ -205,141 +366,9 @@ export async function getHomeData(selectedTripId?: string): Promise<{
     trips?.[0];
   if (!tripRow) return { user: appUser, trip: null, trips: tripSummaries };
 
-  const [
-    { data: dayRows },
-    { data: placeRows },
-    { data: locationSegmentRows },
-    { data: stayRows },
-    { data: flightRows },
-    { data: expenseRows },
-  ] = await Promise.all([
-    supabase.from('trip_days').select(tripDaySelect).eq('trip_id', tripRow.id).order('local_date'),
-    supabase
-      .from('saved_places')
-      .select(
-        'id, provider, provider_place_id, category, custom_name, custom_latitude, custom_longitude, is_favorite, user_notes',
-      )
-      .eq('trip_id', tripRow.id),
-    supabase
-      .from('trip_location_segments')
-      .select(
-        'id, trip_id, location_name, country, area, latitude, longitude, start_date, end_date',
-      )
-      .eq('trip_id', tripRow.id)
-      .order('start_date'),
-    supabase
-      .from('stays')
-      .select(
-        'id, trip_id, name, saved_place_id, address, location_label, price, price_amount, price_currency, cancellation_time, check_in_date, check_out_date, check_in_time, check_out_time, confirmation_number, secret_code, notes',
-      )
-      .eq('trip_id', tripRow.id)
-      .order('check_in_date'),
-    supabase
-      .from('trip_flights')
-      .select(flightSelect)
-      .eq('trip_id', tripRow.id)
-      .order('departure_date')
-      .order('scheduled_departure_utc'),
-    supabase
-      .from('trip_expenses')
-      .select(expenseSelect)
-      .eq('trip_id', tripRow.id)
-      .order('expense_date')
-      .order('created_at'),
-  ]);
-
-  const days = (dayRows ?? []).map(toTripDay);
-  const places = (placeRows ?? [])
-    .map(placeFromDatabase)
-    .filter((place): place is SavedPlace => place !== null);
-  const placeIds = places.map(place => place.id);
-  const locationSegmentIds = (locationSegmentRows ?? []).map(segment => segment.id);
-  const [locationPlacesResult, scheduleResult] = await Promise.all([
-    locationSegmentIds.length
-      ? supabase
-          .from('trip_location_segment_places')
-          .select('location_segment_id, saved_place_id')
-          .in('location_segment_id', locationSegmentIds)
-      : Promise.resolve({ data: [], error: null }),
-    dayRows?.length
-      ? supabase
-          .from('schedule_items')
-          .select(
-            'id, trip_day_id, saved_place_id, start_at_utc, duration_minutes, sort_order, title_override, category, notes, amount, currency',
-          )
-          .in(
-            'trip_day_id',
-            dayRows.map(row => row.id),
-          )
-          .order('sort_order')
-      : Promise.resolve({ data: [] }),
-  ]);
-  const { data: locationPlaceRows, error: locationPlaceError } = locationPlacesResult;
-  if (locationPlaceError) {
-    throw new Error(`Could not load location places: ${locationPlaceError.message}`);
-  }
-
-  const placeIdSet = new Set(placeIds);
-  const locationSegmentIdsByPlace = new Map<string, string[]>();
-  (locationPlaceRows ?? []).forEach(row => {
-    if (!placeIdSet.has(row.saved_place_id)) return;
-    const ids = locationSegmentIdsByPlace.get(row.saved_place_id) ?? [];
-    ids.push(row.location_segment_id);
-    locationSegmentIdsByPlace.set(row.saved_place_id, ids);
-  });
-  places.forEach(place => {
-    place.locationSegmentIds = locationSegmentIdsByPlace.get(place.id) ?? [];
-  });
-  const { data: scheduleRows } = scheduleResult;
-
-  const dayById = new Map((dayRows ?? []).map(row => [row.id, row.local_date]));
-  const schedule = (scheduleRows ?? []).flatMap(row => {
-    const date = dayById.get(row.trip_day_id);
-    if (!date || (row.saved_place_id && !placeIds.includes(row.saved_place_id))) return [];
-    const time = row.start_at_utc
-      ? new Intl.DateTimeFormat('en-GB', {
-          hour: '2-digit',
-          minute: '2-digit',
-          hour12: false,
-          timeZone: tripRow.default_time_zone ?? 'Europe/Madrid',
-        }).format(new Date(row.start_at_utc))
-      : '09:00';
-    return [
-      {
-        id: row.id,
-        savedPlaceId: row.saved_place_id,
-        date,
-        startTime: time,
-        duration: row.duration_minutes ?? 60,
-        note: row.notes ?? undefined,
-        title: row.title_override ?? undefined,
-        category: row.category ? categoryFromDatabase(row.category) : undefined,
-        amount: row.amount == null ? undefined : Number(row.amount),
-        currency: row.currency ?? undefined,
-      },
-    ];
-  });
-
   return {
     user: appUser,
     trips: tripSummaries,
-    trip: {
-      id: tripRow.id,
-      name: tripRow.name,
-      startDate: tripRow.start_date,
-      endDate: tripRow.end_date,
-      destinationLabel: tripRow.destination_label,
-      defaultTimeZone: tripRow.default_time_zone,
-      defaultCurrency: tripRow.default_currency,
-      days,
-      places,
-      schedule,
-      locationSegments: (locationSegmentRows ?? []).map(locationSegmentFromDatabase),
-      stays: (stayRows ?? []).map(stayFromDatabase),
-      flights: (flightRows ?? []).map(flightFromDatabase),
-      expenses: (expenseRows ?? []).map(row =>
-        expenseFromDatabase(row as Parameters<typeof expenseFromDatabase>[0]),
-      ),
-    },
+    trip: await getTripEditorTrip(supabase, tripRow.id),
   };
 }

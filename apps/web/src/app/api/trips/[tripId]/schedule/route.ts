@@ -79,6 +79,7 @@ export async function POST(request: Request, context: { params: Promise<{ tripId
         date: result.data.date,
         startTime: result.data.startTime,
         duration: result.data.duration,
+        sortOrder: (lastItem?.sort_order ?? -1) + 1,
         title: result.data.title,
         category: result.data.category,
         note: result.data.note,

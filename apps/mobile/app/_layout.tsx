@@ -1,10 +1,86 @@
+import * as SplashScreen from 'expo-splash-screen';
 import { Stack } from 'expo-router';
+import * as React from 'react';
+
+import { LaunchScreen } from '@/components/launch-screen';
+import { WayfareQueryProvider } from '@/api/query-client';
+import { AuthProvider, useAuth } from '@/features/auth/auth-context';
+import { TripProvider } from '@/features/trips/trip-context';
+
+void SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   return (
+    <AuthProvider>
+      <WayfareQueryProvider>
+        <TripProvider>
+          <RootNavigator />
+        </TripProvider>
+      </WayfareQueryProvider>
+    </AuthProvider>
+  );
+}
+
+function RootNavigator() {
+  const { isReady } = useAuth();
+  const [showLaunchScreen, setShowLaunchScreen] = React.useState(true);
+  const [launchStartedAt] = React.useState(() => Date.now());
+  const nativeSplashWasHidden = React.useRef(false);
+
+  React.useEffect(() => {
+    if (!isReady) return;
+
+    const remainingTime = Math.max(0, 1_150 - (Date.now() - launchStartedAt));
+    const timeout = setTimeout(() => setShowLaunchScreen(false), remainingTime);
+
+    return () => clearTimeout(timeout);
+  }, [isReady, launchStartedAt]);
+
+  const hideNativeSplash = React.useCallback(() => {
+    if (nativeSplashWasHidden.current) return;
+
+    nativeSplashWasHidden.current = true;
+    void SplashScreen.hideAsync();
+  }, []);
+
+  if (showLaunchScreen) {
+    return <LaunchScreen onLayout={hideNativeSplash} />;
+  }
+
+  return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="index" />
+      <Stack.Screen name="(auth)" />
       <Stack.Screen name="(tabs)" />
+      <Stack.Screen name="auth" />
+      <Stack.Screen
+        name="expense-editor"
+        options={{
+          contentStyle: { backgroundColor: '#08211C' },
+          headerShown: true,
+          headerStyle: { backgroundColor: '#08211C' },
+          headerTintColor: '#F8F4EB',
+          headerTitleStyle: { color: '#F8F4EB' },
+          presentation: 'formSheet',
+          sheetAllowedDetents: [1],
+          sheetGrabberVisible: true,
+          title: 'Expense',
+        }}
+      />
+      <Stack.Screen
+        name="itinerary-editor"
+        options={{
+          contentStyle: { backgroundColor: '#08211C' },
+          headerShown: true,
+          headerStyle: { backgroundColor: '#08211C' },
+          headerTintColor: '#F8F4EB',
+          headerTitleStyle: { color: '#F8F4EB' },
+          presentation: 'formSheet',
+          sheetAllowedDetents: [0.75, 1],
+          sheetGrabberVisible: true,
+          title: 'Itinerary',
+        }}
+      />
     </Stack>
   );
 }
