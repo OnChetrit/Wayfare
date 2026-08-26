@@ -1,5 +1,6 @@
 import {
   tripEditorTripResponseSchema,
+  locationSegmentSchema,
   tripSummarySchema,
   type Expense,
   type LocationSegment,
@@ -23,6 +24,18 @@ type RawTripSummary = {
   start_date: string;
   end_date: string;
   destination_label: string | null;
+};
+
+type RawLocationSegment = {
+  id: string;
+  trip_id: string;
+  location_name: string;
+  country: string | null;
+  area: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  start_date: string;
+  end_date: string;
 };
 
 export type GooglePlaceSearchResult = Pick<
@@ -104,6 +117,20 @@ function mapTripSummary(raw: RawTripSummary): TripSummary {
     startDate: raw.start_date,
     endDate: raw.end_date,
     destinationLabel: raw.destination_label,
+  });
+}
+
+function mapLocationSegment(raw: RawLocationSegment): LocationSegment {
+  return locationSegmentSchema.parse({
+    id: raw.id,
+    tripId: raw.trip_id,
+    locationName: raw.location_name,
+    country: raw.country ?? undefined,
+    area: raw.area ?? undefined,
+    latitude: raw.latitude ?? undefined,
+    longitude: raw.longitude ?? undefined,
+    startDate: raw.start_date,
+    endDate: raw.end_date,
   });
 }
 
@@ -263,6 +290,28 @@ export function splitLocationSegment(
   input: { sourceSegmentId: string; splitDate: string; locationName: string },
 ) {
   return write(tripPath(tripId, '/location-segments'), 'POST', input);
+}
+
+export function createLocationDivision(
+  tripId: string,
+  input: { startDate: string; endDate: string; locationName: string },
+) {
+  return write<{ segments: RawLocationSegment[] }>(
+    tripPath(tripId, '/location-segments/division'),
+    'POST',
+    input,
+  ).then(response => ({ segments: response.segments.map(mapLocationSegment) }));
+}
+
+export function moveLocationBoundary(
+  tripId: string,
+  input: { leftSegmentId: string; rightSegmentId: string; newBoundary: string },
+) {
+  return write<{ segments: RawLocationSegment[] }>(
+    tripPath(tripId, '/location-segments/boundary'),
+    'POST',
+    input,
+  ).then(response => ({ segments: response.segments.map(mapLocationSegment) }));
 }
 
 export function deleteLocationSegment(

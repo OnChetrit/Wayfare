@@ -26,7 +26,7 @@ Bring the mobile saved-place library to parity with the web map workspace.
 
 Verification: unit-test import result handling and place deletion invalidation; component-test destructive confirmation and detail actions; manually verify import deduplication, photos, comments, favorites, and location filtering.
 
-## Plan 3 — Visual itinerary and route map
+## Plan 3 — Visual itinerary and route map (implementation complete; iPhone verification pending)
 
 Add the web planner's cross-day planning affordances in native form.
 

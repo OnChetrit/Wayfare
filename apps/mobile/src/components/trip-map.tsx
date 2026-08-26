@@ -1,5 +1,5 @@
 import * as React from 'react';
-import MapView, { Marker, PROVIDER_GOOGLE, type Region } from 'react-native-maps';
+import MapView, { Marker, Polyline, PROVIDER_GOOGLE, type Region } from 'react-native-maps';
 
 const initialRegion: Region = {
   latitude: 41.9028,
@@ -32,10 +32,19 @@ export type MapPlace = {
   color?: string;
 };
 
+export type MapRoute = {
+  id: string;
+  coordinates: { latitude: number; longitude: number }[];
+  color?: string;
+  dashed?: boolean;
+};
+
 type TripMapProps = {
+  fitToPlaces?: boolean;
   onSelectPlace?: (place: MapPlace) => void;
   onVisiblePlacesChange?: (placeIds: string[]) => void;
   places?: MapPlace[];
+  routes?: MapRoute[];
   selectedPlace?: MapPlace | null;
 };
 
@@ -57,9 +66,11 @@ function isPlaceVisible(place: MapPlace, region: Region) {
 }
 
 export function TripMap({
+  fitToPlaces = false,
   onSelectPlace,
   onVisiblePlacesChange,
   places = [],
+  routes = [],
   selectedPlace,
 }: TripMapProps) {
   const map = React.useRef<MapView>(null);
@@ -85,6 +96,34 @@ export function TripMap({
       360,
     );
   }, [selectedPlace]);
+
+  const routeCoordinates = React.useMemo(
+    () => routes.flatMap(route => route.coordinates),
+    [routes],
+  );
+
+  React.useEffect(() => {
+    if (!fitToPlaces || !mapPlaces.length) return;
+    const coordinates = [
+      ...mapPlaces.map(place => ({ latitude: place.lat, longitude: place.lng })),
+      ...routeCoordinates,
+    ];
+    if (coordinates.length === 1) {
+      map.current?.animateToRegion(
+        {
+          ...coordinates[0],
+          latitudeDelta: 0.045,
+          longitudeDelta: 0.045,
+        },
+        360,
+      );
+      return;
+    }
+    map.current?.fitToCoordinates(coordinates, {
+      animated: true,
+      edgePadding: { bottom: 56, left: 40, right: 40, top: 56 },
+    });
+  }, [fitToPlaces, mapPlaces, routeCoordinates]);
 
   React.useEffect(() => {
     onVisiblePlacesChange?.(
@@ -112,6 +151,17 @@ export function TripMap({
           title={place.name}
         />
       ))}
+      {routes.map(route =>
+        route.coordinates.length >= 2 ? (
+          <Polyline
+            coordinates={route.coordinates}
+            key={route.id}
+            lineDashPattern={route.dashed ? [8, 8] : undefined}
+            strokeColor={route.color ?? '#E7B96F'}
+            strokeWidth={route.dashed ? 2 : 4}
+          />
+        ) : null,
+      )}
     </MapView>
   );
 }

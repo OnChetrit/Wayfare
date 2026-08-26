@@ -1,6 +1,6 @@
 import type { TripEditorTrip, TripInput, TripSummary } from '@wayfare/domain';
 import { useQueryClient } from '@tanstack/react-query';
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, Stack, useLocalSearchParams } from 'expo-router';
 import * as React from 'react';
 import { Alert, ScrollView, Text } from 'react-native';
 
@@ -184,83 +184,103 @@ function TripForm({
   }
 
   return (
-    <ScrollView
-      contentInsetAdjustmentBehavior="automatic"
-      contentContainerStyle={{ gap: space.md, padding: space.md, paddingBottom: 36 }}
-      style={{ backgroundColor: colors.background }}
-    >
-      <OfflineNotice visible={!isOnline} />
-      <Text selectable style={{ color: colors.textMuted, lineHeight: 20 }}>
-        {trip
-          ? 'Update the essentials for this trip.'
-          : 'Start with the essentials. You can fill in the itinerary afterward.'}
-      </Text>
-      <Field
-        accessibilityLabel="Trip name"
-        autoCapitalize="sentences"
-        label="Trip name"
-        maxLength={80}
-        onChangeText={name => update('name', name)}
-        placeholder="Summer city break"
-        value={form.name}
-      />
-      <Field
-        accessibilityLabel="Destination"
-        autoCapitalize="words"
-        label="Destination"
-        maxLength={120}
-        onChangeText={destinationLabel => update('destinationLabel', destinationLabel)}
-        placeholder="Lisbon"
-        value={form.destinationLabel}
-      />
-      <Field
-        accessibilityLabel="Start date in YYYY-MM-DD format"
-        label="Start date (YYYY-MM-DD)"
-        maxLength={10}
-        onChangeText={startDate => update('startDate', startDate)}
-        placeholder="2026-07-10"
-        value={form.startDate}
-      />
-      <Field
-        accessibilityLabel="End date in YYYY-MM-DD format"
-        label="End date (YYYY-MM-DD)"
-        maxLength={10}
-        onChangeText={endDate => update('endDate', endDate)}
-        placeholder="2026-07-16"
-        value={form.endDate}
-      />
-      <Field
-        accessibilityLabel="Default currency"
-        autoCapitalize="characters"
-        label="Default currency"
-        maxLength={3}
-        onChangeText={defaultCurrency => update('defaultCurrency', defaultCurrency)}
-        placeholder="EUR"
-        value={form.defaultCurrency}
-      />
-      <Button
-        disabled={!isOnline || isSaving || deleteMutation.isPending}
-        loading={isSaving}
-        onPress={() => void save()}
+    <>
+      <ScrollView
+        contentInsetAdjustmentBehavior="automatic"
+        contentContainerStyle={{ gap: space.md, padding: space.md, paddingBottom: 36 }}
+        style={{ backgroundColor: colors.background }}
       >
-        {trip ? 'Save trip' : 'Create trip'}
-      </Button>
-      {trip && isOwner ? (
-        <Button
-          disabled={!isOnline || isSaving || deleteMutation.isPending}
-          loading={deleteMutation.isPending}
-          onPress={confirmDelete}
-          tone="danger"
-        >
-          Delete trip
-        </Button>
-      ) : null}
-      {message || createMutation.error || updateMutation.error || deleteMutation.error ? (
-        <Text selectable style={{ color: colors.danger, lineHeight: 20 }}>
-          {message ??
-            messageFromError(createMutation.error ?? updateMutation.error ?? deleteMutation.error)}
+        <OfflineNotice visible={!isOnline} />
+        <Text selectable style={{ color: colors.textMuted, lineHeight: 20 }}>
+          {trip
+            ? 'Update the essentials for this trip.'
+            : 'Start with the essentials. You can fill in the itinerary afterward.'}
         </Text>
-      ) : null}
-    </ScrollView>
+        <Field
+          accessibilityLabel="Trip name"
+          autoCapitalize="sentences"
+          label="Trip name"
+          maxLength={80}
+          onChangeText={name => update('name', name)}
+          placeholder="Summer city break"
+          value={form.name}
+        />
+        <Field
+          accessibilityLabel="Destination"
+          autoCapitalize="words"
+          label="Destination"
+          maxLength={120}
+          onChangeText={destinationLabel => update('destinationLabel', destinationLabel)}
+          placeholder="Lisbon"
+          value={form.destinationLabel}
+        />
+        <Field
+          accessibilityLabel="Start date in YYYY-MM-DD format"
+          label="Start date (YYYY-MM-DD)"
+          maxLength={10}
+          onChangeText={startDate => update('startDate', startDate)}
+          placeholder="2026-07-10"
+          value={form.startDate}
+        />
+        <Field
+          accessibilityLabel="End date in YYYY-MM-DD format"
+          label="End date (YYYY-MM-DD)"
+          maxLength={10}
+          onChangeText={endDate => update('endDate', endDate)}
+          placeholder="2026-07-16"
+          value={form.endDate}
+        />
+        <Field
+          accessibilityLabel="Default currency"
+          autoCapitalize="characters"
+          label="Default currency"
+          maxLength={3}
+          onChangeText={defaultCurrency => update('defaultCurrency', defaultCurrency)}
+          placeholder="EUR"
+          value={form.defaultCurrency}
+        />
+        {message || createMutation.error || updateMutation.error || deleteMutation.error ? (
+          <Text selectable style={{ color: colors.danger, lineHeight: 20 }}>
+            {message ??
+              messageFromError(
+                createMutation.error ?? updateMutation.error ?? deleteMutation.error,
+              )}
+          </Text>
+        ) : null}
+      </ScrollView>
+      {trip ? (
+        <Stack.Toolbar placement="right">
+          {isOwner ? (
+            <Stack.Toolbar.Button
+              accessibilityLabel="Delete trip"
+              disabled={!isOnline || isSaving || deleteMutation.isPending}
+              onPress={confirmDelete}
+              tintColor={colors.danger}
+            >
+              {deleteMutation.isPending ? 'Deleting…' : 'Delete'}
+            </Stack.Toolbar.Button>
+          ) : null}
+          <Stack.Toolbar.Button
+            accessibilityLabel="Save trip"
+            disabled={!isOnline || isSaving || deleteMutation.isPending}
+            onPress={() => void save()}
+            variant="done"
+          >
+            {isSaving ? 'Saving…' : 'Save'}
+          </Stack.Toolbar.Button>
+        </Stack.Toolbar>
+      ) : (
+        <Stack.Toolbar placement="right">
+          <Stack.Toolbar.Button
+            accessibilityLabel="Create trip"
+            disabled={!isOnline || isSaving}
+            onPress={() => void save()}
+            variant="done"
+          >
+            {isSaving ? 'Creating…' : 'Create trip'}
+          </Stack.Toolbar.Button>
+        </Stack.Toolbar>
+      )}
+    </>
   );
 }

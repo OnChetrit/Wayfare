@@ -15,6 +15,7 @@ export default function ItineraryLayout() {
       }}
     >
       <Stack.Screen name="index" options={{ title: selectedTrip?.name ?? 'Itinerary' }} />
+      <Stack.Screen name="visual" options={{ title: 'Visual itinerary' }} />
     </Stack>
   );
 }

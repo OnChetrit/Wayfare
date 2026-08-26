@@ -3,6 +3,8 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   getGooglePlace,
   importGoogleMapsList,
+  createLocationDivision,
+  moveLocationBoundary,
   createTrip,
   deleteTrip,
   getTripEditor,
@@ -131,5 +133,53 @@ describe('trip API', () => {
     expect(requestWayfareApi).toHaveBeenCalledWith('/api/places/google-place', {
       signal: controller.signal,
     });
+  });
+
+  it('creates a safely bounded location division through the trip API', async () => {
+    requestWayfareApi.mockResolvedValueOnce({ segments: [] });
+
+    await expect(
+      createLocationDivision(rawTrip.id, {
+        locationName: 'Florence',
+        startDate: '2026-10-11',
+        endDate: '2026-10-12',
+      }),
+    ).resolves.toEqual({ segments: [] });
+    expect(requestWayfareApi).toHaveBeenCalledWith(
+      `/api/trips/${rawTrip.id}/location-segments/division`,
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          locationName: 'Florence',
+          startDate: '2026-10-11',
+          endDate: '2026-10-12',
+        }),
+        headers: { 'Content-Type': 'application/json' },
+      },
+    );
+  });
+
+  it('moves an adjacent location boundary through the protected trip API', async () => {
+    requestWayfareApi.mockResolvedValueOnce({ segments: [] });
+
+    await expect(
+      moveLocationBoundary(rawTrip.id, {
+        leftSegmentId: '018f7f0e-7c54-7b24-a9d2-4e3683c98f42',
+        rightSegmentId: '018f7f0e-7c54-7b24-a9d2-4e3683c98f43',
+        newBoundary: '2026-10-11',
+      }),
+    ).resolves.toEqual({ segments: [] });
+    expect(requestWayfareApi).toHaveBeenCalledWith(
+      `/api/trips/${rawTrip.id}/location-segments/boundary`,
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          leftSegmentId: '018f7f0e-7c54-7b24-a9d2-4e3683c98f42',
+          rightSegmentId: '018f7f0e-7c54-7b24-a9d2-4e3683c98f43',
+          newBoundary: '2026-10-11',
+        }),
+        headers: { 'Content-Type': 'application/json' },
+      },
+    );
   });
 });
