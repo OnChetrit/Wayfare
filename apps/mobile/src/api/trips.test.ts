@@ -1,0 +1,93 @@
+import { describe, expect, it, vi } from 'vitest';
+
+import { WayfareApiError } from './error';
+
+const { requestWayfareApi } = vi.hoisted(() => ({ requestWayfareApi: vi.fn() }));
+
+vi.mock('@/api/client', () => ({ requestWayfareApi }));
+vi.mock('@/api/query-keys', () => ({
+  tripKeys: { all: ['trips'], detail: (tripId: string) => ['trips', tripId] },
+}));
+
+import { createTrip, deleteTrip, getTripEditor, getTrips } from './trips';
+
+const rawTrip = {
+  id: '018f7f0e-7c54-7b24-a9d2-4e3683c98f41',
+  owner_id: '018f7f0e-7c54-7b24-a9d2-4e3683c98f42',
+  name: 'Rome',
+  start_date: '2026-10-10',
+  end_date: '2026-10-12',
+  destination_label: 'Rome, Italy',
+};
+
+describe('trip API', () => {
+  it('maps the API owner identifier into the shared trip summary', async () => {
+    requestWayfareApi.mockResolvedValueOnce({ trips: [rawTrip] });
+
+    await expect(getTrips()).resolves.toEqual([
+      {
+        id: rawTrip.id,
+        ownerId: rawTrip.owner_id,
+        name: rawTrip.name,
+        startDate: rawTrip.start_date,
+        endDate: rawTrip.end_date,
+        destinationLabel: rawTrip.destination_label,
+      },
+    ]);
+  });
+
+  it('accepts an editor response from a server that does not include ownerId', async () => {
+    requestWayfareApi.mockResolvedValueOnce({
+      trip: {
+        id: rawTrip.id,
+        name: rawTrip.name,
+        startDate: rawTrip.start_date,
+        endDate: rawTrip.end_date,
+        destinationLabel: rawTrip.destination_label,
+        defaultTimeZone: 'Europe/Rome',
+        defaultCurrency: 'EUR',
+        days: [],
+        places: [],
+        schedule: [],
+        locationSegments: [],
+        stays: [],
+        flights: [],
+        expenses: [],
+      },
+    });
+
+    await expect(getTripEditor(rawTrip.id)).resolves.toMatchObject({
+      id: rawTrip.id,
+      name: rawTrip.name,
+    });
+  });
+
+  it('creates a trip with the expected authenticated API request', async () => {
+    requestWayfareApi.mockResolvedValueOnce({ trip: rawTrip });
+    const input = {
+      name: 'Rome',
+      destinationLabel: 'Rome, Italy',
+      startDate: '2026-10-10',
+      endDate: '2026-10-12',
+      defaultTimeZone: 'Europe/Rome',
+      defaultCurrency: 'EUR',
+    };
+
+    await expect(createTrip(input)).resolves.toMatchObject({ id: rawTrip.id });
+    expect(requestWayfareApi).toHaveBeenCalledWith('/api/trips', {
+      method: 'POST',
+      body: JSON.stringify(input),
+      headers: { 'Content-Type': 'application/json' },
+    });
+  });
+
+  it('deletes with the trip path and preserves authentication failures', async () => {
+    const authenticationError = new WayfareApiError('Sign in again.', 401, 'SESSION_INVALID');
+    requestWayfareApi.mockRejectedValueOnce(authenticationError);
+
+    await expect(deleteTrip(rawTrip.id)).rejects.toBe(authenticationError);
+    expect(requestWayfareApi).toHaveBeenCalledWith(`/api/trips/${rawTrip.id}`, {
+      method: 'DELETE',
+    });
+  });
+});

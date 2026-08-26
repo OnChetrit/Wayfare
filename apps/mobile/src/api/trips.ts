@@ -5,9 +5,11 @@ import {
   type LocationSegment,
   type PlaceCategory,
   type ScheduleItem,
+  type SavedPlace,
   type Stay,
   type TripEditorTrip,
   type TripFlight,
+  type TripInput,
   type TripSummary,
 } from '@wayfare/domain';
 
@@ -16,22 +18,35 @@ export { tripKeys } from '@/api/query-keys';
 
 type RawTripSummary = {
   id: string;
+  owner_id: string;
   name: string;
   start_date: string;
   end_date: string;
   destination_label: string | null;
 };
 
-export type GooglePlaceSearchResult = {
-  id: string;
-  name: string;
-  subtitle: string;
-  lat: number;
-  lng: number;
-  rating?: number;
-  emoji?: string;
-  color?: string;
-  providerPlaceId?: string;
+export type GooglePlaceSearchResult = Pick<
+  SavedPlace,
+  | 'id'
+  | 'name'
+  | 'subtitle'
+  | 'category'
+  | 'emoji'
+  | 'color'
+  | 'lat'
+  | 'lng'
+  | 'rating'
+  | 'provider'
+  | 'providerPlaceId'
+  | 'googleMapsUri'
+  | 'photos'
+>;
+
+export type GoogleMapsListImportResult = {
+  listName: string;
+  places: SavedPlace[];
+  importedCount: number;
+  skippedCount: number;
 };
 
 export type ScheduleInput = {
@@ -79,17 +94,22 @@ export type TripSettingsInput = Pick<
   'name' | 'destinationLabel' | 'startDate' | 'endDate' | 'defaultTimeZone' | 'defaultCurrency'
 >;
 
+export type CreateTripInput = TripInput;
+
+function mapTripSummary(raw: RawTripSummary): TripSummary {
+  return tripSummarySchema.parse({
+    id: raw.id,
+    ownerId: raw.owner_id,
+    name: raw.name,
+    startDate: raw.start_date,
+    endDate: raw.end_date,
+    destinationLabel: raw.destination_label,
+  });
+}
+
 export async function getTrips({ signal }: { signal?: AbortSignal } = {}) {
   const response = await requestWayfareApi<{ trips: RawTripSummary[] }>('/api/trips', { signal });
-  return response.trips.map(raw =>
-    tripSummarySchema.parse({
-      id: raw.id,
-      name: raw.name,
-      startDate: raw.start_date,
-      endDate: raw.end_date,
-      destinationLabel: raw.destination_label,
-    }),
-  ) satisfies TripSummary[];
+  return response.trips.map(mapTripSummary) satisfies TripSummary[];
 }
 
 export async function getTripEditor(tripId: string, signal?: AbortSignal) {
@@ -103,6 +123,15 @@ export function updateTrip(tripId: string, input: TripSettingsInput) {
   return write(tripPath(tripId, ''), 'PATCH', input);
 }
 
+export async function createTrip(input: CreateTripInput) {
+  const response = await write<{ trip: RawTripSummary }>('/api/trips', 'POST', input);
+  return mapTripSummary(response.trip);
+}
+
+export function deleteTrip(tripId: string) {
+  return write<{ deleted: string }>(tripPath(tripId, ''), 'DELETE');
+}
+
 export function searchGooglePlaces(
   query: string,
   destination?: string | null,
@@ -114,6 +143,13 @@ export function searchGooglePlaces(
     `/api/places?${searchParams.toString()}`,
     { signal },
   ).then(response => response.places);
+}
+
+export function getGooglePlace(providerPlaceId: string, signal?: AbortSignal) {
+  return requestWayfareApi<{ place: GooglePlaceSearchResult }>(
+    `/api/places/${encodeURIComponent(providerPlaceId)}`,
+    { signal },
+  ).then(response => response.place);
 }
 
 function tripPath(tripId: string, path: string) {
@@ -153,6 +189,10 @@ export function updatePlace(
 
 export function deletePlace(tripId: string, placeId: string) {
   return write(tripPath(tripId, `/places/${encodeURIComponent(placeId)}`), 'DELETE');
+}
+
+export function importGoogleMapsList(tripId: string, url: string) {
+  return write<GoogleMapsListImportResult>(tripPath(tripId, '/places/import'), 'POST', { url });
 }
 
 export function createSchedule(tripId: string, input: ScheduleInput) {

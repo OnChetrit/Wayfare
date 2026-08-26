@@ -249,7 +249,9 @@ export type TripEditorTrip = {
 export type TripSummary = Pick<
   TripEditorTrip,
   'id' | 'name' | 'startDate' | 'endDate' | 'destinationLabel'
->;
+> & { ownerId: string };
+
+export type TripInput = z.output<typeof tripInputSchema>;
 
 export type TripMember = {
   userId: string;
@@ -263,6 +265,7 @@ export type TripMember = {
 /** Runtime contracts shared by API clients. Keep API-shaped trip data camel-cased. */
 export const tripSummarySchema = z.object({
   id: z.uuid(),
+  ownerId: z.uuid(),
   name: z.string(),
   startDate: z.iso.date(),
   endDate: z.iso.date(),
@@ -401,7 +404,10 @@ export const expenseSchema = z.object({
 });
 
 export const tripEditorTripSchema = z.object({
-  ...tripSummarySchema.shape,
+  // Ownership is needed in the trip list for client-side control visibility.
+  // Do not require it in the detail response: deployed clients and servers may
+  // legitimately be on different releases during a mobile rollout.
+  ...tripSummarySchema.omit({ ownerId: true }).shape,
   defaultTimeZone: z.string(),
   defaultCurrency: currencyCodeSchema,
   days: z.array(tripDaySchema),

@@ -69,6 +69,7 @@ export function ItineraryScreen() {
         <EmptyState
           title="Choose a trip to start planning"
           detail="Trips you create or join will appear here."
+          action={<Button onPress={() => router.push('/trip-form')}>Create trip</Button>}
         />
       </Screen>
     );

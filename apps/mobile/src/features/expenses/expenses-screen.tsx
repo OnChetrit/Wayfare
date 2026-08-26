@@ -40,7 +40,11 @@ export function ExpensesScreen() {
   if (!trip)
     return (
       <Screen>
-        <EmptyState title="No trip selected" detail="Choose a trip to track its expenses." />
+        <EmptyState
+          title="No trip selected"
+          detail="Choose a trip to track its expenses."
+          action={<Button onPress={() => router.push('/trip-form')}>Create trip</Button>}
+        />
       </Screen>
     );
   const totalCurrency = preferredCurrency(session?.user.user_metadata, trip.defaultCurrency);

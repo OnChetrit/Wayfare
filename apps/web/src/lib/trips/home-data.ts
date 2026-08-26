@@ -348,13 +348,14 @@ export async function getHomeData(selectedTripId?: string): Promise<{
   const { data: trips } = await supabase
     .from('trips')
     .select(
-      'id, name, start_date, end_date, destination_label, default_time_zone, default_currency',
+      'id, owner_id, name, start_date, end_date, destination_label, default_time_zone, default_currency',
     )
     .order('start_date', { ascending: true })
     .order('name', { ascending: true });
 
   const tripSummaries: TripSummary[] = (trips ?? []).map(row => ({
     id: row.id,
+    ownerId: row.owner_id,
     name: row.name,
     startDate: row.start_date,
     endDate: row.end_date,

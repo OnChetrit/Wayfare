@@ -20,3 +20,22 @@ export function selectTripId<TTrip extends TripWithId>({
 
   return null;
 }
+
+export function selectedTripIdAfterDeletion<TTrip extends TripWithId>({
+  deletedTripId,
+  selectedTripId,
+  trips,
+}: {
+  deletedTripId: string;
+  selectedTripId: string | null;
+  trips: TTrip[];
+}) {
+  const remainingTrips = trips.filter(trip => trip.id !== deletedTripId);
+  if (!remainingTrips.length) return null;
+  if (selectedTripId && selectedTripId !== deletedTripId) {
+    return remainingTrips.some(trip => trip.id === selectedTripId)
+      ? selectedTripId
+      : remainingTrips[0]!.id;
+  }
+  return remainingTrips[0]!.id;
+}

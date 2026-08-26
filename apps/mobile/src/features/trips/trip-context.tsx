@@ -7,13 +7,22 @@ import { isSessionInvalidError } from '@/api/error';
 import { useAuth } from '@/features/auth/auth-context';
 import { supabase } from '@/lib/supabase';
 
-import { lastTripIdFromMetadata, selectTripId } from './trip-selection';
+import {
+  lastTripIdFromMetadata,
+  selectedTripIdAfterDeletion,
+  selectTripId,
+} from './trip-selection';
 
 type TripContextValue = {
   isLoadingTrips: boolean;
   isRefreshingTrips: boolean;
   selectedTripId: string | null;
   selectTrip: (tripId: string) => Promise<void>;
+  selectCreatedTrip: (tripId: string) => Promise<void>;
+  reselectAfterTripDeletion: (
+    deletedTripId: string,
+    remainingTrips: Awaited<ReturnType<typeof getTrips>>,
+  ) => Promise<void>;
   selectedTrip: Awaited<ReturnType<typeof getTrips>>[number] | null;
   trips: Awaited<ReturnType<typeof getTrips>>;
   tripsError: Error | null;
@@ -48,15 +57,40 @@ export function TripProvider({ children }: React.PropsWithChildren) {
   const requestedTripId = requestedTrip?.userId === userId ? requestedTrip.tripId : null;
   const selectedTripId = session ? selectTripId({ lastTripId, requestedTripId, trips }) : null;
 
-  const selectTrip = React.useCallback(
-    async (tripId: string) => {
-      if (!session || !trips.some(trip => trip.id === tripId) || selectedTripId === tripId) return;
+  const persistTripSelection = React.useCallback(
+    async (tripId: string | null) => {
+      if (!session) return;
+      if (tripId === selectedTripId && tripId !== null) return;
 
       const { error } = await supabase.auth.updateUser({ data: { lastTripId: tripId } });
       if (error) throw error;
-      setRequestedTrip({ tripId, userId: session.user.id });
+      setRequestedTrip(tripId ? { tripId, userId: session.user.id } : null);
     },
-    [selectedTripId, session, trips],
+    [selectedTripId, session],
+  );
+  const selectTrip = React.useCallback(
+    async (tripId: string) => {
+      if (!trips.some(trip => trip.id === tripId)) return;
+      await persistTripSelection(tripId);
+    },
+    [persistTripSelection, trips],
+  );
+  const selectCreatedTrip = React.useCallback(
+    async (tripId: string) => {
+      await persistTripSelection(tripId);
+    },
+    [persistTripSelection],
+  );
+  const reselectAfterTripDeletion = React.useCallback(
+    async (deletedTripId: string, remainingTrips: Awaited<ReturnType<typeof getTrips>>) => {
+      const nextTripId = selectedTripIdAfterDeletion({
+        deletedTripId,
+        selectedTripId,
+        trips: remainingTrips,
+      });
+      await persistTripSelection(nextTripId);
+    },
+    [persistTripSelection, selectedTripId],
   );
   const selectedTrip = React.useMemo(
     () => trips.find(trip => trip.id === selectedTripId) ?? null,
@@ -68,6 +102,8 @@ export function TripProvider({ children }: React.PropsWithChildren) {
       isRefreshingTrips: tripsQuery.isRefetching,
       selectedTripId,
       selectTrip,
+      selectCreatedTrip,
+      reselectAfterTripDeletion,
       selectedTrip,
       trips,
       tripsError: tripsQuery.error ?? null,
@@ -76,7 +112,9 @@ export function TripProvider({ children }: React.PropsWithChildren) {
     [
       selectedTrip,
       selectedTripId,
+      selectCreatedTrip,
       selectTrip,
+      reselectAfterTripDeletion,
       trips,
       tripsQuery.error,
       tripsQuery.isLoading,

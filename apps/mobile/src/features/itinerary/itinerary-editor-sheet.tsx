@@ -97,6 +97,7 @@ export function ItineraryEditorSheet() {
       <EmptyState
         title="No trip selected"
         detail="Choose a trip before adding itinerary details."
+        action={<Button onPress={() => router.replace('/trip-form')}>Create trip</Button>}
       />
     );
   if (isTripDetailsKind(kind)) {

@@ -6,7 +6,6 @@ import {
   HStack,
   Label as SwiftLabel,
   List,
-  Picker as SwiftPicker,
   ProgressView,
   Section,
   Spacer,
@@ -19,55 +18,33 @@ import {
   foregroundStyle,
   labelStyle,
   listStyle,
-  pickerStyle,
-  tag,
 } from '@expo/ui/swift-ui/modifiers';
 import { ActivityIndicator, Alert, Pressable, Text, View } from 'react-native';
 
-import { updateTrip } from '@/api/trips';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { ErrorState, LoadingState } from '@/components/ui/state';
 import { Screen } from '@/components/ui/screen';
 import { useAuth } from '@/features/auth/auth-context';
-import { useTripMutation } from '@/features/itinerary/use-trip-mutation';
 import { useTrips } from '@/features/trips/trip-context';
-import { useTripEditor } from '@/features/trips/use-trip-editor';
 import { formatDateRange, messageFromError } from '@/lib/format';
 import { colors } from '@/theme/tokens';
 
-const currencyOptions = [
-  { code: 'EUR', label: 'Euro' },
-  { code: 'USD', label: 'US Dollar' },
-  { code: 'ILS', label: 'Shekel' },
-  { code: 'GBP', label: 'Pound' },
-] as const;
-
 export function AccountScreen() {
   const { session, initializationError, signOut } = useAuth();
-  const { trips, selectedTripId, selectTrip, isLoadingTrips, tripsError, refreshTrips } =
-    useTrips();
-  const tripSettingsQuery = useTripEditor();
-  const selectedTrip = tripSettingsQuery.data;
+  const {
+    trips,
+    selectedTrip,
+    selectedTripId,
+    selectTrip,
+    isLoadingTrips,
+    tripsError,
+    refreshTrips,
+  } = useTrips();
   const [isSigningOut, setIsSigningOut] = React.useState(false);
   const [signOutError, setSignOutError] = React.useState<string | null>(null);
   const [selectingTripId, setSelectingTripId] = React.useState<string | null>(null);
   const [tripSelectionError, setTripSelectionError] = React.useState<string | null>(null);
-  const [currencyError, setCurrencyError] = React.useState<string | null>(null);
-  const { isOnline, mutation: currencyMutation } = useTripMutation(
-    selectedTrip?.id ?? '',
-    (currency: string) => {
-      if (!selectedTrip) throw new Error('Choose a trip before changing its currency.');
-      return updateTrip(selectedTrip.id, {
-        name: selectedTrip.name,
-        destinationLabel: selectedTrip.destinationLabel,
-        startDate: selectedTrip.startDate,
-        endDate: selectedTrip.endDate,
-        defaultTimeZone: selectedTrip.defaultTimeZone,
-        defaultCurrency: currency,
-      });
-    },
-  );
 
   if (initializationError)
     return <ErrorState title="Couldn’t load your account" message={initializationError} />;
@@ -94,16 +71,6 @@ export function AccountScreen() {
     }
   }
 
-  async function changeTripCurrency(currency: string) {
-    if (!selectedTrip || currency === selectedTrip.defaultCurrency) return;
-    setCurrencyError(null);
-    try {
-      await currencyMutation.mutateAsync(currency);
-    } catch (error) {
-      setCurrencyError(messageFromError(error, 'Could not update the trip currency.'));
-    }
-  }
-
   async function handleSignOut() {
     setSignOutError(null);
     setIsSigningOut(true);
@@ -117,6 +84,10 @@ export function AccountScreen() {
   }
 
   const email = session?.user.email ?? 'Signed in to Wayfare';
+  const ownsSelectedTrip = selectedTrip?.ownerId === session?.user.id;
+  const openTripForm = (mode: 'create' | 'edit') => {
+    router.push({ pathname: '/trip-form', params: mode === 'edit' ? { mode } : {} });
+  };
 
   if (process.env.EXPO_OS === 'ios') {
     return (
@@ -162,51 +133,24 @@ export function AccountScreen() {
                 {tripSelectionError}
               </SwiftText>
             ) : null}
+            <SwiftButton label="Create trip" onPress={() => openTripForm('create')} />
           </Section>
           <Section title="Trip settings">
             {!selectedTrip ? (
-              tripSettingsQuery.isLoading ? (
-                <HStack spacing={8}>
-                  <ProgressView />
-                  <SwiftText>Loading trip settings…</SwiftText>
-                </HStack>
-              ) : (
-                <SwiftText>Select a trip to manage its settings.</SwiftText>
-              )
+              <SwiftText>Select a trip to manage its settings.</SwiftText>
             ) : (
               <>
                 <SwiftText>{selectedTrip.name}</SwiftText>
-                <SwiftPicker
-                  label="Currency"
-                  modifiers={[
-                    pickerStyle('menu'),
-                    disabled(!isOnline || currencyMutation.isPending),
-                  ]}
-                  onSelectionChange={currency => void changeTripCurrency(currency)}
-                  selection={selectedTrip.defaultCurrency}
-                >
-                  {currencyOptions.map(option => (
-                    <SwiftText key={option.code} modifiers={[tag(option.code)]}>
-                      {option.code} — {option.label}
-                    </SwiftText>
-                  ))}
-                </SwiftPicker>
+                <SwiftButton label="Edit trip" onPress={() => openTripForm('edit')} />
+                {ownsSelectedTrip ? (
+                  <SwiftButton
+                    label="Delete trip"
+                    onPress={() => openTripForm('edit')}
+                    role="destructive"
+                  />
+                ) : null}
               </>
             )}
-            {currencyMutation.isPending ? (
-              <HStack spacing={8}>
-                <ProgressView />
-                <SwiftText>Saving currency…</SwiftText>
-              </HStack>
-            ) : null}
-            {tripSettingsQuery.error ? (
-              <SwiftText modifiers={[foregroundStyle(colors.danger)]}>
-                {messageFromError(tripSettingsQuery.error, 'Could not load trip settings.')}
-              </SwiftText>
-            ) : null}
-            {currencyError ? (
-              <SwiftText modifiers={[foregroundStyle(colors.danger)]}>{currencyError}</SwiftText>
-            ) : null}
           </Section>
           <Section title="Session">
             <SwiftButton
@@ -301,6 +245,7 @@ export function AccountScreen() {
             {tripSelectionError}
           </Text>
         ) : null}
+        <Button onPress={() => openTripForm('create')}>Create trip</Button>
       </View>
       <Card>
         <View style={{ gap: 8 }}>
@@ -309,40 +254,23 @@ export function AccountScreen() {
           </Text>
           {!selectedTrip ? (
             <Text selectable style={{ color: colors.textMuted, lineHeight: 20 }}>
-              {tripSettingsQuery.isLoading
-                ? 'Loading trip settings…'
-                : 'Select a trip to manage its settings.'}
+              Select a trip to manage its settings.
             </Text>
           ) : (
             <>
               <Text selectable style={{ color: colors.textMuted }}>
                 {selectedTrip.name}
               </Text>
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                {currencyOptions.map(option => (
-                  <Button
-                    disabled={!isOnline || currencyMutation.isPending}
-                    key={option.code}
-                    onPress={() => void changeTripCurrency(option.code)}
-                    tone={selectedTrip.defaultCurrency === option.code ? 'primary' : 'secondary'}
-                  >
-                    {option.code}
+              <View style={{ gap: 8 }}>
+                <Button onPress={() => openTripForm('edit')}>Edit trip</Button>
+                {ownsSelectedTrip ? (
+                  <Button onPress={() => openTripForm('edit')} tone="danger">
+                    Delete trip
                   </Button>
-                ))}
+                ) : null}
               </View>
             </>
           )}
-          {currencyMutation.isPending ? <ActivityIndicator color={colors.accent} /> : null}
-          {tripSettingsQuery.error ? (
-            <Text selectable style={{ color: colors.danger }}>
-              {messageFromError(tripSettingsQuery.error, 'Could not load trip settings.')}
-            </Text>
-          ) : null}
-          {currencyError ? (
-            <Text selectable style={{ color: colors.danger }}>
-              {currencyError}
-            </Text>
-          ) : null}
         </View>
       </Card>
       <Button

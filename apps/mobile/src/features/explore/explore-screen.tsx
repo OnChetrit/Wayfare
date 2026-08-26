@@ -9,6 +9,7 @@ import { createPlace, searchGooglePlaces, type GooglePlaceSearchResult } from '@
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { EmptyState, ErrorState, LoadingState, OfflineNotice } from '@/components/ui/state';
+import { Screen } from '@/components/ui/screen';
 import { TripMap, type MapPlace } from '@/components/trip-map';
 import { useTripMutation } from '@/features/itinerary/use-trip-mutation';
 import { useTripEditor } from '@/features/trips/use-trip-editor';
@@ -65,7 +66,13 @@ export function ExploreScreen() {
     );
   if (!trip)
     return (
-      <EmptyState title="No trip selected" detail="Choose a trip to explore places around it." />
+      <Screen>
+        <EmptyState
+          title="No trip selected"
+          detail="Choose a trip to explore places around it."
+          action={<Button onPress={() => router.push('/trip-form')}>Create trip</Button>}
+        />
+      </Screen>
     );
   const showResults = deferredQuery.length >= 2;
   const searchPlaceholder = trip.destinationLabel

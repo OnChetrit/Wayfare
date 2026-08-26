@@ -5,9 +5,14 @@ import { tripKeys } from '@/api/query-keys';
 import { useIsOnline } from '@/api/query-client';
 import { useAuth } from '@/features/auth/auth-context';
 
+type TripMutationOptions<TData, TVariables> = {
+  onSuccess?: (data: TData, variables: TVariables) => Promise<void> | void;
+};
+
 export function useTripMutation<TData, TVariables>(
-  tripId: string,
+  tripId: string | null,
   mutationFn: (variables: TVariables) => Promise<TData>,
+  options: TripMutationOptions<TData, TVariables> = {},
 ) {
   const queryClient = useQueryClient();
   const isOnline = useIsOnline();
@@ -26,9 +31,10 @@ export function useTripMutation<TData, TVariables>(
           throw error;
         }
       },
-      onSuccess: async () => {
+      onSuccess: async (data, variables) => {
+        await options.onSuccess?.(data, variables);
         await Promise.all([
-          queryClient.invalidateQueries({ queryKey: tripKeys.detail(tripId) }),
+          ...(tripId ? [queryClient.invalidateQueries({ queryKey: tripKeys.detail(tripId) })] : []),
           queryClient.invalidateQueries({ queryKey: tripKeys.all }),
         ]);
       },

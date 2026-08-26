@@ -42,7 +42,13 @@ export function ExpenseEditorScreen() {
       />
     );
   if (!tripQuery.data)
-    return <EmptyState title="No trip selected" detail="Choose a trip before adding an expense." />;
+    return (
+      <EmptyState
+        title="No trip selected"
+        detail="Choose a trip before adding an expense."
+        action={<Button onPress={() => router.replace('/trip-form')}>Create trip</Button>}
+      />
+    );
   return <ExpenseEditor trip={tripQuery.data} expenseId={expenseId} />;
 }
 

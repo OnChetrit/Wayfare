@@ -54,6 +54,20 @@ function RootNavigator() {
       <Stack.Screen name="(tabs)" />
       <Stack.Screen name="auth" />
       <Stack.Screen
+        name="trip-form"
+        options={{
+          contentStyle: { backgroundColor: '#08211C' },
+          headerShown: true,
+          headerStyle: { backgroundColor: '#08211C' },
+          headerTintColor: '#F8F4EB',
+          headerTitleStyle: { color: '#F8F4EB' },
+          presentation: 'formSheet',
+          sheetAllowedDetents: [0.75, 1],
+          sheetGrabberVisible: true,
+          title: 'Trip',
+        }}
+      />
+      <Stack.Screen
         name="expense-editor"
         options={{
           contentStyle: { backgroundColor: '#08211C' },
@@ -94,6 +108,20 @@ function RootNavigator() {
           sheetGrabberVisible: true,
           sheetLargestUndimmedDetentIndex: 1,
           title: 'Place actions',
+        }}
+      />
+      <Stack.Screen
+        name="place-import"
+        options={{
+          contentStyle: { backgroundColor: '#08211C' },
+          headerShown: true,
+          headerStyle: { backgroundColor: '#08211C' },
+          headerTintColor: '#F8F4EB',
+          headerTitleStyle: { color: '#F8F4EB' },
+          presentation: 'formSheet',
+          sheetAllowedDetents: [0.5, 0.75],
+          sheetGrabberVisible: true,
+          title: 'Import places',
         }}
       />
     </Stack>
