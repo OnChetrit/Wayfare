@@ -1,5 +1,14 @@
 import { describe, expect, it, vi } from 'vitest';
 
+import {
+  getGooglePlace,
+  importGoogleMapsList,
+  createTrip,
+  deleteTrip,
+  getTripEditor,
+  getTrips,
+} from './trips';
+
 import { WayfareApiError } from './error';
 
 const { requestWayfareApi } = vi.hoisted(() => ({ requestWayfareApi: vi.fn() }));
@@ -8,8 +17,6 @@ vi.mock('@/api/client', () => ({ requestWayfareApi }));
 vi.mock('@/api/query-keys', () => ({
   tripKeys: { all: ['trips'], detail: (tripId: string) => ['trips', tripId] },
 }));
-
-import { createTrip, deleteTrip, getTripEditor, getTrips } from './trips';
 
 const rawTrip = {
   id: '018f7f0e-7c54-7b24-a9d2-4e3683c98f41',
@@ -88,6 +95,41 @@ describe('trip API', () => {
     await expect(deleteTrip(rawTrip.id)).rejects.toBe(authenticationError);
     expect(requestWayfareApi).toHaveBeenCalledWith(`/api/trips/${rawTrip.id}`, {
       method: 'DELETE',
+    });
+  });
+
+  it('imports a shared Google Maps list through the selected trip API', async () => {
+    requestWayfareApi.mockResolvedValueOnce({
+      listName: 'Rome favorites',
+      places: [],
+      importedCount: 2,
+      skippedCount: 1,
+    });
+
+    await expect(
+      importGoogleMapsList(rawTrip.id, 'https://maps.app.goo.gl/example'),
+    ).resolves.toMatchObject({
+      importedCount: 2,
+      skippedCount: 1,
+    });
+    expect(requestWayfareApi).toHaveBeenCalledWith(`/api/trips/${rawTrip.id}/places/import`, {
+      method: 'POST',
+      body: JSON.stringify({ url: 'https://maps.app.goo.gl/example' }),
+      headers: { 'Content-Type': 'application/json' },
+    });
+  });
+
+  it('loads Google place details through the authenticated API', async () => {
+    const controller = new AbortController();
+    requestWayfareApi.mockResolvedValueOnce({
+      place: { id: 'google-place', name: 'Trevi Fountain' },
+    });
+
+    await expect(getGooglePlace('google-place', controller.signal)).resolves.toMatchObject({
+      name: 'Trevi Fountain',
+    });
+    expect(requestWayfareApi).toHaveBeenCalledWith('/api/places/google-place', {
+      signal: controller.signal,
     });
   });
 });

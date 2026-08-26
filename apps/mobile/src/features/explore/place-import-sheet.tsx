@@ -69,8 +69,8 @@ function PlaceImportForm({ tripId }: { tripId: string }) {
     >
       <OfflineNotice visible={!isOnline} />
       <Text selectable style={{ color: colors.textMuted, lineHeight: 20 }}>
-        Paste a public or shared Google Maps list. Existing places are skipped, and new places appear
-        in your map and saved-place library.
+        Paste a public or shared Google Maps list. Existing places are skipped, and new places
+        appear in your map and saved-place library.
       </Text>
       <Field
         accessibilityLabel="Google Maps shared list link"
@@ -82,11 +82,18 @@ function PlaceImportForm({ tripId }: { tripId: string }) {
         placeholder="https://maps.app.goo.gl/..."
         value={url}
       />
-      <Button disabled={!isOnline || mutation.isPending} loading={mutation.isPending} onPress={() => void importList()}>
+      <Button
+        disabled={!isOnline || mutation.isPending}
+        loading={mutation.isPending}
+        onPress={() => void importList()}
+      >
         Import list
       </Button>
       {message ? (
-        <Text selectable style={{ color: mutation.error ? colors.danger : colors.textMuted, lineHeight: 20 }}>
+        <Text
+          selectable
+          style={{ color: mutation.error ? colors.danger : colors.textMuted, lineHeight: 20 }}
+        >
           {message}
         </Text>
       ) : null}

@@ -28,3 +28,8 @@ export function filterSavedPlaces(places: SavedPlace[], filter: SavedPlacesFilte
     return matchesCategory && matchesFavorite && matchesQuery;
   });
 }
+
+export function filterSavedPlacesForLocation(places: SavedPlace[], locationSegmentId?: string) {
+  if (!locationSegmentId) return places;
+  return places.filter(place => place.locationSegmentIds?.includes(locationSegmentId));
+}

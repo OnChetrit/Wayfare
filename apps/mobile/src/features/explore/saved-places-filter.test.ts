@@ -1,7 +1,7 @@
 import type { SavedPlace } from '@wayfare/domain';
 import { describe, expect, it } from 'vitest';
 
-import { filterSavedPlaces } from './saved-places-filter';
+import { filterSavedPlaces, filterSavedPlacesForLocation } from './saved-places-filter';
 
 const places: SavedPlace[] = [
   {
@@ -34,5 +34,20 @@ describe('filterSavedPlaces', () => {
 
   it('returns only favorites when requested', () => {
     expect(filterSavedPlaces(places, 'FAVORITES', '').map(place => place.id)).toEqual(['cafe']);
+  });
+
+  it('limits the library to places shortlisted for a location', () => {
+    const assignedPlaces = [
+      { ...places[0], locationSegmentIds: ['rome'] },
+      { ...places[1], locationSegmentIds: ['florence'] },
+    ];
+
+    expect(filterSavedPlacesForLocation(assignedPlaces, 'rome').map(place => place.id)).toEqual([
+      'cafe',
+    ]);
+    expect(filterSavedPlacesForLocation(assignedPlaces).map(place => place.id)).toEqual([
+      'cafe',
+      'museum',
+    ]);
   });
 });

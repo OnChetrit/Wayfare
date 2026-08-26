@@ -176,7 +176,11 @@ export function createPlace(
     providerPlaceId?: string;
   },
 ) {
-  return write(tripPath(tripId, '/places'), 'POST', input);
+  return write<{ place: { id: string; is_favorite: boolean } }>(
+    tripPath(tripId, '/places'),
+    'POST',
+    input,
+  );
 }
 
 export function updatePlace(

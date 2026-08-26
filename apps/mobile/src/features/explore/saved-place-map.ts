@@ -5,8 +5,10 @@ import type { GooglePlaceSearchResult } from '@/api/trips';
 
 type PlaceWithMapCoordinates = Pick<
   GooglePlaceSearchResult,
-  'id' | 'name' | 'subtitle' | 'lat' | 'lng' | 'color'
->;
+  'id' | 'name' | 'subtitle' | 'lat' | 'lng'
+> & {
+  color?: string;
+};
 
 export function toMapPlace(place: PlaceWithMapCoordinates): MapPlace {
   return {

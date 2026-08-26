@@ -1,11 +1,19 @@
 import { useQuery } from '@tanstack/react-query';
+import ImportIcon from '@expo/material-symbols/playlist_add.xml';
 import SavedPlacesIcon from '@expo/material-symbols/list.xml';
 import { router, Stack } from 'expo-router';
 import * as React from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import type { SavedPlace } from '@wayfare/domain';
 
-import { createPlace, searchGooglePlaces, type GooglePlaceSearchResult } from '@/api/trips';
+import {
+  assignPlaceToSegment,
+  createPlace,
+  removePlaceFromSegment,
+  searchGooglePlaces,
+  type GooglePlaceSearchResult,
+} from '@/api/trips';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { EmptyState, ErrorState, LoadingState, OfflineNotice } from '@/components/ui/state';
@@ -15,8 +23,15 @@ import { useTripMutation } from '@/features/itinerary/use-trip-mutation';
 import { useTripEditor } from '@/features/trips/use-trip-editor';
 import { mapPlacesForExplore, toMapPlace } from '@/features/explore/saved-place-map';
 import { SavedPlacesDrawer } from '@/features/explore/saved-places-drawer';
+import { filterSavedPlacesForLocation } from '@/features/explore/saved-places-filter';
 import { messageFromError } from '@/lib/format';
 import { colors } from '@/theme/tokens';
+
+const emptySavedPlaces: SavedPlace[] = [];
+
+function haveSamePlaceIds(left: string[], right: string[]) {
+  return left.length === right.length && left.every((placeId, index) => placeId === right[index]);
+}
 
 export function ExploreScreen() {
   const insets = useSafeAreaInsets();
@@ -25,18 +40,35 @@ export function ExploreScreen() {
   const deferredQuery = React.useDeferredValue(query.trim());
   const [selectedPlace, setSelectedPlace] = React.useState<MapPlace | null>(null);
   const [savedPlacesVisible, setSavedPlacesVisible] = React.useState(false);
+  const [locationScopeId, setLocationScopeId] = React.useState<string>();
+  const [locationMessage, setLocationMessage] = React.useState<string | null>(null);
   const [visibleMapPlaceIds, setVisibleMapPlaceIds] = React.useState<string[]>([]);
   const trip = tripQuery.data;
-  const firstSavedPlace = trip?.places[0];
+  const tripPlaces = trip?.places ?? emptySavedPlaces;
+  const firstSavedPlace = tripPlaces[0];
   const initialPlace = React.useMemo(
     () => (firstSavedPlace ? toMapPlace(firstSavedPlace) : null),
     [firstSavedPlace],
   );
   const activePlace = selectedPlace ?? initialPlace;
-  const mapPlaces = React.useMemo(
-    () => (trip ? mapPlacesForExplore(trip.places, activePlace) : []),
-    [activePlace, trip],
+  const locationScopedPlaces = React.useMemo(
+    () => filterSavedPlacesForLocation(tripPlaces, locationScopeId),
+    [locationScopeId, tripPlaces],
   );
+  const selectedSavedPlace = tripPlaces.find(place => place.id === activePlace?.id);
+  const mapActivePlace =
+    locationScopeId &&
+    selectedSavedPlace &&
+    !locationScopedPlaces.some(place => place.id === selectedSavedPlace.id)
+      ? null
+      : activePlace;
+  const mapPlaces = React.useMemo(
+    () => mapPlacesForExplore(locationScopedPlaces, mapActivePlace),
+    [locationScopedPlaces, mapActivePlace],
+  );
+  const updateVisibleMapPlaceIds = React.useCallback((placeIds: string[]) => {
+    setVisibleMapPlaceIds(current => (haveSamePlaceIds(current, placeIds) ? current : placeIds));
+  }, []);
   const placesQuery = useQuery({
     queryKey: ['places-search', trip?.id, deferredQuery],
     queryFn: ({ signal }) => searchGooglePlaces(deferredQuery, trip?.destinationLabel, signal),
@@ -48,12 +80,27 @@ export function ExploreScreen() {
     (place: GooglePlaceSearchResult) =>
       createPlace(trip!.id, {
         name: place.name,
-        category: 'CUSTOM',
+        category: place.category,
         lat: place.lat,
         lng: place.lng,
         provider: 'GOOGLE',
         providerPlaceId: place.providerPlaceId,
       }),
+  );
+  const { mutation: locationPlaceMutation } = useTripMutation(
+    trip?.id ?? '',
+    ({
+      placeId,
+      segmentId,
+      assigned,
+    }: {
+      placeId: string;
+      segmentId: string;
+      assigned: boolean;
+    }) =>
+      assigned
+        ? removePlaceFromSegment(trip!.id, segmentId, placeId)
+        : assignPlaceToSegment(trip!.id, segmentId, placeId),
   );
 
   if (tripQuery.isLoading) return <LoadingState label="Loading map…" />;
@@ -92,14 +139,20 @@ export function ExploreScreen() {
     if (savedPlace) showSavedPlace(savedPlace);
   }
 
+  function showGooglePlace(place: GooglePlaceSearchResult) {
+    setSelectedPlace(toMapPlace(place));
+    if (!place.providerPlaceId) return;
+    router.push({ pathname: '/place-actions', params: { googlePlaceId: place.providerPlaceId } });
+  }
+
   return (
     <>
       <View style={{ backgroundColor: colors.background, flex: 1 }}>
         <TripMap
           onSelectPlace={showMapPlace}
-          onVisiblePlacesChange={setVisibleMapPlaceIds}
+          onVisiblePlacesChange={updateVisibleMapPlaceIds}
           places={mapPlaces}
-          selectedPlace={activePlace}
+          selectedPlace={mapActivePlace}
         />
         <View
           style={{
@@ -134,46 +187,56 @@ export function ExploreScreen() {
                 </Text>
               ) : null}
               {placesQuery.data?.map(place => (
-                <Pressable
-                  accessibilityHint="Centers this place on the map"
-                  accessibilityLabel={`Show ${place.name} on the map`}
-                  accessibilityRole="button"
+                <View
                   key={place.id}
-                  onPress={() => setSelectedPlace(toMapPlace(place))}
-                  style={({ pressed }) => ({
+                  style={{
                     alignItems: 'center',
                     flexDirection: 'row',
                     gap: 10,
-                    opacity: pressed ? 0.72 : 1,
                     paddingVertical: 7,
-                  })}
+                  }}
                 >
-                  <Text selectable style={{ fontSize: 20 }}>
-                    {place.emoji ?? '⌖'}
-                  </Text>
-                  <View style={{ flex: 1, gap: 2 }}>
-                    <Text
-                      selectable
-                      numberOfLines={1}
-                      style={{ color: colors.text, fontSize: 15, fontWeight: '700' }}
-                    >
-                      {place.name}
+                  <Pressable
+                    accessibilityHint="Centers this place on the map and opens its details"
+                    accessibilityLabel={`Show ${place.name} details`}
+                    accessibilityRole="button"
+                    onPress={() => showGooglePlace(place)}
+                    style={({ pressed }) => ({
+                      alignItems: 'center',
+                      flex: 1,
+                      flexDirection: 'row',
+                      gap: 10,
+                      opacity: pressed ? 0.72 : 1,
+                    })}
+                  >
+                    <Text selectable style={{ fontSize: 20 }}>
+                      {place.emoji ?? '⌖'}
                     </Text>
-                    <Text
-                      selectable
-                      numberOfLines={1}
-                      style={{ color: colors.textMuted, fontSize: 13 }}
-                    >
-                      {place.subtitle}
-                    </Text>
-                  </View>
+                    <View style={{ flex: 1, gap: 2 }}>
+                      <Text
+                        selectable
+                        numberOfLines={1}
+                        style={{ color: colors.text, fontSize: 15, fontWeight: '700' }}
+                      >
+                        {place.name}
+                      </Text>
+                      <Text
+                        selectable
+                        numberOfLines={1}
+                        style={{ color: colors.textMuted, fontSize: 13 }}
+                      >
+                        {place.subtitle}
+                      </Text>
+                    </View>
+                  </Pressable>
                   <Button
                     disabled={!isOnline || savePlaceMutation.isPending}
                     onPress={() => void savePlaceMutation.mutateAsync(place)}
+                    tone="secondary"
                   >
                     Save
                   </Button>
-                </Pressable>
+                </View>
               ))}
             </Card>
           ) : null}
@@ -181,7 +244,25 @@ export function ExploreScreen() {
         {savedPlacesVisible ? (
           <SavedPlacesDrawer
             onClose={() => setSavedPlacesVisible(false)}
+            isLocationMutationPending={locationPlaceMutation.isPending}
+            isOnline={isOnline}
+            locationMessage={locationMessage}
+            locationScopeId={locationScopeId}
+            locationSegments={trip.locationSegments}
+            onLocationScopeChange={setLocationScopeId}
             onSelectPlace={showSavedPlace}
+            onToggleLocationPlace={(place, segmentId, assigned) => {
+              setLocationMessage(null);
+              void locationPlaceMutation
+                .mutateAsync({
+                  placeId: place.id,
+                  segmentId,
+                  assigned,
+                })
+                .catch(error =>
+                  setLocationMessage(messageFromError(error, 'Could not update this shortlist.')),
+                );
+            }}
             places={trip.places}
             selectedPlaceId={activePlace?.id}
             visiblePlaceIds={visibleMapPlaceIds}
@@ -202,6 +283,11 @@ export function ExploreScreen() {
         tintColor="#E9F5ED"
       />
       <Stack.Toolbar placement="right">
+        <Stack.Toolbar.Button
+          accessibilityLabel="Import a Google Maps list"
+          icon={process.env.EXPO_OS === 'ios' ? 'square.and.arrow.down' : ImportIcon}
+          onPress={() => router.push('/place-import')}
+        />
         <Stack.Toolbar.Button
           accessibilityLabel={`Open ${trip.places.length} saved places`}
           icon={process.env.EXPO_OS === 'ios' ? 'list.bullet' : SavedPlacesIcon}
