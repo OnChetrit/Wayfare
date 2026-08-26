@@ -1,5 +1,5 @@
 import * as Haptics from 'expo-haptics';
-import type { PropsWithChildren } from 'react';
+import { Children, type PropsWithChildren } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -44,6 +44,9 @@ export function Button({
 }: ButtonProps) {
   const palette = tones[tone];
   const isDisabled = Boolean(disabled || loading);
+  const isTextOnly = Children.toArray(children).every(
+    child => typeof child === 'number' || typeof child === 'string',
+  );
   return (
     <Pressable
       accessibilityRole="button"
@@ -73,7 +76,7 @@ export function Button({
       {...props}
     >
       {loading ? <ActivityIndicator color={palette.text} /> : null}
-      {typeof children === 'string' ? (
+      {isTextOnly ? (
         <Text selectable style={{ color: palette.text, fontSize: 15, fontWeight: '700' }}>
           {children}
         </Text>

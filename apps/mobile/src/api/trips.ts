@@ -74,6 +74,11 @@ export type ExpenseInput = Pick<
   scheduleItemId?: string | null;
 };
 
+export type TripSettingsInput = Pick<
+  TripEditorTrip,
+  'name' | 'destinationLabel' | 'startDate' | 'endDate' | 'defaultTimeZone' | 'defaultCurrency'
+>;
+
 export async function getTrips({ signal }: { signal?: AbortSignal } = {}) {
   const response = await requestWayfareApi<{ trips: RawTripSummary[] }>('/api/trips', { signal });
   return response.trips.map(raw =>
@@ -92,6 +97,10 @@ export async function getTripEditor(tripId: string, signal?: AbortSignal) {
     signal,
   });
   return tripEditorTripResponseSchema.parse(response).trip as TripEditorTrip;
+}
+
+export function updateTrip(tripId: string, input: TripSettingsInput) {
+  return write(tripPath(tripId, ''), 'PATCH', input);
 }
 
 export function searchGooglePlaces(

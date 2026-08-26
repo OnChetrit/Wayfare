@@ -5,9 +5,10 @@ export default function ExploreLayout() {
     <Stack
       screenOptions={{
         contentStyle: { backgroundColor: '#102A21' },
+        headerShown: true,
         headerShadowVisible: false,
         headerStyle: { backgroundColor: '#102A21' },
-        headerTintColor: '#E9F5ED',
+        headerTintColor: '#F8F4EB',
       }}
     >
       <Stack.Screen name="index" options={{ title: 'Explore' }} />

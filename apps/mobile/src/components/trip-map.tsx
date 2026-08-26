@@ -33,11 +33,44 @@ export type MapPlace = {
 };
 
 type TripMapProps = {
+  onSelectPlace?: (place: MapPlace) => void;
+  onVisiblePlacesChange?: (placeIds: string[]) => void;
+  places?: MapPlace[];
   selectedPlace?: MapPlace | null;
 };
 
-export function TripMap({ selectedPlace }: TripMapProps) {
+function isPlaceVisible(place: MapPlace, region: Region) {
+  const latitudeDelta = region.latitudeDelta / 2;
+  const longitudeDelta = region.longitudeDelta / 2;
+  const minimumLatitude = region.latitude - latitudeDelta;
+  const maximumLatitude = region.latitude + latitudeDelta;
+  const minimumLongitude = region.longitude - longitudeDelta;
+  const maximumLongitude = region.longitude + longitudeDelta;
+  const isVisibleLongitude =
+    minimumLongitude < -180
+      ? place.lng >= minimumLongitude + 360 || place.lng <= maximumLongitude
+      : maximumLongitude > 180
+        ? place.lng >= minimumLongitude || place.lng <= maximumLongitude - 360
+        : place.lng >= minimumLongitude && place.lng <= maximumLongitude;
+
+  return place.lat >= minimumLatitude && place.lat <= maximumLatitude && isVisibleLongitude;
+}
+
+export function TripMap({
+  onSelectPlace,
+  onVisiblePlacesChange,
+  places = [],
+  selectedPlace,
+}: TripMapProps) {
   const map = React.useRef<MapView>(null);
+  const [region, setRegion] = React.useState(initialRegion);
+  const mapPlaces = React.useMemo(() => {
+    const uniquePlaces = new Map<string, MapPlace>();
+    for (const place of [...(selectedPlace ? [selectedPlace] : []), ...places]) {
+      if (!uniquePlaces.has(place.id)) uniquePlaces.set(place.id, place);
+    }
+    return Array.from(uniquePlaces.values());
+  }, [places, selectedPlace]);
 
   React.useEffect(() => {
     if (!selectedPlace) return;
@@ -53,6 +86,12 @@ export function TripMap({ selectedPlace }: TripMapProps) {
     );
   }, [selectedPlace]);
 
+  React.useEffect(() => {
+    onVisiblePlacesChange?.(
+      mapPlaces.filter(place => isPlaceVisible(place, region)).map(place => place.id),
+    );
+  }, [mapPlaces, onVisiblePlacesChange, region]);
+
   return (
     <MapView
       ref={map}
@@ -60,16 +99,19 @@ export function TripMap({ selectedPlace }: TripMapProps) {
       style={{ flex: 1 }}
       initialRegion={initialRegion}
       mapType="standard"
+      onRegionChangeComplete={setRegion}
       customMapStyle={mapStyle}
     >
-      {selectedPlace ? (
+      {mapPlaces.map(place => (
         <Marker
-          coordinate={{ latitude: selectedPlace.lat, longitude: selectedPlace.lng }}
-          description={selectedPlace.subtitle}
-          pinColor={selectedPlace.color ?? '#E8795D'}
-          title={selectedPlace.name}
+          coordinate={{ latitude: place.lat, longitude: place.lng }}
+          description={place.subtitle}
+          key={place.id}
+          onPress={() => onSelectPlace?.(place)}
+          pinColor={place.color ?? '#E8795D'}
+          title={place.name}
         />
-      ) : null}
+      ))}
     </MapView>
   );
 }

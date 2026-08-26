@@ -55,8 +55,6 @@ export async function requestWayfareApi<T>(path: string, init: RequestInit = {})
     );
   }
 
-  console.log('response', response);
-
   const payload = await response.json().catch(() => null);
   if (response.status === 401) {
     // A 401 from the Wayfare API can also mean the deployed API is misconfigured

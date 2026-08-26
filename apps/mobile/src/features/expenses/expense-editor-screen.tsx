@@ -1,4 +1,6 @@
-import { useLocalSearchParams, router } from 'expo-router';
+import AddIcon from '@expo/material-symbols/add.xml';
+import CheckIcon from '@expo/material-symbols/check.xml';
+import { Stack, useLocalSearchParams, router } from 'expo-router';
 import * as React from 'react';
 import { Alert, ScrollView, Text, View } from 'react-native';
 
@@ -121,108 +123,119 @@ function ExpenseEditor({
     }
   }
   return (
-    <ScrollView
-      contentInsetAdjustmentBehavior="automatic"
-      contentContainerStyle={{ gap: space.md, padding: space.md, paddingBottom: 36 }}
-      style={{ backgroundColor: colors.background }}
-    >
-      <OfflineNotice visible={!isOnline} />
-      <Field
-        label="Title"
-        value={form.title}
-        onChangeText={title => setForm(current => ({ ...current, title }))}
-      />
-      <Text selectable style={{ color: colors.textMuted, fontSize: 13, fontWeight: '700' }}>
-        Category
-      </Text>
-      <ChipGroup
-        options={categories}
-        value={form.category}
-        onChange={category => setForm(current => ({ ...current, category }))}
-      />
-      <Field
-        label="Amount"
-        keyboardType="decimal-pad"
-        value={form.amount}
-        onChangeText={amount => setForm(current => ({ ...current, amount }))}
-      />
-      <Field
-        label="Currency"
-        autoCapitalize="characters"
-        maxLength={3}
-        value={form.currency}
-        onChangeText={currency => setForm(current => ({ ...current, currency }))}
-      />
-      <Field
-        label="Date (YYYY-MM-DD)"
-        value={form.expenseDate}
-        onChangeText={expenseDate => setForm(current => ({ ...current, expenseDate }))}
-      />
-      <Text selectable style={{ color: colors.textMuted, fontSize: 13, fontWeight: '700' }}>
-        Link expense to
-      </Text>
-      <ChipGroup
-        options={[
-          { label: 'Nothing', value: 'none' },
-          { label: 'Stay', value: 'stay' },
-          { label: 'Flight', value: 'flight' },
-          { label: 'Itinerary item', value: 'schedule' },
-        ]}
-        value={form.sourceKind}
-        onChange={sourceKind => setForm(current => ({ ...current, sourceKind, sourceId: '' }))}
-      />
-      {form.sourceKind !== 'none' ? (
-        <View style={{ gap: 8 }}>
-          {sourceOptions.map(option => (
-            <Button
-              key={option.id}
-              onPress={() => setForm(current => ({ ...current, sourceId: option.id }))}
-              tone={form.sourceId === option.id ? 'primary' : 'secondary'}
-            >
-              {option.label}
-            </Button>
-          ))}
-        </View>
-      ) : null}
-      <Field
-        label="Notes"
-        multiline
-        value={form.notes}
-        onChangeText={notes => setForm(current => ({ ...current, notes }))}
-      />
-      <Button disabled={!isOnline} loading={saveMutation.isPending} onPress={() => void save()}>
-        {expense ? 'Save changes' : 'Add expense'}
-      </Button>
-      {expense && !isManagedExpense ? (
-        <Button
-          disabled={!isOnline || deleteMutation.isPending}
-          loading={deleteMutation.isPending}
-          onPress={() =>
-            Alert.alert('Delete this expense?', 'This cannot be undone.', [
-              { text: 'Cancel', style: 'cancel' },
-              {
-                text: 'Delete',
-                style: 'destructive',
-                onPress: () => void deleteMutation.mutateAsync(undefined).then(() => router.back()),
-              },
-            ])
-          }
-          tone="danger"
+    <>
+      <ScrollView
+        contentInsetAdjustmentBehavior="automatic"
+        contentContainerStyle={{ gap: space.md, padding: space.md, paddingBottom: 36 }}
+        style={{ backgroundColor: colors.background }}
+      >
+        <OfflineNotice visible={!isOnline} />
+        <Field
+          label="Title"
+          value={form.title}
+          onChangeText={title => setForm(current => ({ ...current, title }))}
+        />
+        <Text selectable style={{ color: colors.textMuted, fontSize: 13, fontWeight: '700' }}>
+          Category
+        </Text>
+        <ChipGroup
+          options={categories}
+          value={form.category}
+          onChange={category => setForm(current => ({ ...current, category }))}
+        />
+        <Field
+          label="Amount"
+          keyboardType="decimal-pad"
+          value={form.amount}
+          onChangeText={amount => setForm(current => ({ ...current, amount }))}
+        />
+        <Field
+          label="Currency"
+          autoCapitalize="characters"
+          maxLength={3}
+          value={form.currency}
+          onChangeText={currency => setForm(current => ({ ...current, currency }))}
+        />
+        <Field
+          label="Date (YYYY-MM-DD)"
+          value={form.expenseDate}
+          onChangeText={expenseDate => setForm(current => ({ ...current, expenseDate }))}
+        />
+        <Text selectable style={{ color: colors.textMuted, fontSize: 13, fontWeight: '700' }}>
+          Link expense to
+        </Text>
+        <ChipGroup
+          options={[
+            { label: 'Nothing', value: 'none' },
+            { label: 'Stay', value: 'stay' },
+            { label: 'Flight', value: 'flight' },
+            { label: 'Itinerary item', value: 'schedule' },
+          ]}
+          value={form.sourceKind}
+          onChange={sourceKind => setForm(current => ({ ...current, sourceKind, sourceId: '' }))}
+        />
+        {form.sourceKind !== 'none' ? (
+          <View style={{ gap: 8 }}>
+            {sourceOptions.map(option => (
+              <Button
+                key={option.id}
+                onPress={() => setForm(current => ({ ...current, sourceId: option.id }))}
+                tone={form.sourceId === option.id ? 'primary' : 'secondary'}
+              >
+                {option.label}
+              </Button>
+            ))}
+          </View>
+        ) : null}
+        <Field
+          label="Notes"
+          multiline
+          value={form.notes}
+          onChangeText={notes => setForm(current => ({ ...current, notes }))}
+        />
+        {expense && !isManagedExpense ? (
+          <Button
+            disabled={!isOnline || deleteMutation.isPending}
+            loading={deleteMutation.isPending}
+            onPress={() =>
+              Alert.alert('Delete this expense?', 'This cannot be undone.', [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'Delete',
+                  style: 'destructive',
+                  onPress: () =>
+                    void deleteMutation.mutateAsync(undefined).then(() => router.back()),
+                },
+              ])
+            }
+            tone="danger"
+          >
+            Delete expense
+          </Button>
+        ) : null}
+        {expense && isManagedExpense ? (
+          <Text selectable style={{ color: colors.textMuted, lineHeight: 20 }}>
+            This expense is managed with its linked stay or flight. Edit or remove that itinerary
+            item to update it.
+          </Text>
+        ) : null}
+        {message || saveMutation.error || deleteMutation.error ? (
+          <Text selectable style={{ color: colors.danger }}>
+            {message ?? messageFromError(saveMutation.error ?? deleteMutation.error)}
+          </Text>
+        ) : null}
+      </ScrollView>
+      <Stack.Toolbar placement="right">
+        <Stack.Toolbar.Button
+          accessibilityLabel={expense ? 'Save expense changes' : 'Add expense'}
+          disabled={!isOnline || saveMutation.isPending}
+          icon={process.env.EXPO_OS === 'ios' ? undefined : expense ? CheckIcon : AddIcon}
+          onPress={() => void save()}
+          variant="done"
         >
-          Delete expense
-        </Button>
-      ) : null}
-      {expense && isManagedExpense ? (
-        <Text selectable style={{ color: colors.textMuted, lineHeight: 20 }}>
-          This expense is managed with its linked stay or flight. Edit or remove that itinerary item
-          to update it.
-        </Text>
-      ) : null}
-      {message || saveMutation.error || deleteMutation.error ? (
-        <Text selectable style={{ color: colors.danger }}>
-          {message ?? messageFromError(saveMutation.error ?? deleteMutation.error)}
-        </Text>
-      ) : null}
-    </ScrollView>
+          {expense ? 'Save' : 'Add'}
+        </Stack.Toolbar.Button>
+      </Stack.Toolbar>
+    </>
   );
 }

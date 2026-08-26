@@ -81,6 +81,21 @@ function RootNavigator() {
           title: 'Itinerary',
         }}
       />
+      <Stack.Screen
+        name="place-actions"
+        options={{
+          contentStyle: { backgroundColor: '#08211C' },
+          headerShown: true,
+          headerStyle: { backgroundColor: '#08211C' },
+          headerTintColor: '#F8F4EB',
+          headerTitleStyle: { color: '#F8F4EB' },
+          presentation: 'formSheet',
+          sheetAllowedDetents: [0.48, 0.76],
+          sheetGrabberVisible: true,
+          sheetLargestUndimmedDetentIndex: 1,
+          title: 'Place actions',
+        }}
+      />
     </Stack>
   );
 }

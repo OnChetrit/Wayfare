@@ -5,12 +5,15 @@ import { getTrips } from '@/api/trips';
 import { tripKeys } from '@/api/query-keys';
 import { isSessionInvalidError } from '@/api/error';
 import { useAuth } from '@/features/auth/auth-context';
+import { supabase } from '@/lib/supabase';
+
+import { lastTripIdFromMetadata, selectTripId } from './trip-selection';
 
 type TripContextValue = {
   isLoadingTrips: boolean;
   isRefreshingTrips: boolean;
   selectedTripId: string | null;
-  selectTrip: (tripId: string) => void;
+  selectTrip: (tripId: string) => Promise<void>;
   selectedTrip: Awaited<ReturnType<typeof getTrips>>[number] | null;
   trips: Awaited<ReturnType<typeof getTrips>>;
   tripsError: Error | null;
@@ -22,12 +25,15 @@ const noTrips: Awaited<ReturnType<typeof getTrips>> = [];
 
 export function TripProvider({ children }: React.PropsWithChildren) {
   const { isReady, session, signOut } = useAuth();
-  const [requestedTripId, setRequestedTripId] = React.useState<string | null>(null);
+  const [requestedTrip, setRequestedTrip] = React.useState<{
+    tripId: string;
+    userId: string;
+  } | null>(null);
+  const userId = session?.user.id ?? null;
   const tripsQuery = useQuery({
     queryKey: tripKeys.all,
     queryFn: async ({ signal }) => {
       try {
-        console.log('signal', signal);
         return await getTrips({ signal });
       } catch (error) {
         if (isSessionInvalidError(error)) await signOut();
@@ -37,19 +43,20 @@ export function TripProvider({ children }: React.PropsWithChildren) {
     enabled: isReady && Boolean(session),
   });
 
-  console.log('tripsQuery', tripsQuery);
   const trips = tripsQuery.data ?? noTrips;
-  const selectedTripId = session
-    ? ((requestedTripId && trips.some(trip => trip.id === requestedTripId)
-        ? requestedTripId
-        : trips[0]?.id) ?? null)
-    : null;
+  const lastTripId = lastTripIdFromMetadata(session?.user.user_metadata);
+  const requestedTripId = requestedTrip?.userId === userId ? requestedTrip.tripId : null;
+  const selectedTripId = session ? selectTripId({ lastTripId, requestedTripId, trips }) : null;
 
   const selectTrip = React.useCallback(
-    (tripId: string) => {
-      if (trips.some(trip => trip.id === tripId)) setRequestedTripId(tripId);
+    async (tripId: string) => {
+      if (!session || !trips.some(trip => trip.id === tripId) || selectedTripId === tripId) return;
+
+      const { error } = await supabase.auth.updateUser({ data: { lastTripId: tripId } });
+      if (error) throw error;
+      setRequestedTrip({ tripId, userId: session.user.id });
     },
-    [trips],
+    [selectedTripId, session, trips],
   );
   const selectedTrip = React.useMemo(
     () => trips.find(trip => trip.id === selectedTripId) ?? null,

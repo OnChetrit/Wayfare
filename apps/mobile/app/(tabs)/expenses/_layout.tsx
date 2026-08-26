@@ -1,6 +1,10 @@
 import { Stack } from 'expo-router';
 
+import { useTrips } from '@/features/trips/trip-context';
+
 export default function ExpensesLayout() {
+  const { selectedTrip } = useTrips();
+
   return (
     <Stack
       screenOptions={{
@@ -10,7 +14,7 @@ export default function ExpensesLayout() {
         headerTintColor: '#F8F4EB',
       }}
     >
-      <Stack.Screen name="index" options={{ title: 'Expenses' }} />
+      <Stack.Screen name="index" options={{ title: selectedTrip?.name ?? 'Expenses' }} />
     </Stack>
   );
 }

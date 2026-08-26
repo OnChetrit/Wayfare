@@ -1,8 +1,21 @@
-import { Link } from 'expo-router';
+import AddIcon from '@expo/material-symbols/add.xml';
+import {
+  Button as SwiftButton,
+  Host,
+  HStack,
+  List,
+  Section,
+  ScrollView as SwiftScrollView,
+  Spacer,
+  Text as SwiftText,
+  VStack,
+} from '@expo/ui/swift-ui';
+import { buttonStyle, disabled, listStyle, refreshable } from '@expo/ui/swift-ui/modifiers';
+import { Link, router, Stack } from 'expo-router';
 import * as React from 'react';
 import { Alert, RefreshControl, ScrollView, Text, View } from 'react-native';
 
-import { deleteFlight, deletePlace, deleteSchedule, deleteStay, updateSchedule } from '@/api/trips';
+import { deleteFlight, deleteSchedule, deleteStay, updateSchedule } from '@/api/trips';
 import { Button, IconButton } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { ErrorState, EmptyState, LoadingState, OfflineNotice } from '@/components/ui/state';
@@ -21,16 +34,13 @@ function entryTitle(
 }
 
 export function ItineraryScreen() {
-  const { selectedTrip, trips, selectTrip } = useTrips();
+  const { selectedTrip } = useTrips();
   const tripQuery = useTripEditor();
   const trip = tripQuery.data;
   const [selectedDate, setSelectedDate] = React.useState<string | null>(null);
   const { isOnline, mutation: deleteScheduleMutation } = useTripMutation(
     trip?.id ?? '',
     (scheduleId: string) => deleteSchedule(trip!.id, scheduleId),
-  );
-  const { mutation: deletePlaceMutation } = useTripMutation(trip?.id ?? '', (placeId: string) =>
-    deletePlace(trip!.id, placeId),
   );
   const { mutation: deleteStayMutation } = useTripMutation(trip?.id ?? '', (stayId: string) =>
     deleteStay(trip!.id, stayId),
@@ -117,165 +127,396 @@ export function ItineraryScreen() {
     ]).catch(() => undefined);
   }
 
-  return (
-    <Screen
-      refreshControl={
-        <RefreshControl
-          refreshing={tripQuery.isRefetching}
-          onRefresh={() => void tripQuery.refetch()}
-          tintColor={colors.accent}
-        />
-      }
-    >
-      <OfflineNotice visible={!isOnline} />
-      <View style={{ gap: 4 }}>
-        <Text selectable style={{ color: colors.text, fontSize: 24, fontWeight: '800' }}>
-          {trip.name}
-        </Text>
-        <Text selectable style={{ color: colors.textMuted }}>
-          {formatDateRange(trip.startDate, trip.endDate)}
-        </Text>
-      </View>
+  if (process.env.EXPO_OS === 'ios') {
+    return (
+      <>
+        <Host colorScheme="dark" seedColor={colors.accent} style={{ flex: 1 }}>
+          <List
+            modifiers={[
+              listStyle('plain'),
+              refreshable(async () => {
+                await tripQuery.refetch();
+              }),
+            ]}
+          >
+            {!isOnline ? (
+              <Section title="Connection">
+                <SwiftText>You’re offline. Reconnect to update your itinerary.</SwiftText>
+              </Section>
+            ) : null}
+            <Section title={trip.name}>
+              <SwiftText>{formatDateRange(trip.startDate, trip.endDate)}</SwiftText>
+            </Section>
+            <Section title="Days">
+              <SwiftScrollView axes="horizontal" showsIndicators={false}>
+                <HStack spacing={8}>
+                  {trip.days.map(day => (
+                    <SwiftButton
+                      key={day.id}
+                      label={`${day.label} · ${day.shortDate}`}
+                      modifiers={[
+                        buttonStyle(
+                          day.date === selectedDay.date ? 'borderedProminent' : 'bordered',
+                        ),
+                      ]}
+                      onPress={() => setSelectedDate(day.date)}
+                    />
+                  ))}
+                </HStack>
+              </SwiftScrollView>
+            </Section>
+            <Section
+              title={`${selectedDay.label} · ${formatDate(selectedDay.date, {
+                weekday: 'long',
+                month: 'long',
+              })}`}
+            >
+              {selectedDay.notes ? <SwiftText>{selectedDay.notes}</SwiftText> : null}
+              {timeline.length ? (
+                timeline.map((item, index) => (
+                  <VStack alignment="leading" key={item.id} spacing={8}>
+                    <SwiftButton
+                      modifiers={[buttonStyle('plain')]}
+                      onPress={() =>
+                        router.push({
+                          pathname: '/itinerary-editor',
+                          params: { kind: 'schedule', id: item.id, date: item.date },
+                        })
+                      }
+                    >
+                      <HStack spacing={12}>
+                        <SwiftText>{item.startTime}</SwiftText>
+                        <VStack alignment="leading" spacing={3}>
+                          <SwiftText>{entryTitle(item, trip.places)}</SwiftText>
+                          <SwiftText>
+                            {formatDuration(item.duration)}
+                            {item.note ? ` · ${item.note}` : ''}
+                          </SwiftText>
+                        </VStack>
+                        <Spacer />
+                        <SwiftText>›</SwiftText>
+                      </HStack>
+                    </SwiftButton>
+                    <HStack spacing={8}>
+                      <SwiftButton
+                        label="Earlier"
+                        modifiers={[
+                          buttonStyle('bordered'),
+                          disabled(!isOnline || index === 0 || reorderMutation.isPending),
+                        ]}
+                        onPress={() => moveItem(index, -1)}
+                      />
+                      <SwiftButton
+                        label="Later"
+                        modifiers={[
+                          buttonStyle('bordered'),
+                          disabled(
+                            !isOnline || index === timeline.length - 1 || reorderMutation.isPending,
+                          ),
+                        ]}
+                        onPress={() => moveItem(index, 1)}
+                      />
+                      <SwiftButton
+                        label="Delete"
+                        modifiers={[
+                          buttonStyle('bordered'),
+                          disabled(!isOnline || deleteScheduleMutation.isPending),
+                        ]}
+                        onPress={() =>
+                          confirmDelete('this item', () => deleteScheduleMutation.mutate(item.id))
+                        }
+                        role="destructive"
+                      />
+                    </HStack>
+                  </VStack>
+                ))
+              ) : (
+                <VStack alignment="leading" spacing={4}>
+                  <SwiftText>Nothing planned yet</SwiftText>
+                  <SwiftText>Add a saved place or a custom activity to build this day.</SwiftText>
+                </VStack>
+              )}
+            </Section>
+            {stays.length ? (
+              <Section title="Stays">
+                {stays.map(stay => (
+                  <VStack alignment="leading" key={stay.id} spacing={8}>
+                    <SwiftButton
+                      modifiers={[buttonStyle('plain')]}
+                      onPress={() =>
+                        router.push({
+                          pathname: '/itinerary-editor',
+                          params: { kind: 'stay', id: stay.id },
+                        })
+                      }
+                    >
+                      <VStack alignment="leading" spacing={3}>
+                        <SwiftText>Stay · {stay.name}</SwiftText>
+                        <SwiftText>
+                          {stay.checkInDate} – {stay.checkOutDate}
+                        </SwiftText>
+                      </VStack>
+                    </SwiftButton>
+                    <SwiftButton
+                      label="Delete"
+                      modifiers={[
+                        buttonStyle('bordered'),
+                        disabled(!isOnline || deleteStayMutation.isPending),
+                      ]}
+                      onPress={() =>
+                        confirmDelete('this stay', () => deleteStayMutation.mutate(stay.id))
+                      }
+                      role="destructive"
+                    />
+                  </VStack>
+                ))}
+              </Section>
+            ) : null}
+            {flights.length ? (
+              <Section title="Flights">
+                {flights.map(flight => (
+                  <VStack alignment="leading" key={flight.id} spacing={8}>
+                    <VStack alignment="leading" spacing={3}>
+                      <SwiftText>Flight · {flight.flightNumber}</SwiftText>
+                      <SwiftText>
+                        {flight.scheduledDepartureLocal} · {flight.status}
+                      </SwiftText>
+                    </VStack>
+                    <SwiftButton
+                      label="Delete"
+                      modifiers={[
+                        buttonStyle('bordered'),
+                        disabled(!isOnline || deleteFlightMutation.isPending),
+                      ]}
+                      onPress={() =>
+                        confirmDelete('this flight', () => deleteFlightMutation.mutate(flight.id))
+                      }
+                      role="destructive"
+                    />
+                  </VStack>
+                ))}
+              </Section>
+            ) : null}
+            <Section title="Trip details">
+              <SwiftButton
+                label="Day note"
+                onPress={() =>
+                  router.push({
+                    pathname: '/itinerary-editor',
+                    params: { kind: 'day', id: selectedDay.id },
+                  })
+                }
+              />
+              <SwiftButton
+                label={`Stays (${trip.stays.length})`}
+                onPress={() =>
+                  router.push({ pathname: '/itinerary-editor', params: { kind: 'stays' } })
+                }
+              />
+              <SwiftButton
+                label={`Flights (${trip.flights.length})`}
+                onPress={() =>
+                  router.push({
+                    pathname: '/itinerary-editor',
+                    params: { kind: 'flights', date: selectedDay.date },
+                  })
+                }
+              />
+              <SwiftButton
+                label={`Locations (${trip.locationSegments.length})`}
+                onPress={() =>
+                  router.push({ pathname: '/itinerary-editor', params: { kind: 'locations' } })
+                }
+              />
+            </Section>
+          </List>
+        </Host>
+        <Stack.Toolbar placement="right">
+          <Stack.Toolbar.Button
+            accessibilityLabel="Add itinerary item"
+            icon={process.env.EXPO_OS === 'ios' ? 'plus' : AddIcon}
+            onPress={() =>
+              router.push({
+                pathname: '/itinerary-editor',
+                params: { kind: 'schedule', date: selectedDay.date },
+              })
+            }
+          />
+        </Stack.Toolbar>
+      </>
+    );
+  }
 
-      {trips.length > 1 ? (
+  return (
+    <>
+      <Screen
+        refreshControl={
+          <RefreshControl
+            refreshing={tripQuery.isRefetching}
+            onRefresh={() => void tripQuery.refetch()}
+            tintColor={colors.accent}
+          />
+        }
+      >
+        <OfflineNotice visible={!isOnline} />
+        <View style={{ gap: 4 }}>
+          <Text selectable style={{ color: colors.text, fontSize: 24, fontWeight: '800' }}>
+            {trip.name}
+          </Text>
+          <Text selectable style={{ color: colors.textMuted }}>
+            {formatDateRange(trip.startDate, trip.endDate)}
+          </Text>
+        </View>
+
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={{ gap: 8 }}
         >
-          {trips.map(candidate => (
+          {trip.days.map(day => (
             <Button
-              key={candidate.id}
-              accessibilityLabel={`Select ${candidate.name}`}
-              onPress={() => selectTrip(candidate.id)}
-              style={{ minHeight: 36 }}
-              tone={candidate.id === trip.id ? 'primary' : 'secondary'}
+              key={day.id}
+              accessibilityLabel={`View ${day.label}, ${day.shortDate}`}
+              onPress={() => setSelectedDate(day.date)}
+              style={{ minHeight: 54, minWidth: 72 }}
+              tone={day.date === selectedDay.date ? 'primary' : 'secondary'}
             >
-              {candidate.name}
+              <Text
+                selectable
+                style={{
+                  color: day.date === selectedDay.date ? colors.accentText : colors.text,
+                  fontSize: 12,
+                  fontWeight: '700',
+                }}
+              >
+                {day.weekday}
+              </Text>
+              <Text
+                selectable
+                style={{
+                  color: day.date === selectedDay.date ? colors.accentText : colors.text,
+                  fontSize: 13,
+                }}
+              >
+                {day.shortDate}
+              </Text>
             </Button>
           ))}
         </ScrollView>
-      ) : null}
 
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ gap: 8 }}
-      >
-        {trip.days.map(day => (
-          <Button
-            key={day.id}
-            accessibilityLabel={`View ${day.label}, ${day.shortDate}`}
-            onPress={() => setSelectedDate(day.date)}
-            style={{ minHeight: 54, minWidth: 72 }}
-            tone={day.date === selectedDay.date ? 'primary' : 'secondary'}
-          >
-            <Text
-              selectable
-              style={{
-                color: day.date === selectedDay.date ? colors.accentText : colors.text,
-                fontSize: 12,
-                fontWeight: '700',
-              }}
-            >
-              {day.weekday}
-            </Text>
-            <Text
-              selectable
-              style={{
-                color: day.date === selectedDay.date ? colors.accentText : colors.text,
-                fontSize: 13,
-              }}
-            >
-              {day.shortDate}
-            </Text>
-          </Button>
-        ))}
-      </ScrollView>
-
-      <View style={{ alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' }}>
         <View>
-          <Text selectable style={{ color: colors.text, fontSize: 20, fontWeight: '800' }}>
-            {selectedDay.label}
-          </Text>
-          <Text selectable style={{ color: colors.textMuted }}>
-            {formatDate(selectedDay.date, { weekday: 'long', month: 'long' })}
-          </Text>
+          <View>
+            <Text selectable style={{ color: colors.text, fontSize: 20, fontWeight: '800' }}>
+              {selectedDay.label}
+            </Text>
+            <Text selectable style={{ color: colors.textMuted }}>
+              {formatDate(selectedDay.date, { weekday: 'long', month: 'long' })}
+            </Text>
+          </View>
         </View>
-        <Link
-          href={{
-            pathname: '/itinerary-editor',
-            params: { kind: 'schedule', date: selectedDay.date },
-          }}
-          asChild
-        >
-          <Button accessibilityLabel="Add itinerary item">Add item</Button>
-        </Link>
-      </View>
 
-      {selectedDay.notes ? (
-        <Card>
-          <Text selectable style={{ color: colors.textMuted, lineHeight: 20 }}>
-            {selectedDay.notes}
-          </Text>
-        </Card>
-      ) : null}
+        {selectedDay.notes ? (
+          <Card>
+            <Text selectable style={{ color: colors.textMuted, lineHeight: 20 }}>
+              {selectedDay.notes}
+            </Text>
+          </Card>
+        ) : null}
 
-      <View style={{ gap: space.sm }}>
-        {timeline.length ? (
-          timeline.map((item, index) => (
-            <Card key={item.id}>
-              <View style={{ alignItems: 'center', flexDirection: 'row', gap: 12 }}>
-                <Text
-                  selectable
-                  style={{
-                    color: colors.accent,
-                    fontSize: 14,
-                    fontVariant: ['tabular-nums'],
-                    fontWeight: '800',
-                    width: 48,
-                  }}
-                >
-                  {item.startTime}
-                </Text>
-                <View style={{ flex: 1, gap: 3 }}>
-                  <Text selectable style={{ color: colors.text, fontSize: 16, fontWeight: '700' }}>
-                    {entryTitle(item, trip.places)}
+        <View style={{ gap: space.sm }}>
+          {timeline.length ? (
+            timeline.map((item, index) => (
+              <Card key={item.id}>
+                <View style={{ alignItems: 'center', flexDirection: 'row', gap: 12 }}>
+                  <Text
+                    selectable
+                    style={{
+                      color: colors.accent,
+                      fontSize: 14,
+                      fontVariant: ['tabular-nums'],
+                      fontWeight: '800',
+                      width: 48,
+                    }}
+                  >
+                    {item.startTime}
                   </Text>
-                  <Text selectable style={{ color: colors.textMuted, fontSize: 13 }}>
-                    {formatDuration(item.duration)}
-                    {item.note ? ` · ${item.note}` : ''}
-                  </Text>
+                  <View style={{ flex: 1, gap: 3 }}>
+                    <Text
+                      selectable
+                      style={{ color: colors.text, fontSize: 16, fontWeight: '700' }}
+                    >
+                      {entryTitle(item, trip.places)}
+                    </Text>
+                    <Text selectable style={{ color: colors.textMuted, fontSize: 13 }}>
+                      {formatDuration(item.duration)}
+                      {item.note ? ` · ${item.note}` : ''}
+                    </Text>
+                  </View>
+                  <Link
+                    href={{
+                      pathname: '/itinerary-editor',
+                      params: { kind: 'schedule', id: item.id, date: item.date },
+                    }}
+                    asChild
+                  >
+                    <IconButton label={`Edit ${entryTitle(item, trip.places)}`}>Edit</IconButton>
+                  </Link>
                 </View>
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  <IconButton
+                    disabled={!isOnline || index === 0 || reorderMutation.isPending}
+                    label="Move item earlier"
+                    onPress={() => moveItem(index, -1)}
+                  >
+                    ↑
+                  </IconButton>
+                  <IconButton
+                    disabled={
+                      !isOnline || index === timeline.length - 1 || reorderMutation.isPending
+                    }
+                    label="Move item later"
+                    onPress={() => moveItem(index, 1)}
+                  >
+                    ↓
+                  </IconButton>
+                  <Button
+                    disabled={!isOnline || deleteScheduleMutation.isPending}
+                    onPress={() =>
+                      confirmDelete('this item', () => deleteScheduleMutation.mutate(item.id))
+                    }
+                    tone="danger"
+                  >
+                    Delete
+                  </Button>
+                </View>
+              </Card>
+            ))
+          ) : (
+            <EmptyState
+              title="Nothing planned yet"
+              detail="Add a saved place or a custom activity to build this day."
+            />
+          )}
+
+          {stays.map(stay => (
+            <Card key={stay.id}>
+              <Text selectable style={{ color: colors.text, fontSize: 16, fontWeight: '700' }}>
+                Stay · {stay.name}
+              </Text>
+              <Text selectable style={{ color: colors.textMuted }}>
+                {stay.checkInDate} – {stay.checkOutDate}
+              </Text>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
                 <Link
-                  href={{
-                    pathname: '/itinerary-editor',
-                    params: { kind: 'schedule', id: item.id, date: item.date },
-                  }}
+                  href={{ pathname: '/itinerary-editor', params: { kind: 'stay', id: stay.id } }}
                   asChild
                 >
-                  <IconButton label={`Edit ${entryTitle(item, trip.places)}`}>Edit</IconButton>
+                  <Button tone="secondary">Edit</Button>
                 </Link>
-              </View>
-              <View style={{ flexDirection: 'row', gap: 8 }}>
-                <IconButton
-                  disabled={!isOnline || index === 0 || reorderMutation.isPending}
-                  label="Move item earlier"
-                  onPress={() => moveItem(index, -1)}
-                >
-                  ↑
-                </IconButton>
-                <IconButton
-                  disabled={!isOnline || index === timeline.length - 1 || reorderMutation.isPending}
-                  label="Move item later"
-                  onPress={() => moveItem(index, 1)}
-                >
-                  ↓
-                </IconButton>
                 <Button
-                  disabled={!isOnline || deleteScheduleMutation.isPending}
+                  disabled={!isOnline || deleteStayMutation.isPending}
                   onPress={() =>
-                    confirmDelete('this item', () => deleteScheduleMutation.mutate(item.id))
+                    confirmDelete('this stay', () => deleteStayMutation.mutate(stay.id))
                   }
                   tone="danger"
                 >
@@ -283,126 +524,69 @@ export function ItineraryScreen() {
                 </Button>
               </View>
             </Card>
-          ))
-        ) : (
-          <EmptyState
-            title="Nothing planned yet"
-            detail="Add a saved place or a custom activity to build this day."
-          />
-        )}
-
-        {stays.map(stay => (
-          <Card key={stay.id}>
-            <Text selectable style={{ color: colors.text, fontSize: 16, fontWeight: '700' }}>
-              Stay · {stay.name}
-            </Text>
-            <Text selectable style={{ color: colors.textMuted }}>
-              {stay.checkInDate} – {stay.checkOutDate}
-            </Text>
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              <Link
-                href={{ pathname: '/itinerary-editor', params: { kind: 'stay', id: stay.id } }}
-                asChild
-              >
-                <Button tone="secondary">Edit</Button>
-              </Link>
+          ))}
+          {flights.map(flight => (
+            <Card key={flight.id}>
+              <Text selectable style={{ color: colors.text, fontSize: 16, fontWeight: '700' }}>
+                Flight · {flight.flightNumber}
+              </Text>
+              <Text selectable style={{ color: colors.textMuted }}>
+                {flight.scheduledDepartureLocal} · {flight.status}
+              </Text>
               <Button
-                disabled={!isOnline || deleteStayMutation.isPending}
-                onPress={() => confirmDelete('this stay', () => deleteStayMutation.mutate(stay.id))}
+                disabled={!isOnline || deleteFlightMutation.isPending}
+                onPress={() =>
+                  confirmDelete('this flight', () => deleteFlightMutation.mutate(flight.id))
+                }
                 tone="danger"
               >
                 Delete
               </Button>
-            </View>
-          </Card>
-        ))}
-        {flights.map(flight => (
-          <Card key={flight.id}>
-            <Text selectable style={{ color: colors.text, fontSize: 16, fontWeight: '700' }}>
-              Flight · {flight.flightNumber}
-            </Text>
-            <Text selectable style={{ color: colors.textMuted }}>
-              {flight.scheduledDepartureLocal} · {flight.status}
-            </Text>
-            <Button
-              disabled={!isOnline || deleteFlightMutation.isPending}
-              onPress={() =>
-                confirmDelete('this flight', () => deleteFlightMutation.mutate(flight.id))
-              }
-              tone="danger"
-            >
-              Delete
-            </Button>
-          </Card>
-        ))}
-      </View>
-
-      <View style={{ gap: 10 }}>
-        <Text selectable style={{ color: colors.text, fontSize: 19, fontWeight: '800' }}>
-          Trip details
-        </Text>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-          <Link
-            href={{ pathname: '/itinerary-editor', params: { kind: 'day', id: selectedDay.id } }}
-            asChild
-          >
-            <Button tone="secondary">Day note</Button>
-          </Link>
-          <Link href={{ pathname: '/itinerary-editor', params: { kind: 'place' } }} asChild>
-            <Button tone="secondary">Saved places ({trip.places.length})</Button>
-          </Link>
-          <Link href={{ pathname: '/itinerary-editor', params: { kind: 'stay' } }} asChild>
-            <Button tone="secondary">Stays ({trip.stays.length})</Button>
-          </Link>
-          <Link
-            href={{
-              pathname: '/itinerary-editor',
-              params: { kind: 'flight', date: selectedDay.date },
-            }}
-            asChild
-          >
-            <Button tone="secondary">Flights ({trip.flights.length})</Button>
-          </Link>
-          <Link href={{ pathname: '/itinerary-editor', params: { kind: 'segment' } }} asChild>
-            <Button tone="secondary">Locations ({trip.locationSegments.length})</Button>
-          </Link>
-        </View>
-      </View>
-
-      {trip.places.length ? (
-        <View style={{ gap: 8 }}>
-          <Text selectable style={{ color: colors.text, fontSize: 19, fontWeight: '800' }}>
-            Saved places
-          </Text>
-          {trip.places.map(place => (
-            <Card key={place.id}>
-              <Text selectable style={{ color: colors.text, fontWeight: '700' }}>
-                {place.emoji} {place.name}
-              </Text>
-              <Text selectable style={{ color: colors.textMuted }}>
-                {place.subtitle}
-              </Text>
-              <View style={{ flexDirection: 'row', gap: 8 }}>
-                <Link
-                  href={{ pathname: '/itinerary-editor', params: { kind: 'place', id: place.id } }}
-                  asChild
-                >
-                  <Button tone="secondary">Details</Button>
-                </Link>
-                <Button
-                  disabled={!isOnline || deletePlaceMutation.isPending}
-                  onPress={() =>
-                    confirmDelete('this saved place', () => deletePlaceMutation.mutate(place.id))
-                  }
-                  tone="danger"
-                >
-                  Delete
-                </Button>
-              </View>
             </Card>
           ))}
         </View>
-      ) : null}
-    </Screen>
+
+        <View style={{ gap: 10 }}>
+          <Text selectable style={{ color: colors.text, fontSize: 19, fontWeight: '800' }}>
+            Trip details
+          </Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+            <Link
+              href={{ pathname: '/itinerary-editor', params: { kind: 'day', id: selectedDay.id } }}
+              asChild
+            >
+              <Button tone="secondary">Day note</Button>
+            </Link>
+            <Link href={{ pathname: '/itinerary-editor', params: { kind: 'stays' } }} asChild>
+              <Button tone="secondary">Stays ({trip.stays.length})</Button>
+            </Link>
+            <Link
+              href={{
+                pathname: '/itinerary-editor',
+                params: { kind: 'flights', date: selectedDay.date },
+              }}
+              asChild
+            >
+              <Button tone="secondary">Flights ({trip.flights.length})</Button>
+            </Link>
+            <Link href={{ pathname: '/itinerary-editor', params: { kind: 'locations' } }} asChild>
+              <Button tone="secondary">Locations ({trip.locationSegments.length})</Button>
+            </Link>
+          </View>
+        </View>
+      </Screen>
+      <Stack.Toolbar placement="right">
+        <Stack.Toolbar.Button
+          accessibilityLabel="Add itinerary item"
+          icon={process.env.EXPO_OS === 'ios' ? 'plus' : AddIcon}
+          onPress={() =>
+            router.push({
+              pathname: '/itinerary-editor',
+              params: { kind: 'schedule', date: selectedDay.date },
+            })
+          }
+        />
+      </Stack.Toolbar>
+    </>
   );
 }
