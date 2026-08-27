@@ -4,34 +4,47 @@ import { Stack, useLocalSearchParams, router } from 'expo-router';
 import * as React from 'react';
 import { Alert, ScrollView, Text, View } from 'react-native';
 
-import type { ExpenseCategory } from '@wayfare/domain';
+import { expenseCategories, type ExpenseCategory } from '@wayfare/domain';
 import { createExpense, deleteExpense, updateExpense } from '@/api/trips';
 import { Button } from '@/components/ui/button';
 import { ChipGroup } from '@/components/ui/controls';
 import { Field } from '@/components/ui/field';
 import { EmptyState, ErrorState, LoadingState, OfflineNotice } from '@/components/ui/state';
+import {
+  applyExpenseSource,
+  expenseCategoryLabels,
+  expenseSourcesForTrip,
+  isExpenseSourceKind,
+  newExpenseForm,
+  type ExpenseEditorValues,
+} from '@/features/expenses/expense-insights';
 import { useTripMutation } from '@/features/itinerary/use-trip-mutation';
 import { useTripEditor } from '@/features/trips/use-trip-editor';
 import { messageFromError } from '@/lib/format';
 import { colors, space } from '@/theme/tokens';
 
-const categories: { label: string; value: ExpenseCategory }[] = [
-  { label: 'Flight', value: 'FLIGHT' },
-  { label: 'Hotel', value: 'HOTEL' },
-  { label: 'Food', value: 'RESTAURANT' },
-  { label: 'Tickets', value: 'TICKETS' },
-  { label: 'Shopping', value: 'SHOPPING' },
-  { label: 'Transport', value: 'TRANSPORT' },
-  { label: 'Other', value: 'OTHER' },
-];
+const categories = expenseCategories.map(category => ({
+  label: expenseCategoryLabels[category],
+  value: category,
+}));
 
 function first(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
 }
 
 export function ExpenseEditorScreen() {
-  const { expenseId: rawExpenseId } = useLocalSearchParams<{ expenseId?: string | string[] }>();
+  const {
+    expenseId: rawExpenseId,
+    sourceId: rawSourceId,
+    sourceKind: rawSourceKind,
+  } = useLocalSearchParams<{
+    expenseId?: string | string[];
+    sourceId?: string | string[];
+    sourceKind?: string | string[];
+  }>();
   const expenseId = first(rawExpenseId);
+  const sourceId = first(rawSourceId);
+  const sourceKind = first(rawSourceKind);
   const tripQuery = useTripEditor();
   if (tripQuery.isLoading) return <LoadingState label="Loading expense…" />;
   if (tripQuery.error)
@@ -49,19 +62,31 @@ export function ExpenseEditorScreen() {
         action={<Button onPress={() => router.replace('/trip-form')}>Create trip</Button>}
       />
     );
-  return <ExpenseEditor trip={tripQuery.data} expenseId={expenseId} />;
+  return (
+    <ExpenseEditor
+      expenseId={expenseId}
+      initialSourceId={sourceId}
+      initialSourceKind={isExpenseSourceKind(sourceKind) ? sourceKind : undefined}
+      trip={tripQuery.data}
+    />
+  );
 }
 
 function ExpenseEditor({
   trip,
   expenseId,
+  initialSourceId,
+  initialSourceKind,
 }: {
   trip: NonNullable<ReturnType<typeof useTripEditor>['data']>;
   expenseId?: string;
+  initialSourceId?: string;
+  initialSourceKind?: 'flight' | 'schedule' | 'stay';
 }) {
   const expense = trip.expenses.find(item => item.id === expenseId);
   const isManagedExpense = Boolean(expense?.stayId || expense?.flightId);
-  const [form, setForm] = React.useState(() => {
+  const sources = expenseSourcesForTrip(trip);
+  const [form, setForm] = React.useState<ExpenseEditorValues>(() => {
     const sourceKind = expense?.stayId
       ? 'stay'
       : expense?.flightId
@@ -69,16 +94,22 @@ function ExpenseEditor({
         : expense?.scheduleItemId
           ? 'schedule'
           : 'none';
-    return {
-      title: expense?.title ?? '',
-      category: expense?.category ?? ('OTHER' as ExpenseCategory),
-      amount: expense ? String(expense.amount) : '',
-      currency: expense?.currency ?? trip.defaultCurrency,
-      expenseDate: expense?.expenseDate ?? trip.startDate,
-      notes: expense?.notes ?? '',
-      sourceKind,
-      sourceId: expense?.stayId ?? expense?.flightId ?? expense?.scheduleItemId ?? '',
-    };
+    if (expense) {
+      return {
+        title: expense?.title ?? '',
+        category: expense?.category ?? ('OTHER' as ExpenseCategory),
+        amount: String(expense.amount),
+        currency: expense?.currency ?? trip.defaultCurrency,
+        expenseDate: expense?.expenseDate ?? trip.startDate,
+        notes: expense?.notes ?? '',
+        sourceKind,
+        sourceId: expense?.stayId ?? expense?.flightId ?? expense?.scheduleItemId ?? '',
+      };
+    }
+    const initialSource = initialSourceKind
+      ? sources.find(source => source.kind === initialSourceKind && source.id === initialSourceId)
+      : undefined;
+    return newExpenseForm(trip, initialSource);
   });
   const [message, setMessage] = React.useState<string | null>(null);
   const { isOnline, mutation: saveMutation } = useTripMutation(trip.id, async () => {
@@ -108,17 +139,7 @@ function ExpenseEditor({
     deleteExpense(trip.id, expense!.id),
   );
   const sourceOptions =
-    form.sourceKind === 'stay'
-      ? trip.stays.map(item => ({ id: item.id, label: item.name }))
-      : form.sourceKind === 'flight'
-        ? trip.flights.map(item => ({ id: item.id, label: item.flightNumber }))
-        : trip.schedule.map(item => ({
-            id: item.id,
-            label:
-              item.title ??
-              trip.places.find(place => place.id === item.savedPlaceId)?.name ??
-              item.startTime,
-          }));
+    form.sourceKind === 'none' ? [] : sources.filter(source => source.kind === form.sourceKind);
   async function save() {
     setMessage(null);
     try {
@@ -185,10 +206,10 @@ function ExpenseEditor({
             {sourceOptions.map(option => (
               <Button
                 key={option.id}
-                onPress={() => setForm(current => ({ ...current, sourceId: option.id }))}
+                onPress={() => setForm(current => applyExpenseSource(current, option))}
                 tone={form.sourceId === option.id ? 'primary' : 'secondary'}
               >
-                {option.label}
+                {option.title}
               </Button>
             ))}
           </View>
