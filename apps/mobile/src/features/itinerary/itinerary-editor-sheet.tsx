@@ -26,6 +26,12 @@ import { Card } from '@/components/ui/card';
 import { ChipGroup } from '@/components/ui/controls';
 import { Field } from '@/components/ui/field';
 import { EmptyState, ErrorState, LoadingState, OfflineNotice } from '@/components/ui/state';
+import {
+  linkHotelToStayForm,
+  scheduleInputFromForm,
+  stayInputFromForm,
+} from '@/features/itinerary/itinerary-editor-form';
+import { StayHotelSearch } from '@/features/itinerary/stay-hotel-search';
 import { useTripMutation } from '@/features/itinerary/use-trip-mutation';
 import { TripDetailsSheet, type TripDetailsKind } from '@/features/itinerary/trip-details-sheet';
 import { useTripEditor } from '@/features/trips/use-trip-editor';
@@ -41,6 +47,13 @@ const placeCategories: { label: string; value: PlaceCategory }[] = [
   { label: 'Shopping', value: 'SHOPPING' },
   { label: 'Transport', value: 'TRANSPORT' },
   { label: 'Custom', value: 'CUSTOM' },
+];
+
+const currencyOptions = [
+  { label: 'EUR · Euro', value: 'EUR' },
+  { label: 'USD · US Dollar', value: 'USD' },
+  { label: 'ILS · Shekel', value: 'ILS' },
+  { label: 'GBP · Pound', value: 'GBP' },
 ];
 
 type EditorKind = 'day' | 'flight' | 'place' | 'schedule' | 'segment' | 'stay';
@@ -148,6 +161,8 @@ function ItineraryEditor({
     title: schedule?.title ?? '',
     category: schedule?.category ?? ('CUSTOM' as PlaceCategory),
     note: schedule?.note ?? '',
+    amount: schedule?.amount == null ? '' : String(schedule.amount),
+    currency: schedule?.currency ?? trip.defaultCurrency,
   }));
   const [placeForm, setPlaceForm] = React.useState(() => ({
     name: place?.name ?? '',
@@ -161,12 +176,15 @@ function ItineraryEditor({
     name: stay?.name ?? '',
     savedPlaceId: stay?.savedPlaceId ?? '',
     address: stay?.address ?? '',
+    locationLabel: stay?.locationLabel ?? trip.destinationLabel ?? '',
     priceAmount: stay?.priceAmount == null ? '' : String(stay.priceAmount),
     priceCurrency: stay?.priceCurrency ?? trip.defaultCurrency,
+    cancellationTime: stay?.cancellationTime ?? '',
     checkInDate: stay?.checkInDate ?? initialDate ?? trip.startDate,
     checkOutDate: stay?.checkOutDate ?? trip.endDate,
     notes: stay?.notes ?? '',
     confirmationNumber: stay?.confirmationNumber ?? '',
+    secretCode: stay?.secretCode ?? '',
   }));
   const [segmentForm, setSegmentForm] = React.useState(() => ({
     sourceSegmentId: segment?.id ?? trip.locationSegments[0]?.id ?? '',
@@ -186,22 +204,10 @@ function ItineraryEditor({
   );
 
   const { isOnline, mutation: saveSchedule } = useTripMutation(trip.id, async () => {
-    const duration = Number(scheduleForm.duration);
-    if (!Number.isInteger(duration) || duration < 15)
-      throw new Error('Duration must be at least 15 minutes.');
-    if (!scheduleForm.savedPlaceId && !scheduleForm.title.trim())
-      throw new Error('Choose a saved place or enter an activity title.');
-    const input = {
-      date: scheduleForm.date,
-      startTime: scheduleForm.startTime,
-      duration,
-      savedPlaceId: scheduleForm.savedPlaceId || null,
-      title: scheduleForm.title.trim() || undefined,
-      category: scheduleForm.category,
-      note: scheduleForm.note.trim() || undefined,
-    };
-    if (schedule) return updateSchedule(trip.id, schedule.id, input);
-    return createSchedule(trip.id, input);
+    const result = scheduleInputFromForm(scheduleForm);
+    if ('error' in result) throw new Error(result.error);
+    if (schedule) return updateSchedule(trip.id, schedule.id, result.data);
+    return createSchedule(trip.id, result.data);
   });
   const { mutation: savePlace } = useTripMutation(trip.id, async () => {
     if (place)
@@ -221,22 +227,9 @@ function ItineraryEditor({
     });
   });
   const { mutation: saveStay } = useTripMutation(trip.id, async () => {
-    if (!stayForm.name.trim()) throw new Error('Enter the stay name.');
-    const amount = stayForm.priceAmount.trim() ? Number(stayForm.priceAmount) : undefined;
-    if (amount !== undefined && (!Number.isFinite(amount) || amount < 0))
-      throw new Error('Enter a valid price.');
-    const input = {
-      name: stayForm.name.trim(),
-      savedPlaceId: stayForm.savedPlaceId || null,
-      address: stayForm.address || undefined,
-      priceAmount: amount,
-      priceCurrency: amount === undefined ? undefined : stayForm.priceCurrency,
-      checkInDate: stayForm.checkInDate,
-      checkOutDate: stayForm.checkOutDate,
-      notes: stayForm.notes || undefined,
-      confirmationNumber: stayForm.confirmationNumber || undefined,
-    };
-    return stay ? updateStay(trip.id, stay.id, input) : createStay(trip.id, input);
+    const result = stayInputFromForm(stayForm);
+    if ('error' in result) throw new Error(result.error);
+    return stay ? updateStay(trip.id, stay.id, result.data) : createStay(trip.id, result.data);
   });
   const { mutation: saveSegment } = useTripMutation(trip.id, async () => {
     if (!segmentForm.locationName.trim()) throw new Error('Enter the location name.');
@@ -357,6 +350,21 @@ function ItineraryEditor({
               onChangeText={title => setScheduleForm(current => ({ ...current, title }))}
               placeholder="Optional when a saved place is selected"
             />
+            <Field
+              label="Cost (optional)"
+              keyboardType="decimal-pad"
+              value={scheduleForm.amount}
+              onChangeText={amount => setScheduleForm(current => ({ ...current, amount }))}
+              placeholder="0.00"
+            />
+            <Text selectable style={{ color: colors.textMuted, fontSize: 13, fontWeight: '700' }}>
+              Currency
+            </Text>
+            <ChipGroup
+              options={currencyOptions}
+              value={scheduleForm.currency}
+              onChange={currency => setScheduleForm(current => ({ ...current, currency }))}
+            />
             <Text selectable style={{ color: colors.textMuted, fontSize: 13, fontWeight: '700' }}>
               Category
             </Text>
@@ -455,6 +463,30 @@ function ItineraryEditor({
         ) : null}
         {kind === 'stay' ? (
           <>
+            <StayHotelSearch
+              destinationLabel={trip.destinationLabel}
+              places={trip.places}
+              tripId={trip.id}
+              onSelect={hotel =>
+                setStayForm(current => linkHotelToStayForm(current, hotel, trip.destinationLabel))
+              }
+            />
+            {stayForm.savedPlaceId ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Text selectable style={{ color: colors.textMuted, flex: 1 }}>
+                  Linked hotel:{' '}
+                  {trip.places.find(candidate => candidate.id === stayForm.savedPlaceId)?.name ??
+                    stayForm.name}
+                </Text>
+                <Button
+                  accessibilityLabel="Unlink hotel from this stay"
+                  onPress={() => setStayForm(current => ({ ...current, savedPlaceId: '' }))}
+                  tone="quiet"
+                >
+                  Unlink
+                </Button>
+              </View>
+            ) : null}
             <Field
               label="Stay name"
               value={stayForm.name}
@@ -464,6 +496,13 @@ function ItineraryEditor({
               label="Address"
               value={stayForm.address}
               onChangeText={address => setStayForm(current => ({ ...current, address }))}
+            />
+            <Field
+              label="City / area"
+              value={stayForm.locationLabel}
+              onChangeText={locationLabel =>
+                setStayForm(current => ({ ...current, locationLabel }))
+              }
             />
             <Field
               label="Check-in (YYYY-MM-DD)"
@@ -481,12 +520,35 @@ function ItineraryEditor({
               value={stayForm.priceAmount}
               onChangeText={priceAmount => setStayForm(current => ({ ...current, priceAmount }))}
             />
+            <Text selectable style={{ color: colors.textMuted, fontSize: 13, fontWeight: '700' }}>
+              Price currency
+            </Text>
+            <ChipGroup
+              options={currencyOptions}
+              value={stayForm.priceCurrency}
+              onChange={priceCurrency => setStayForm(current => ({ ...current, priceCurrency }))}
+            />
+            <Field
+              label="Cancellation time"
+              value={stayForm.cancellationTime}
+              onChangeText={cancellationTime =>
+                setStayForm(current => ({ ...current, cancellationTime }))
+              }
+              placeholder="e.g. 18:00 local time"
+            />
             <Field
               label="Confirmation number"
               value={stayForm.confirmationNumber}
               onChangeText={confirmationNumber =>
                 setStayForm(current => ({ ...current, confirmationNumber }))
               }
+            />
+            <Field
+              label="Access or secret code"
+              secureTextEntry
+              value={stayForm.secretCode}
+              onChangeText={secretCode => setStayForm(current => ({ ...current, secretCode }))}
+              placeholder="Door or access code"
             />
             <Field
               label="Notes"

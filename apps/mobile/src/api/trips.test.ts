@@ -4,6 +4,8 @@ import {
   getGooglePlace,
   importGoogleMapsList,
   createLocationDivision,
+  createSchedule,
+  createStay,
   moveLocationBoundary,
   createTrip,
   deleteTrip,
@@ -181,5 +183,52 @@ describe('trip API', () => {
         headers: { 'Content-Type': 'application/json' },
       },
     );
+  });
+
+  it('sends an optional activity price through the schedule API', async () => {
+    requestWayfareApi.mockResolvedValueOnce({ schedule: {} });
+    const input = {
+      date: '2026-10-10',
+      startTime: '09:30',
+      duration: 90,
+      title: 'Museum tickets',
+      category: 'ATTRACTION' as const,
+      amount: 42.5,
+      currency: 'USD',
+    };
+
+    await createSchedule(rawTrip.id, input);
+
+    expect(requestWayfareApi).toHaveBeenCalledWith(`/api/trips/${rawTrip.id}/schedule`, {
+      method: 'POST',
+      body: JSON.stringify(input),
+      headers: { 'Content-Type': 'application/json' },
+    });
+  });
+
+  it('sends all linked-hotel stay details through the authenticated API', async () => {
+    requestWayfareApi.mockResolvedValueOnce({ stay: {} });
+    const input = {
+      name: 'Hotel Artemide',
+      savedPlaceId: '018f7f0e-7c54-7b24-a9d2-4e3683c98f99',
+      address: 'Via Nazionale 22',
+      locationLabel: 'Rome',
+      priceAmount: 489.5,
+      priceCurrency: 'EUR',
+      cancellationTime: '18:00 local time',
+      checkInDate: '2026-10-10',
+      checkOutDate: '2026-10-12',
+      confirmationNumber: 'ABC123',
+      secretCode: '9412',
+      notes: 'Breakfast included',
+    };
+
+    await createStay(rawTrip.id, input);
+
+    expect(requestWayfareApi).toHaveBeenCalledWith(`/api/trips/${rawTrip.id}/stays`, {
+      method: 'POST',
+      body: JSON.stringify(input),
+      headers: { 'Content-Type': 'application/json' },
+    });
   });
 });

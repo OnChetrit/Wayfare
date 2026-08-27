@@ -20,10 +20,21 @@ import { Button, IconButton } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { ErrorState, EmptyState, LoadingState, OfflineNotice } from '@/components/ui/state';
 import { Screen } from '@/components/ui/screen';
+import {
+  flightEventDetail,
+  flightEventsForDate,
+  flightRoute,
+} from '@/features/itinerary/flight-details';
 import { useTripMutation } from '@/features/itinerary/use-trip-mutation';
 import { useTripEditor } from '@/features/trips/use-trip-editor';
 import { useTrips } from '@/features/trips/trip-context';
-import { formatDate, formatDateRange, formatDuration, messageFromError } from '@/lib/format';
+import {
+  formatDate,
+  formatDateRange,
+  formatDuration,
+  formatMoney,
+  messageFromError,
+} from '@/lib/format';
 import { colors, space } from '@/theme/tokens';
 
 function entryTitle(
@@ -99,7 +110,7 @@ export function ItineraryScreen() {
   const stays = trip.stays.filter(
     stay => stay.checkInDate <= selectedDay.date && stay.checkOutDate >= selectedDay.date,
   );
-  const flights = trip.flights.filter(flight => flight.departureDate === selectedDay.date);
+  const flightEvents = flightEventsForDate(trip.flights, selectedDay.date);
 
   function confirmDelete(label: string, onConfirm: () => void) {
     Alert.alert(`Delete ${label}?`, 'This cannot be undone.', [
@@ -191,6 +202,9 @@ export function ItineraryScreen() {
                           <SwiftText>{entryTitle(item, trip.places)}</SwiftText>
                           <SwiftText>
                             {formatDuration(item.duration)}
+                            {item.amount != null && item.currency
+                              ? ` · ${formatMoney(item.amount, item.currency)}`
+                              : ''}
                             {item.note ? ` · ${item.note}` : ''}
                           </SwiftText>
                         </VStack>
@@ -273,15 +287,17 @@ export function ItineraryScreen() {
                 ))}
               </Section>
             ) : null}
-            {flights.length ? (
+            {flightEvents.length ? (
               <Section title="Flights">
-                {flights.map(flight => (
-                  <VStack alignment="leading" key={flight.id} spacing={8}>
+                {flightEvents.map(({ flight, kind }) => (
+                  <VStack alignment="leading" key={`${flight.id}-${kind}`} spacing={8}>
                     <VStack alignment="leading" spacing={3}>
-                      <SwiftText>Flight · {flight.flightNumber}</SwiftText>
                       <SwiftText>
-                        {flight.scheduledDepartureLocal} · {flight.status}
+                        Flight {kind === 'arrival' ? 'arrival' : 'departure'} ·{' '}
+                        {flight.flightNumber}
                       </SwiftText>
+                      <SwiftText>{flightRoute(flight)}</SwiftText>
+                      <SwiftText>{flightEventDetail(flight, kind)}</SwiftText>
                     </VStack>
                     <SwiftButton
                       label="Delete"
@@ -454,6 +470,9 @@ export function ItineraryScreen() {
                     </Text>
                     <Text selectable style={{ color: colors.textMuted, fontSize: 13 }}>
                       {formatDuration(item.duration)}
+                      {item.amount != null && item.currency
+                        ? ` · ${formatMoney(item.amount, item.currency)}`
+                        : ''}
                       {item.note ? ` · ${item.note}` : ''}
                     </Text>
                   </View>
@@ -530,13 +549,16 @@ export function ItineraryScreen() {
               </View>
             </Card>
           ))}
-          {flights.map(flight => (
-            <Card key={flight.id}>
+          {flightEvents.map(({ flight, kind }) => (
+            <Card key={`${flight.id}-${kind}`}>
               <Text selectable style={{ color: colors.text, fontSize: 16, fontWeight: '700' }}>
-                Flight · {flight.flightNumber}
+                Flight {kind === 'arrival' ? 'arrival' : 'departure'} · {flight.flightNumber}
               </Text>
               <Text selectable style={{ color: colors.textMuted }}>
-                {flight.scheduledDepartureLocal} · {flight.status}
+                {flightRoute(flight)}
+              </Text>
+              <Text selectable style={{ color: colors.textMuted }}>
+                {flightEventDetail(flight, kind)}
               </Text>
               <Button
                 disabled={!isOnline || deleteFlightMutation.isPending}

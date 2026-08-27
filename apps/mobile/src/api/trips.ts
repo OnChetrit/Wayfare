@@ -7,7 +7,6 @@ import {
   type PlaceCategory,
   type ScheduleItem,
   type SavedPlace,
-  type Stay,
   type TripEditorTrip,
   type TripFlight,
   type TripInput,
@@ -74,24 +73,23 @@ export type ScheduleInput = {
   currency?: string;
 };
 
-export type StayInput = Pick<
-  Stay,
-  | 'name'
-  | 'savedPlaceId'
-  | 'address'
-  | 'locationLabel'
-  | 'price'
-  | 'priceAmount'
-  | 'priceCurrency'
-  | 'cancellationTime'
-  | 'checkInDate'
-  | 'checkOutDate'
-  | 'checkInTime'
-  | 'checkOutTime'
-  | 'confirmationNumber'
-  | 'secretCode'
-  | 'notes'
->;
+export type StayInput = {
+  name: string;
+  savedPlaceId?: string | null;
+  address?: string | null;
+  locationLabel?: string | null;
+  price?: string | null;
+  priceAmount?: number | null;
+  priceCurrency?: string;
+  cancellationTime?: string | null;
+  checkInDate: string;
+  checkOutDate: string;
+  checkInTime?: string | null;
+  checkOutTime?: string | null;
+  confirmationNumber?: string | null;
+  secretCode?: string | null;
+  notes?: string | null;
+};
 
 export type ExpenseInput = Pick<
   Expense,

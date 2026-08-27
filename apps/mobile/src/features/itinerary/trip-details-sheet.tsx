@@ -5,7 +5,8 @@ import type { TripEditorTrip } from '@wayfare/domain';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/state';
-import { formatDateRange } from '@/lib/format';
+import { flightDetailRows } from '@/features/itinerary/flight-details';
+import { formatDateRange, formatMoney } from '@/lib/format';
 import { colors, space } from '@/theme/tokens';
 
 export type TripDetailsKind = 'flights' | 'locations' | 'places' | 'stays';
@@ -103,6 +104,16 @@ export function TripDetailsSheet({ kind, trip, initialDate }: TripDetailsSheetPr
               <Text selectable style={{ color: colors.textMuted }}>
                 {formatDateRange(stay.checkInDate, stay.checkOutDate)}
               </Text>
+              {stay.locationLabel || stay.address ? (
+                <Text selectable style={{ color: colors.textMuted }}>
+                  {stay.locationLabel ?? stay.address}
+                </Text>
+              ) : null}
+              {stay.priceAmount != null && stay.priceCurrency ? (
+                <Text selectable style={{ color: colors.textMuted }}>
+                  {formatMoney(stay.priceAmount, stay.priceCurrency)}
+                </Text>
+              ) : null}
               <Link
                 href={{ pathname: '/itinerary-editor', params: { kind: 'stay', id: stay.id } }}
                 push
@@ -119,9 +130,11 @@ export function TripDetailsSheet({ kind, trip, initialDate }: TripDetailsSheetPr
               <Text selectable style={{ color: colors.text, fontSize: 16, fontWeight: '700' }}>
                 {flight.flightNumber} · {flight.airlineName ?? 'Flight'}
               </Text>
-              <Text selectable style={{ color: colors.textMuted }}>
-                {flight.scheduledDepartureLocal} · {flight.status}
-              </Text>
+              {flightDetailRows(flight).map(row => (
+                <Text key={row} selectable style={{ color: colors.textMuted }}>
+                  {row}
+                </Text>
+              ))}
             </Card>
           ))
         : null}

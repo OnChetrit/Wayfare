@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { ScrollView, Text, View } from 'react-native';
 
-import type { LocationSegment, ScheduleItem, Stay, TripDay } from '@wayfare/domain';
+import type { LocationSegment, ScheduleItem, Stay, TripDay, TripFlight } from '@wayfare/domain';
 import {
   createLocationDivision,
   createSchedule,
@@ -14,6 +14,11 @@ import { Card } from '@/components/ui/card';
 import { Field } from '@/components/ui/field';
 import { ErrorState, LoadingState, OfflineNotice } from '@/components/ui/state';
 import { DayRouteMap } from '@/features/itinerary/day-route-map';
+import {
+  flightEventDetail,
+  flightEventsForDate,
+  flightRoute,
+} from '@/features/itinerary/flight-details';
 import { useTripMutation } from '@/features/itinerary/use-trip-mutation';
 import {
   isValidLocationRange,
@@ -23,7 +28,13 @@ import {
   validBoundaryDates,
 } from '@/features/itinerary/visual-itinerary';
 import { useTripEditor } from '@/features/trips/use-trip-editor';
-import { formatDate, formatDateRange, formatDuration, messageFromError } from '@/lib/format';
+import {
+  formatDate,
+  formatDateRange,
+  formatDuration,
+  formatMoney,
+  messageFromError,
+} from '@/lib/format';
 import { colors, space } from '@/theme/tokens';
 
 type BoardLayout = 'horizontal' | 'vertical';
@@ -44,7 +55,7 @@ function DayColumn({
   onSelect,
 }: {
   day: TripDay;
-  flights: { id: string; flightNumber: string; departureDate: string; arrivalDate?: string }[];
+  flights: TripFlight[];
   onMove: (item: ScheduleItem) => void;
   onSelect: () => void;
   places: { id: string; name: string }[];
@@ -52,9 +63,7 @@ function DayColumn({
   selected: boolean;
 }) {
   const entries = sortScheduleForDay(schedule, day.date);
-  const dayFlights = flights.filter(
-    flight => flight.departureDate === day.date || flight.arrivalDate === day.date,
-  );
+  const dayFlights = flightEventsForDate(flights, day.date);
   return (
     <Card style={{ gap: 12, minWidth: 232 }}>
       <Button
@@ -66,16 +75,19 @@ function DayColumn({
       </Button>
       {entries.length || dayFlights.length ? (
         <View style={{ gap: 8 }}>
-          {dayFlights.map(flight => (
+          {dayFlights.map(({ flight, kind }) => (
             <View
-              key={flight.id}
+              key={`${flight.id}-${kind}`}
               style={{ borderLeftColor: '#8CB7FF', borderLeftWidth: 3, gap: 2, paddingLeft: 9 }}
             >
               <Text selectable style={{ color: colors.text, fontSize: 14, fontWeight: '700' }}>
-                Flight · {flight.flightNumber}
+                Flight {kind === 'arrival' ? 'arrival' : 'departure'} · {flight.flightNumber}
               </Text>
               <Text selectable style={{ color: colors.textMuted, fontSize: 13 }}>
-                {flight.departureDate === day.date ? 'Departure' : 'Arrival'}
+                {flightRoute(flight)}
+              </Text>
+              <Text selectable style={{ color: colors.textMuted, fontSize: 13 }}>
+                {flightEventDetail(flight, kind)}
               </Text>
             </View>
           ))}
@@ -89,6 +101,9 @@ function DayColumn({
               </Text>
               <Text selectable style={{ color: colors.textMuted, fontSize: 13 }}>
                 {formatDuration(item.duration)}
+                {item.amount != null && item.currency
+                  ? ` · ${formatMoney(item.amount, item.currency)}`
+                  : ''}
                 {item.note ? ` · ${item.note}` : ''}
               </Text>
               <Button
