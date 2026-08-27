@@ -36,6 +36,7 @@ import {
   messageFromError,
 } from '@/lib/format';
 import { colors, space } from '@/theme/tokens';
+import { useTheme } from '@/theme/theme-provider';
 
 function entryTitle(
   item: { savedPlaceId: string | null; title?: string },
@@ -45,6 +46,7 @@ function entryTitle(
 }
 
 export function ItineraryScreen() {
+  const { theme } = useTheme();
   const { selectedTrip } = useTrips();
   const tripQuery = useTripEditor();
   const trip = tripQuery.data;
@@ -142,7 +144,7 @@ export function ItineraryScreen() {
   if (process.env.EXPO_OS === 'ios') {
     return (
       <>
-        <Host colorScheme="dark" seedColor={colors.accent} style={{ flex: 1 }}>
+        <Host colorScheme={theme} seedColor={colors.accent} style={{ flex: 1 }}>
           <List
             modifiers={[
               listStyle('plain'),

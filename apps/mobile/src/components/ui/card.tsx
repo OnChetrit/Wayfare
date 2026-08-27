@@ -1,9 +1,11 @@
 import type { PropsWithChildren } from 'react';
 import { View, type ViewProps } from 'react-native';
 
-import { colors, radius, space } from '@/theme/tokens';
+import { radius, space } from '@/theme/tokens';
+import { useTheme } from '@/theme/theme-provider';
 
 export function Card({ children, style, ...props }: PropsWithChildren<ViewProps>) {
+  const { colors } = useTheme();
   return (
     <View
       style={[

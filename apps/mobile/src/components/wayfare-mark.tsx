@@ -1,10 +1,13 @@
 import { View } from 'react-native';
 
+import { useTheme } from '@/theme/theme-provider';
+
 type WayfareMarkProps = {
   size?: number;
 };
 
 export function WayfareMark({ size = 64 }: WayfareMarkProps) {
+  const { colors } = useTheme();
   const inset = size * 0.18;
   const dotSize = size * 0.18;
 
@@ -12,7 +15,7 @@ export function WayfareMark({ size = 64 }: WayfareMarkProps) {
     <View
       style={{
         alignItems: 'center',
-        backgroundColor: '#E7B96F',
+        backgroundColor: colors.accent,
         borderCurve: 'continuous',
         borderRadius: size * 0.32,
         height: size,
@@ -23,7 +26,7 @@ export function WayfareMark({ size = 64 }: WayfareMarkProps) {
     >
       <View
         style={{
-          backgroundColor: '#0B2822',
+          backgroundColor: colors.accentText,
           borderRadius: dotSize / 2,
           height: dotSize,
           left: inset,
@@ -34,7 +37,7 @@ export function WayfareMark({ size = 64 }: WayfareMarkProps) {
       />
       <View
         style={{
-          backgroundColor: '#0B2822',
+          backgroundColor: colors.accentText,
           borderRadius: dotSize / 2,
           bottom: inset,
           height: dotSize,
@@ -45,7 +48,7 @@ export function WayfareMark({ size = 64 }: WayfareMarkProps) {
       />
       <View
         style={{
-          backgroundColor: '#0B2822',
+          backgroundColor: colors.accentText,
           borderRadius: size,
           height: size * 0.12,
           transform: [{ rotate: '45deg' }],

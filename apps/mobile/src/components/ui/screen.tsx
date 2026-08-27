@@ -1,13 +1,15 @@
 import type { PropsWithChildren } from 'react';
 import { ScrollView, View, type ScrollViewProps } from 'react-native';
 
-import { colors, space } from '@/theme/tokens';
+import { space } from '@/theme/tokens';
+import { useTheme } from '@/theme/theme-provider';
 
 export function Screen({
   children,
   contentContainerStyle,
   ...props
 }: PropsWithChildren<ScrollViewProps>) {
+  const { colors } = useTheme();
   return (
     <ScrollView
       contentInsetAdjustmentBehavior="automatic"

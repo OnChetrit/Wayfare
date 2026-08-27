@@ -11,6 +11,7 @@ import {
   deleteTrip,
   getTripEditor,
   getTrips,
+  redeemTripInvitation,
 } from './trips';
 
 import { WayfareApiError } from './error';
@@ -99,6 +100,17 @@ describe('trip API', () => {
     await expect(deleteTrip(rawTrip.id)).rejects.toBe(authenticationError);
     expect(requestWayfareApi).toHaveBeenCalledWith(`/api/trips/${rawTrip.id}`, {
       method: 'DELETE',
+    });
+  });
+
+  it('redeems an invitation through the authenticated API boundary', async () => {
+    requestWayfareApi.mockResolvedValueOnce({ tripId: rawTrip.id });
+
+    await expect(redeemTripInvitation('invite-token')).resolves.toBe(rawTrip.id);
+    expect(requestWayfareApi).toHaveBeenCalledWith('/api/invitations/redeem', {
+      method: 'POST',
+      body: JSON.stringify({ token: 'invite-token' }),
+      headers: { 'Content-Type': 'application/json' },
     });
   });
 

@@ -6,23 +6,27 @@ import { LaunchScreen } from '@/components/launch-screen';
 import { WayfareQueryProvider } from '@/api/query-client';
 import { AuthProvider, useAuth } from '@/features/auth/auth-context';
 import { TripProvider } from '@/features/trips/trip-context';
+import { WayfareThemeProvider, useTheme } from '@/theme/theme-provider';
 
 void SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   return (
     <AuthProvider>
-      <WayfareQueryProvider>
-        <TripProvider>
-          <RootNavigator />
-        </TripProvider>
-      </WayfareQueryProvider>
+      <WayfareThemeProvider>
+        <WayfareQueryProvider>
+          <TripProvider>
+            <RootNavigator />
+          </TripProvider>
+        </WayfareQueryProvider>
+      </WayfareThemeProvider>
     </AuthProvider>
   );
 }
 
 function RootNavigator() {
   const { isReady } = useAuth();
+  const { colors } = useTheme();
   const [showLaunchScreen, setShowLaunchScreen] = React.useState(true);
   const [launchStartedAt] = React.useState(() => Date.now());
   const nativeSplashWasHidden = React.useRef(false);
@@ -53,14 +57,15 @@ function RootNavigator() {
       <Stack.Screen name="(auth)" />
       <Stack.Screen name="(tabs)" />
       <Stack.Screen name="auth" />
+      <Stack.Screen name="invite" />
       <Stack.Screen
         name="trip-form"
         options={{
-          contentStyle: { backgroundColor: '#08211C' },
+          contentStyle: { backgroundColor: colors.background },
           headerShown: true,
-          headerStyle: { backgroundColor: '#08211C' },
-          headerTintColor: '#F8F4EB',
-          headerTitleStyle: { color: '#F8F4EB' },
+          headerStyle: { backgroundColor: colors.background },
+          headerTintColor: colors.text,
+          headerTitleStyle: { color: colors.text },
           presentation: 'formSheet',
           sheetAllowedDetents: [0.75, 1],
           sheetGrabberVisible: true,
@@ -70,11 +75,11 @@ function RootNavigator() {
       <Stack.Screen
         name="expense-editor"
         options={{
-          contentStyle: { backgroundColor: '#08211C' },
+          contentStyle: { backgroundColor: colors.background },
           headerShown: true,
-          headerStyle: { backgroundColor: '#08211C' },
-          headerTintColor: '#F8F4EB',
-          headerTitleStyle: { color: '#F8F4EB' },
+          headerStyle: { backgroundColor: colors.background },
+          headerTintColor: colors.text,
+          headerTitleStyle: { color: colors.text },
           presentation: 'formSheet',
           sheetAllowedDetents: [1],
           sheetGrabberVisible: true,
@@ -84,11 +89,11 @@ function RootNavigator() {
       <Stack.Screen
         name="itinerary-editor"
         options={{
-          contentStyle: { backgroundColor: '#08211C' },
+          contentStyle: { backgroundColor: colors.background },
           headerShown: true,
-          headerStyle: { backgroundColor: '#08211C' },
-          headerTintColor: '#F8F4EB',
-          headerTitleStyle: { color: '#F8F4EB' },
+          headerStyle: { backgroundColor: colors.background },
+          headerTintColor: colors.text,
+          headerTitleStyle: { color: colors.text },
           presentation: 'formSheet',
           sheetAllowedDetents: [0.75, 1],
           sheetGrabberVisible: true,
@@ -98,11 +103,11 @@ function RootNavigator() {
       <Stack.Screen
         name="place-actions"
         options={{
-          contentStyle: { backgroundColor: '#08211C' },
+          contentStyle: { backgroundColor: colors.background },
           headerShown: true,
-          headerStyle: { backgroundColor: '#08211C' },
-          headerTintColor: '#F8F4EB',
-          headerTitleStyle: { color: '#F8F4EB' },
+          headerStyle: { backgroundColor: colors.background },
+          headerTintColor: colors.text,
+          headerTitleStyle: { color: colors.text },
           presentation: 'formSheet',
           sheetAllowedDetents: [0.48, 0.76],
           sheetGrabberVisible: true,
@@ -113,11 +118,11 @@ function RootNavigator() {
       <Stack.Screen
         name="place-import"
         options={{
-          contentStyle: { backgroundColor: '#08211C' },
+          contentStyle: { backgroundColor: colors.background },
           headerShown: true,
-          headerStyle: { backgroundColor: '#08211C' },
-          headerTintColor: '#F8F4EB',
-          headerTitleStyle: { color: '#F8F4EB' },
+          headerStyle: { backgroundColor: colors.background },
+          headerTintColor: colors.text,
+          headerTitleStyle: { color: colors.text },
           presentation: 'formSheet',
           sheetAllowedDetents: [0.5, 0.75],
           sheetGrabberVisible: true,

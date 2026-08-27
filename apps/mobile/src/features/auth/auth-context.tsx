@@ -8,6 +8,7 @@ type AuthContextValue = {
   isReady: boolean;
   session: Session | null;
   signOut: () => Promise<Error | null>;
+  updateUserMetadata: (metadata: Record<string, unknown>) => Promise<Error | null>;
 };
 
 const AuthContext = React.createContext<AuthContextValue | undefined>(undefined);
@@ -60,9 +61,18 @@ export function AuthProvider({ children }: React.PropsWithChildren) {
     return error;
   }, []);
 
+  const updateUserMetadata = React.useCallback(async (metadata: Record<string, unknown>) => {
+    const { data, error } = await supabase.auth.updateUser({ data: metadata });
+    if (error) return error;
+    if (data.user) {
+      setSession(current => (current ? { ...current, user: data.user } : current));
+    }
+    return null;
+  }, []);
+
   const value = React.useMemo(
-    () => ({ initializationError, isReady, session, signOut }),
-    [initializationError, isReady, session, signOut],
+    () => ({ initializationError, isReady, session, signOut, updateUserMetadata }),
+    [initializationError, isReady, session, signOut, updateUserMetadata],
   );
   return <AuthContext value={value}>{children}</AuthContext>;
 }

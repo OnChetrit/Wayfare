@@ -23,6 +23,7 @@ import { useTripEditor } from '@/features/trips/use-trip-editor';
 import { messageFromError } from '@/lib/format';
 import { preferredCurrency } from '@/lib/user-preferences';
 import { colors, space } from '@/theme/tokens';
+import { useTheme } from '@/theme/theme-provider';
 
 type TripFormMode = 'create' | 'edit';
 
@@ -42,6 +43,7 @@ function tripSettingsFromInput(input: TripInput): TripSettingsInput {
 }
 
 export function TripFormSheet() {
+  useTheme();
   const { mode: rawMode } = useLocalSearchParams<{ mode?: string | string[] }>();
   const mode: TripFormMode = first(rawMode) === 'edit' ? 'edit' : 'create';
   const { session } = useAuth();

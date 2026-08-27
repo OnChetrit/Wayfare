@@ -157,6 +157,12 @@ export function deleteTrip(tripId: string) {
   return write<{ deleted: string }>(tripPath(tripId, ''), 'DELETE');
 }
 
+export function redeemTripInvitation(token: string) {
+  return write<{ tripId: string }>('/api/invitations/redeem', 'POST', { token }).then(
+    response => response.tripId,
+  );
+}
+
 export function searchGooglePlaces(
   query: string,
   destination?: string | null,

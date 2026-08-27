@@ -18,12 +18,14 @@ import { useTripMutation } from '@/features/itinerary/use-trip-mutation';
 import { useTripEditor } from '@/features/trips/use-trip-editor';
 import { formatDate, messageFromError } from '@/lib/format';
 import { colors, space } from '@/theme/tokens';
+import { useTheme } from '@/theme/theme-provider';
 
 function first(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
 }
 
 export function PlaceActionsSheet() {
+  useTheme();
   const { googlePlaceId: rawGooglePlaceId, placeId: rawPlaceId } = useLocalSearchParams<{
     googlePlaceId?: string | string[];
     placeId?: string | string[];

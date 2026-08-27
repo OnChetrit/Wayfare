@@ -36,6 +36,7 @@ import {
   messageFromError,
 } from '@/lib/format';
 import { colors, space } from '@/theme/tokens';
+import { useTheme } from '@/theme/theme-provider';
 
 type BoardLayout = 'horizontal' | 'vertical';
 type ViewMode = 'board' | 'route';
@@ -78,7 +79,7 @@ function DayColumn({
           {dayFlights.map(({ flight, kind }) => (
             <View
               key={`${flight.id}-${kind}`}
-              style={{ borderLeftColor: '#8CB7FF', borderLeftWidth: 3, gap: 2, paddingLeft: 9 }}
+              style={{ borderLeftColor: '#4d7fa3', borderLeftWidth: 3, gap: 2, paddingLeft: 9 }}
             >
               <Text selectable style={{ color: colors.text, fontSize: 14, fontWeight: '700' }}>
                 Flight {kind === 'arrival' ? 'arrival' : 'departure'} · {flight.flightNumber}
@@ -155,6 +156,7 @@ function DateChooser({
 }
 
 export function VisualItineraryScreen() {
+  useTheme();
   const tripQuery = useTripEditor();
   const trip = tripQuery.data;
   const [layout, setLayout] = React.useState<BoardLayout>('horizontal');

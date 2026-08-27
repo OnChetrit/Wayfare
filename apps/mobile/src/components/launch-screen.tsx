@@ -13,12 +13,14 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { WayfareMark } from '@/components/wayfare-mark';
+import { useTheme } from '@/theme/theme-provider';
 
 type LaunchScreenProps = {
   onLayout: (event: LayoutChangeEvent) => void;
 };
 
 export function LaunchScreen({ onLayout }: LaunchScreenProps) {
+  const { colors } = useTheme();
   const scale = useSharedValue(0.88);
 
   React.useEffect(() => {
@@ -40,7 +42,7 @@ export function LaunchScreen({ onLayout }: LaunchScreenProps) {
       onLayout={onLayout}
       style={{
         alignItems: 'center',
-        backgroundColor: '#08211C',
+        backgroundColor: colors.background,
         flex: 1,
         justifyContent: 'center',
       }}
@@ -54,11 +56,11 @@ export function LaunchScreen({ onLayout }: LaunchScreenProps) {
       >
         <Text
           selectable
-          style={{ color: '#F8F4EB', fontSize: 30, fontWeight: '700', letterSpacing: -0.8 }}
+          style={{ color: colors.text, fontSize: 30, fontWeight: '700', letterSpacing: -0.8 }}
         >
           Wayfare
         </Text>
-        <Text selectable style={{ color: '#AFC2BA', fontSize: 14, letterSpacing: 0.8 }}>
+        <Text selectable style={{ color: colors.textMuted, fontSize: 14, letterSpacing: 0.8 }}>
           MAKE SPACE FOR THE GOOD PARTS
         </Text>
       </Animated.View>

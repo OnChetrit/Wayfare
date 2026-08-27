@@ -1,14 +1,17 @@
 import { Stack } from 'expo-router';
 
+import { useTheme } from '@/theme/theme-provider';
+
 export default function ExploreLayout() {
+  const { colors } = useTheme();
   return (
     <Stack
       screenOptions={{
-        contentStyle: { backgroundColor: '#102A21' },
+        contentStyle: { backgroundColor: colors.surfaceMuted },
         headerShown: true,
         headerShadowVisible: false,
-        headerStyle: { backgroundColor: '#102A21' },
-        headerTintColor: '#F8F4EB',
+        headerStyle: { backgroundColor: colors.surfaceMuted },
+        headerTintColor: colors.text,
       }}
     >
       <Stack.Screen name="index" options={{ title: 'Explore' }} />

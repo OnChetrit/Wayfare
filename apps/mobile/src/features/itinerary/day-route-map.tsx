@@ -6,6 +6,7 @@ import { searchGooglePlaces } from '@/api/trips';
 import { TripMap, type MapPlace, type MapRoute } from '@/components/trip-map';
 import { Card } from '@/components/ui/card';
 import { colors } from '@/theme/tokens';
+import { useTheme } from '@/theme/theme-provider';
 
 type Airport = {
   id: string;
@@ -33,6 +34,7 @@ function uniquePlaces(places: MapPlace[]) {
 }
 
 export function DayRouteMap({ date, trip }: { date: string; trip: TripEditorTrip }) {
+  useTheme();
   const [airports, setAirports] = React.useState<Record<string, MapPlace>>({});
   const flights = React.useMemo(
     () =>
@@ -67,7 +69,7 @@ export function DayRouteMap({ date, trip }: { date: string; trip: TripEditorTrip
               subtitle: 'Airport',
               lat: place.lat,
               lng: place.lng,
-              color: '#8CB7FF',
+              color: '#4d7fa3',
             }
           : null;
       }),
@@ -167,7 +169,7 @@ export function DayRouteMap({ date, trip }: { date: string; trip: TripEditorTrip
     ]).map(place => ({ latitude: place.lat, longitude: place.lng }));
     const ground: MapRoute[] =
       groundCoordinates.length > 1
-        ? [{ id: `ground:${date}`, coordinates: groundCoordinates, color: '#E7B96F' }]
+        ? [{ id: `ground:${date}`, coordinates: groundCoordinates, color: '#477d67' }]
         : [];
     const flightRoutes = flights.flatMap(flight => {
       const departure = airports[`${flight.id}:departure`];
@@ -180,7 +182,7 @@ export function DayRouteMap({ date, trip }: { date: string; trip: TripEditorTrip
                 { latitude: departure.lat, longitude: departure.lng },
                 { latitude: arrival.lat, longitude: arrival.lng },
               ],
-              color: '#8CB7FF',
+              color: '#4d7fa3',
               dashed: true,
             },
           ]
@@ -208,7 +210,7 @@ export function DayRouteMap({ date, trip }: { date: string; trip: TripEditorTrip
         <TripMap fitToPlaces places={mapPlaces} routes={routes} />
       </View>
       <Text selectable style={{ color: colors.textMuted, fontSize: 13 }}>
-        Gold lines are the day route. Dashed blue lines are flights. Airports are found through the
+        Green lines are the day route. Dashed blue lines are flights. Airports are found through the
         protected Places API when available.
       </Text>
     </View>

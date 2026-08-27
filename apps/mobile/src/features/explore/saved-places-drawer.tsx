@@ -20,6 +20,7 @@ import {
   type SavedPlacesFilter,
 } from '@/features/explore/saved-places-filter';
 import { colors, space } from '@/theme/tokens';
+import { useTheme } from '@/theme/theme-provider';
 
 type SavedPlacesDrawerProps = {
   onClose: () => void;
@@ -157,6 +158,7 @@ export function SavedPlacesDrawer({
   visiblePlaceIds,
   visible,
 }: SavedPlacesDrawerProps) {
+  useTheme();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const drawerWidth = Math.min(width * 0.86, 380);

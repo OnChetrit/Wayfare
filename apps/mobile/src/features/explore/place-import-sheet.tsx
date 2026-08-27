@@ -10,10 +10,12 @@ import { useTripMutation } from '@/features/itinerary/use-trip-mutation';
 import { useTripEditor } from '@/features/trips/use-trip-editor';
 import { messageFromError } from '@/lib/format';
 import { colors, space } from '@/theme/tokens';
+import { useTheme } from '@/theme/theme-provider';
 
 import { googleMapsImportNotice } from './place-import';
 
 export function PlaceImportSheet() {
+  useTheme();
   const tripQuery = useTripEditor();
 
   if (tripQuery.isLoading) return <LoadingState label="Loading trip…" />;

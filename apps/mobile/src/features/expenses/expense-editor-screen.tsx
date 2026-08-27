@@ -22,6 +22,7 @@ import { useTripMutation } from '@/features/itinerary/use-trip-mutation';
 import { useTripEditor } from '@/features/trips/use-trip-editor';
 import { messageFromError } from '@/lib/format';
 import { colors, space } from '@/theme/tokens';
+import { useTheme } from '@/theme/theme-provider';
 
 const categories = expenseCategories.map(category => ({
   label: expenseCategoryLabels[category],
@@ -33,6 +34,7 @@ function first(value: string | string[] | undefined) {
 }
 
 export function ExpenseEditorScreen() {
+  useTheme();
   const {
     expenseId: rawExpenseId,
     sourceId: rawSourceId,

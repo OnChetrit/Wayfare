@@ -1,6 +1,7 @@
 import { Pressable, Text, View } from 'react-native';
 
-import { colors, radius } from '@/theme/tokens';
+import { radius } from '@/theme/tokens';
+import { useTheme } from '@/theme/theme-provider';
 
 type Option<T extends string> = { label: string; value: T };
 
@@ -13,6 +14,7 @@ export function Chip<T extends string>({
   selected: boolean;
   onSelect: (value: T) => void;
 }) {
+  const { colors } = useTheme();
   return (
     <Pressable
       accessibilityRole="button"

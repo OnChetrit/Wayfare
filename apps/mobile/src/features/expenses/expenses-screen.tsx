@@ -27,6 +27,7 @@ import { useTripEditor } from '@/features/trips/use-trip-editor';
 import { formatDate, formatMoney, messageFromError } from '@/lib/format';
 import { preferredCurrency } from '@/lib/user-preferences';
 import { colors } from '@/theme/tokens';
+import { useTheme } from '@/theme/theme-provider';
 
 const categoryColors: Record<ExpenseCategory, string> = {
   FLIGHT: '#8CB7FF',
@@ -59,6 +60,7 @@ function tripDayCount(startDate: string, endDate: string) {
 }
 
 export function ExpensesScreen() {
+  useTheme();
   const tripQuery = useTripEditor();
   const isOnline = useIsOnline();
   const { session } = useAuth();

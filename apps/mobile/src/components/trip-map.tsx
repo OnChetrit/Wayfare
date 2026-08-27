@@ -1,6 +1,8 @@
 import * as React from 'react';
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE, type Region } from 'react-native-maps';
 
+import { useTheme } from '@/theme/theme-provider';
+
 const initialRegion: Region = {
   latitude: 41.9028,
   longitude: 12.4964,
@@ -8,19 +10,19 @@ const initialRegion: Region = {
   longitudeDelta: 0.22,
 };
 
-const mapStyle = [
-  { elementType: 'geometry', stylers: [{ color: '#102A21' }] },
-  { elementType: 'labels.text.fill', stylers: [{ color: '#B7CABC' }] },
-  { elementType: 'labels.text.stroke', stylers: [{ color: '#102A21' }] },
-  { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#274B3E' }] },
-  { featureType: 'road', elementType: 'geometry.stroke', stylers: [{ color: '#102A21' }] },
-  { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#6D9B82' }] },
+const darkMapStyle = [
+  { elementType: 'geometry', stylers: [{ color: '#1d2a24' }] },
+  { elementType: 'labels.text.fill', stylers: [{ color: '#a9b8ae' }] },
+  { elementType: 'labels.text.stroke', stylers: [{ color: '#1d2a24' }] },
+  { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#415247' }] },
+  { featureType: 'road', elementType: 'geometry.stroke', stylers: [{ color: '#1d2a24' }] },
+  { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#4c6757' }] },
   {
     featureType: 'road.highway',
     elementType: 'geometry.stroke',
-    stylers: [{ color: '#23483A' }],
+    stylers: [{ color: '#35463c' }],
   },
-  { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#153027' }] },
+  { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#1b3328' }] },
 ];
 
 export type MapPlace = {
@@ -73,6 +75,7 @@ export function TripMap({
   routes = [],
   selectedPlace,
 }: TripMapProps) {
+  const { colors, theme } = useTheme();
   const map = React.useRef<MapView>(null);
   const [region, setRegion] = React.useState(initialRegion);
   const mapPlaces = React.useMemo(() => {
@@ -139,7 +142,7 @@ export function TripMap({
       initialRegion={initialRegion}
       mapType="standard"
       onRegionChangeComplete={setRegion}
-      customMapStyle={mapStyle}
+      customMapStyle={theme === 'dark' ? darkMapStyle : undefined}
     >
       {mapPlaces.map(place => (
         <Marker
@@ -147,7 +150,7 @@ export function TripMap({
           description={place.subtitle}
           key={place.id}
           onPress={() => onSelectPlace?.(place)}
-          pinColor={place.color ?? '#E8795D'}
+          pinColor={place.color ?? colors.danger}
           title={place.name}
         />
       ))}
@@ -157,7 +160,7 @@ export function TripMap({
             coordinates={route.coordinates}
             key={route.id}
             lineDashPattern={route.dashed ? [8, 8] : undefined}
-            strokeColor={route.color ?? '#E7B96F'}
+            strokeColor={route.color ?? colors.accent}
             strokeWidth={route.dashed ? 2 : 4}
           />
         ) : null,

@@ -5,7 +5,9 @@ import { Text, View } from 'react-native';
 
 import { AuthStatusScreen } from '@/components/auth-status-screen';
 import { useAuth } from '@/features/auth/auth-context';
+import { inviteTokenFromRoute } from '@/features/invite/invite-link';
 import { exchangeSessionFromUrl, supabase } from '@/lib/supabase';
+import { useTheme } from '@/theme/theme-provider';
 
 function getFirstValue(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
@@ -19,6 +21,7 @@ export default function AuthCallbackScreen() {
     error_description: errorDescription,
     token_hash: tokenHash,
     type,
+    inviteToken: rawInviteToken,
   } = useLocalSearchParams<{
     code?: string | string[];
     error?: string | string[];
@@ -26,8 +29,11 @@ export default function AuthCallbackScreen() {
     error_description?: string | string[];
     token_hash?: string | string[];
     type?: string | string[];
+    inviteToken?: string | string[];
   }>();
   const { isReady, session } = useAuth();
+  const { colors } = useTheme();
+  const inviteToken = inviteTokenFromRoute(rawInviteToken);
   const [isCompleting, setIsCompleting] = React.useState(true);
   const [hasEstablishedSession, setHasEstablishedSession] = React.useState(false);
   const [message, setMessage] = React.useState('Completing your secure sign-in…');
@@ -93,6 +99,8 @@ export default function AuthCallbackScreen() {
   }, [authError, code, errorCode, errorDescription, tokenHash, type]);
 
   if (!isCompleting && isReady && (session || hasEstablishedSession)) {
+    if (inviteToken)
+      return <Redirect href={{ pathname: '/invite/[token]', params: { token: inviteToken } }} />;
     return <Redirect href="/itinerary" />;
   }
   if (!isCompleting && isReady) return <Redirect href="/login" />;
@@ -100,10 +108,10 @@ export default function AuthCallbackScreen() {
   return (
     <AuthStatusScreen>
       <View style={{ gap: 8 }}>
-        <Text selectable style={{ color: '#F7F2E8', fontSize: 22, fontWeight: '700' }}>
+        <Text selectable style={{ color: colors.text, fontSize: 22, fontWeight: '700' }}>
           One moment
         </Text>
-        <Text selectable style={{ color: '#B6C8C1', fontSize: 16, lineHeight: 23 }}>
+        <Text selectable style={{ color: colors.textMuted, fontSize: 16, lineHeight: 23 }}>
           {message}
         </Text>
       </View>

@@ -1,18 +1,54 @@
-export const colors = {
-  background: '#08211C',
-  surface: '#12362E',
-  surfaceMuted: '#0B2822',
-  border: '#285147',
-  borderStrong: '#315D51',
-  text: '#F8F4EB',
-  textMuted: '#ABC0B4',
-  accent: '#E7B96F',
-  accentText: '#08211C',
-  danger: '#FFD9D4',
-  dangerSurface: '#2D1716',
-  dangerBorder: '#79403A',
-  success: '#A9E6C0',
+import { Appearance } from 'react-native';
+
+export const darkColors = {
+  background: '#090f0b',
+  surface: '#17211b',
+  surfaceMuted: '#1b2820',
+  border: '#2d3d33',
+  borderStrong: '#3b604c',
+  text: '#edf5ef',
+  textMuted: '#a9b8ae',
+  accent: '#1f7658',
+  accentText: '#ffffff',
+  danger: '#f0a294',
+  dangerSurface: '#422521',
+  dangerBorder: '#75453e',
+  success: '#4ab58b',
 } as const;
+
+export const lightColors = {
+  background: '#f8f9f5',
+  surface: '#ffffff',
+  surfaceMuted: '#fbfcfa',
+  border: '#e7ebe5',
+  borderStrong: '#cfe5da',
+  text: '#18211d',
+  textMuted: '#78817c',
+  accent: '#17795d',
+  accentText: '#ffffff',
+  danger: '#9a4e3c',
+  dangerSurface: '#fff0eb',
+  dangerBorder: '#f0d4cd',
+  success: '#17795d',
+} as const;
+
+export type ThemeName = 'light' | 'dark';
+export type ThemeColors = { [Key in keyof typeof darkColors]: string };
+
+export function themeColors(theme: ThemeName): ThemeColors {
+  return theme === 'light' ? lightColors : darkColors;
+}
+
+/**
+ * Legacy token access for components that calculate styles during render. New
+ * components should prefer `useTheme` so changes to account appearance rerender
+ * their styles immediately.
+ */
+export const colors: ThemeColors = new Proxy({} as ThemeColors, {
+  get(_target, property: keyof ThemeColors) {
+    return themeColors(Appearance.getColorScheme() === 'light' ? 'light' : 'dark')[property];
+  },
+});
 
 export const radius = {
   card: 20,

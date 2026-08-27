@@ -8,6 +8,7 @@ import { EmptyState } from '@/components/ui/state';
 import { flightDetailRows } from '@/features/itinerary/flight-details';
 import { formatDateRange, formatMoney } from '@/lib/format';
 import { colors, space } from '@/theme/tokens';
+import { useTheme } from '@/theme/theme-provider';
 
 export type TripDetailsKind = 'flights' | 'locations' | 'places' | 'stays';
 
@@ -44,6 +45,7 @@ const detailCopy: Record<
 };
 
 export function TripDetailsSheet({ kind, trip, initialDate }: TripDetailsSheetProps) {
+  useTheme();
   const copy = detailCopy[kind];
   const addHref = {
     pathname: '/itinerary-editor' as const,

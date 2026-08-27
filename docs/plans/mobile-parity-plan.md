@@ -58,7 +58,7 @@ Turn the mobile expenses tab into an analysis view while retaining the existing 
 
 Verification: unit-test multi-currency/category aggregations and missing-source detection; component-test filter and prefilled-expense flows; manually verify totals against mixed-currency data.
 
-## Plan 6 — Account preferences and invitations
+## Plan 6 — Account preferences and invitations (implementation complete; iPhone verification pending)
 
 Add the remaining account controls and web invitation flow to mobile.
 

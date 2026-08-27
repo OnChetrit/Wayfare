@@ -37,6 +37,7 @@ import { TripDetailsSheet, type TripDetailsKind } from '@/features/itinerary/tri
 import { useTripEditor } from '@/features/trips/use-trip-editor';
 import { formatDate, messageFromError } from '@/lib/format';
 import { colors, space } from '@/theme/tokens';
+import { useTheme } from '@/theme/theme-provider';
 
 const placeCategories: { label: string; value: PlaceCategory }[] = [
   { label: 'Hotel', value: 'HOTEL' },
@@ -85,6 +86,7 @@ function isTripDetailsKind(kind: string): kind is TripDetailsKind {
 }
 
 export function ItineraryEditorSheet() {
+  useTheme();
   const params = useLocalSearchParams<{
     kind?: string | string[];
     id?: string | string[];

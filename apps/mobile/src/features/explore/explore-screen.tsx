@@ -25,7 +25,7 @@ import { mapPlacesForExplore, toMapPlace } from '@/features/explore/saved-place-
 import { SavedPlacesDrawer } from '@/features/explore/saved-places-drawer';
 import { filterSavedPlacesForLocation } from '@/features/explore/saved-places-filter';
 import { messageFromError } from '@/lib/format';
-import { colors } from '@/theme/tokens';
+import { useTheme } from '@/theme/theme-provider';
 
 const emptySavedPlaces: SavedPlace[] = [];
 
@@ -34,6 +34,7 @@ function haveSamePlaceIds(left: string[], right: string[]) {
 }
 
 export function ExploreScreen() {
+  const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const tripQuery = useTripEditor();
   const [query, setQuery] = React.useState('');
@@ -272,15 +273,15 @@ export function ExploreScreen() {
       </View>
       <Stack.SearchBar
         autoCapitalize="none"
-        barTintColor="#F8F4EB"
+        barTintColor={colors.surface}
         hideNavigationBar={false}
         onCancelButtonPress={() => setQuery('')}
         onChangeText={event => setQuery(event.nativeEvent.text)}
         obscureBackground={false}
         placeholder={searchPlaceholder}
         placement="stacked"
-        textColor="#102A21"
-        tintColor="#E9F5ED"
+        textColor={colors.text}
+        tintColor={colors.accent}
       />
       <Stack.Toolbar placement="right">
         <Stack.Toolbar.Button

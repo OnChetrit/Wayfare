@@ -2,9 +2,10 @@ import type { ReactNode } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
 
 import { Button } from '@/components/ui/button';
-import { colors } from '@/theme/tokens';
+import { useTheme } from '@/theme/theme-provider';
 
 export function LoadingState({ label = 'Loading…' }: { label?: string }) {
+  const { colors } = useTheme();
   return (
     <View
       style={{ alignItems: 'center', flex: 1, gap: 12, justifyContent: 'center', minHeight: 220 }}
@@ -26,6 +27,7 @@ export function EmptyState({
   detail: string;
   action?: ReactNode;
 }) {
+  const { colors } = useTheme();
   return (
     <View
       style={{
@@ -59,6 +61,7 @@ export function ErrorState({
   message: string;
   onRetry?: () => void;
 }) {
+  const { colors } = useTheme();
   return (
     <View
       style={{
@@ -84,18 +87,19 @@ export function ErrorState({
 }
 
 export function OfflineNotice({ visible }: { visible: boolean }) {
+  const { colors } = useTheme();
   if (!visible) return null;
   return (
     <View
       style={{
-        backgroundColor: '#3B3320',
-        borderColor: '#766036',
+        backgroundColor: colors.surfaceMuted,
+        borderColor: colors.borderStrong,
         borderRadius: 12,
         borderWidth: 1,
         padding: 11,
       }}
     >
-      <Text selectable style={{ color: '#F6DEA4', fontSize: 13, lineHeight: 18 }}>
+      <Text selectable style={{ color: colors.textMuted, fontSize: 13, lineHeight: 18 }}>
         You’re offline. Saved trip data stays available, but edits will be enabled when you
         reconnect.
       </Text>

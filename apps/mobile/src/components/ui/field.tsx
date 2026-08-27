@@ -1,15 +1,17 @@
 import { Text, TextInput, View, type TextInputProps } from 'react-native';
 
-import { colors, radius } from '@/theme/tokens';
+import { radius } from '@/theme/tokens';
+import { useTheme } from '@/theme/theme-provider';
 
 export function Field({ label, style, ...props }: TextInputProps & { label: string }) {
+  const { colors } = useTheme();
   return (
     <View style={{ gap: 6 }}>
       <Text selectable style={{ color: colors.textMuted, fontSize: 13, fontWeight: '700' }}>
         {label}
       </Text>
       <TextInput
-        placeholderTextColor="#7F9A8F"
+        placeholderTextColor={colors.textMuted}
         style={[
           {
             backgroundColor: colors.surfaceMuted,

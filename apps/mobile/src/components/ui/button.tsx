@@ -8,7 +8,8 @@ import {
   type ViewStyle,
 } from 'react-native';
 
-import { colors, radius } from '@/theme/tokens';
+import { radius } from '@/theme/tokens';
+import { useTheme } from '@/theme/theme-provider';
 
 type ButtonProps = PropsWithChildren<
   Omit<PressableProps, 'style'> & {
@@ -17,21 +18,6 @@ type ButtonProps = PropsWithChildren<
     style?: ViewStyle;
   }
 >;
-
-const tones = {
-  primary: { backgroundColor: colors.accent, borderColor: colors.accent, text: colors.accentText },
-  secondary: {
-    backgroundColor: colors.surfaceMuted,
-    borderColor: colors.borderStrong,
-    text: colors.text,
-  },
-  danger: {
-    backgroundColor: colors.dangerSurface,
-    borderColor: colors.dangerBorder,
-    text: colors.danger,
-  },
-  quiet: { backgroundColor: 'transparent', borderColor: 'transparent', text: colors.textMuted },
-} as const;
 
 export function Button({
   children,
@@ -42,6 +28,25 @@ export function Button({
   tone = 'primary',
   ...props
 }: ButtonProps) {
+  const { colors } = useTheme();
+  const tones = {
+    primary: {
+      backgroundColor: colors.accent,
+      borderColor: colors.accent,
+      text: colors.accentText,
+    },
+    secondary: {
+      backgroundColor: colors.surfaceMuted,
+      borderColor: colors.borderStrong,
+      text: colors.text,
+    },
+    danger: {
+      backgroundColor: colors.dangerSurface,
+      borderColor: colors.dangerBorder,
+      text: colors.danger,
+    },
+    quiet: { backgroundColor: 'transparent', borderColor: 'transparent', text: colors.textMuted },
+  } as const;
   const palette = tones[tone];
   const isDisabled = Boolean(disabled || loading);
   const isTextOnly = Children.toArray(children).every(

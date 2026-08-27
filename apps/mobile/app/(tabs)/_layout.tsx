@@ -2,14 +2,22 @@ import { Redirect } from 'expo-router';
 import { NativeTabs } from 'expo-router/unstable-native-tabs';
 
 import { useAuth } from '@/features/auth/auth-context';
+import { useTheme } from '@/theme/theme-provider';
 
 export default function TabsLayout() {
   const { isReady, session } = useAuth();
+  const { colors, theme } = useTheme();
   if (!isReady) return null;
   if (!session) return <Redirect href="/login" />;
 
   return (
-    <NativeTabs>
+    <NativeTabs
+      backgroundColor={colors.surface}
+      iconColor={{ default: colors.textMuted, selected: colors.accent }}
+      labelStyle={{ default: { color: colors.textMuted }, selected: { color: colors.accent } }}
+      tintColor={colors.accent}
+      {...(theme === 'dark' ? { blurEffect: 'systemMaterialDark' as const } : {})}
+    >
       <NativeTabs.Trigger name="itinerary">
         <NativeTabs.Trigger.Icon sf="list.bullet.rectangle.fill" md="format_list_bulleted" />
         <NativeTabs.Trigger.Label>Itinerary</NativeTabs.Trigger.Label>

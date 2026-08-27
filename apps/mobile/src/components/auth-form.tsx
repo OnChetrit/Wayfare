@@ -14,11 +14,14 @@ import {
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 
 import { WayfareMark } from '@/components/wayfare-mark';
+import { inviteTokenFromRoute } from '@/features/invite/invite-link';
 import { exchangeSessionFromUrl, supabase } from '@/lib/supabase';
+import { useTheme } from '@/theme/theme-provider';
 
 type AuthMode = 'login' | 'signup';
 
 type AuthFormProps = {
+  inviteToken?: string | string[];
   mode: AuthMode;
 };
 
@@ -28,13 +31,21 @@ function messageFromError(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback;
 }
 
-export function AuthForm({ mode }: AuthFormProps) {
+export function AuthForm({ inviteToken: rawInviteToken, mode }: AuthFormProps) {
   const isLogin = mode === 'login';
+  const { colors } = useTheme();
+  const inviteToken = inviteTokenFromRoute(rawInviteToken);
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [message, setMessage] = React.useState<string | null>(null);
-  const redirectTo = React.useMemo(() => Linking.createURL('auth/callback'), []);
+  const redirectTo = React.useMemo(
+    () =>
+      Linking.createURL(
+        `auth/callback${inviteToken ? `?inviteToken=${encodeURIComponent(inviteToken)}` : ''}`,
+      ),
+    [inviteToken],
+  );
 
   function validateCredentials() {
     const normalizedEmail = email.trim().toLowerCase();
@@ -123,7 +134,7 @@ export function AuthForm({ mode }: AuthFormProps) {
   return (
     <KeyboardAvoidingView
       behavior={process.env.EXPO_OS === 'ios' ? 'padding' : undefined}
-      style={{ backgroundColor: '#08211C', flex: 1 }}
+      style={{ backgroundColor: colors.background, flex: 1 }}
     >
       <ScrollView
         contentContainerStyle={{
@@ -140,11 +151,11 @@ export function AuthForm({ mode }: AuthFormProps) {
           <View style={{ gap: 8 }}>
             <Text
               selectable
-              style={{ color: '#F8F4EB', fontSize: 32, fontWeight: '700', letterSpacing: -0.9 }}
+              style={{ color: colors.text, fontSize: 32, fontWeight: '700', letterSpacing: -0.9 }}
             >
               {isLogin ? 'Continue planning.' : 'Start your next trip.'}
             </Text>
-            <Text selectable style={{ color: '#B6C8C1', fontSize: 16, lineHeight: 24 }}>
+            <Text selectable style={{ color: colors.textMuted, fontSize: 16, lineHeight: 24 }}>
               {isLogin
                 ? 'Your places, plans, and details are ready when you are.'
                 : 'A quieter, clearer place for every good travel idea.'}
@@ -155,8 +166,8 @@ export function AuthForm({ mode }: AuthFormProps) {
         <Animated.View
           entering={FadeInUp.duration(420).delay(100)}
           style={{
-            backgroundColor: '#12362E',
-            borderColor: '#285147',
+            backgroundColor: colors.surface,
+            borderColor: colors.border,
             borderCurve: 'continuous',
             borderRadius: 28,
             borderWidth: 1,
@@ -170,7 +181,9 @@ export function AuthForm({ mode }: AuthFormProps) {
             onPress={signInWithGoogle}
             style={({ pressed }) => ({
               alignItems: 'center',
-              backgroundColor: '#F8F4EB',
+              backgroundColor: colors.surfaceMuted,
+              borderColor: colors.borderStrong,
+              borderWidth: 1,
               borderCurve: 'continuous',
               borderRadius: 15,
               flexDirection: 'row',
@@ -182,29 +195,29 @@ export function AuthForm({ mode }: AuthFormProps) {
             })}
           >
             {isSubmitting ? (
-              <ActivityIndicator color="#08211C" />
+              <ActivityIndicator color={colors.text} />
             ) : (
               <Text style={{ color: '#4285F4', fontSize: 19, fontWeight: '700' }}>G</Text>
             )}
-            <Text selectable style={{ color: '#08211C', fontSize: 16, fontWeight: '700' }}>
+            <Text selectable style={{ color: colors.text, fontSize: 16, fontWeight: '700' }}>
               Continue with Google
             </Text>
           </Pressable>
 
           <View style={{ alignItems: 'center', flexDirection: 'row', gap: 12 }}>
-            <View style={{ backgroundColor: '#315D51', flex: 1, height: 1 }} />
+            <View style={{ backgroundColor: colors.borderStrong, flex: 1, height: 1 }} />
             <Text
               selectable
-              style={{ color: '#9FB8AD', fontSize: 11, fontWeight: '700', letterSpacing: 1 }}
+              style={{ color: colors.textMuted, fontSize: 11, fontWeight: '700', letterSpacing: 1 }}
             >
               OR USE EMAIL
             </Text>
-            <View style={{ backgroundColor: '#315D51', flex: 1, height: 1 }} />
+            <View style={{ backgroundColor: colors.borderStrong, flex: 1, height: 1 }} />
           </View>
 
           <View style={{ gap: 14 }}>
             <View style={{ gap: 7 }}>
-              <Text selectable style={{ color: '#D8E5DE', fontSize: 14, fontWeight: '600' }}>
+              <Text selectable style={{ color: colors.textMuted, fontSize: 14, fontWeight: '600' }}>
                 Email address
               </Text>
               <TextInput
@@ -215,14 +228,14 @@ export function AuthForm({ mode }: AuthFormProps) {
                 keyboardType="email-address"
                 onChangeText={setEmail}
                 placeholder="you@example.com"
-                placeholderTextColor="#7F9A8F"
+                placeholderTextColor={colors.textMuted}
                 style={{
-                  backgroundColor: '#0B2822',
-                  borderColor: '#315D51',
+                  backgroundColor: colors.surfaceMuted,
+                  borderColor: colors.borderStrong,
                   borderCurve: 'continuous',
                   borderRadius: 14,
                   borderWidth: 1,
-                  color: '#F8F4EB',
+                  color: colors.text,
                   fontSize: 16,
                   minHeight: 52,
                   paddingHorizontal: 15,
@@ -233,7 +246,7 @@ export function AuthForm({ mode }: AuthFormProps) {
             </View>
 
             <View style={{ gap: 7 }}>
-              <Text selectable style={{ color: '#D8E5DE', fontSize: 14, fontWeight: '600' }}>
+              <Text selectable style={{ color: colors.textMuted, fontSize: 14, fontWeight: '600' }}>
                 Password
               </Text>
               <TextInput
@@ -242,15 +255,15 @@ export function AuthForm({ mode }: AuthFormProps) {
                 autoComplete={isLogin ? 'current-password' : 'new-password'}
                 onChangeText={setPassword}
                 placeholder="At least 6 characters"
-                placeholderTextColor="#7F9A8F"
+                placeholderTextColor={colors.textMuted}
                 secureTextEntry
                 style={{
-                  backgroundColor: '#0B2822',
-                  borderColor: '#315D51',
+                  backgroundColor: colors.surfaceMuted,
+                  borderColor: colors.borderStrong,
                   borderCurve: 'continuous',
                   borderRadius: 14,
                   borderWidth: 1,
-                  color: '#F8F4EB',
+                  color: colors.text,
                   fontSize: 16,
                   minHeight: 52,
                   paddingHorizontal: 15,
@@ -267,7 +280,7 @@ export function AuthForm({ mode }: AuthFormProps) {
             onPress={() => void submitWithEmail()}
             style={({ pressed }) => ({
               alignItems: 'center',
-              backgroundColor: '#E7B96F',
+              backgroundColor: colors.accent,
               borderCurve: 'continuous',
               borderRadius: 15,
               minHeight: 54,
@@ -277,9 +290,12 @@ export function AuthForm({ mode }: AuthFormProps) {
             })}
           >
             {isSubmitting ? (
-              <ActivityIndicator color="#08211C" />
+              <ActivityIndicator color={colors.accentText} />
             ) : (
-              <Text selectable style={{ color: '#08211C', fontSize: 16, fontWeight: '800' }}>
+              <Text
+                selectable
+                style={{ color: colors.accentText, fontSize: 16, fontWeight: '800' }}
+              >
                 {submitLabel}
               </Text>
             )}
@@ -289,12 +305,12 @@ export function AuthForm({ mode }: AuthFormProps) {
             <Text
               selectable
               style={{
-                backgroundColor: '#0B2822',
-                borderColor: '#315D51',
+                backgroundColor: colors.surfaceMuted,
+                borderColor: colors.borderStrong,
                 borderCurve: 'continuous',
                 borderRadius: 14,
                 borderWidth: 1,
-                color: '#D8E5DE',
+                color: colors.text,
                 fontSize: 14,
                 lineHeight: 21,
                 padding: 13,
@@ -306,12 +322,16 @@ export function AuthForm({ mode }: AuthFormProps) {
 
           <Text
             selectable
-            style={{ color: '#B6C8C1', fontSize: 14, lineHeight: 21, textAlign: 'center' }}
+            style={{ color: colors.textMuted, fontSize: 14, lineHeight: 21, textAlign: 'center' }}
           >
             {isLogin ? 'New to Wayfare? ' : 'Already have an account? '}
             <Link
-              href={isLogin ? '/signup' : '/login'}
-              style={{ color: '#E7B96F', fontWeight: '700' }}
+              href={
+                isLogin
+                  ? { pathname: '/signup', params: inviteToken ? { inviteToken } : {} }
+                  : { pathname: '/login', params: inviteToken ? { inviteToken } : {} }
+              }
+              style={{ color: colors.accent, fontWeight: '700' }}
             >
               {isLogin ? 'Create one' : 'Sign in'}
             </Link>

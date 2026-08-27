@@ -7,7 +7,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   scheme: 'wayfare',
   version: '0.1.0',
   orientation: 'portrait',
-  userInterfaceStyle: 'dark',
+  userInterfaceStyle: 'automatic',
   ios: {
     bundleIdentifier: 'com.onchetrit.wayfare',
     supportsTablet: false,

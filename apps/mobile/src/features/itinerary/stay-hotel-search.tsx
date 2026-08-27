@@ -10,6 +10,7 @@ import { Field } from '@/components/ui/field';
 import { useTripMutation } from '@/features/itinerary/use-trip-mutation';
 import { messageFromError } from '@/lib/format';
 import { colors } from '@/theme/tokens';
+import { useTheme } from '@/theme/theme-provider';
 
 type HotelCandidate = Pick<SavedPlace, 'id' | 'name' | 'subtitle'> & {
   providerPlaceId?: string;
@@ -48,6 +49,7 @@ function hotelSearchResults(
 }
 
 export function StayHotelSearch({ destinationLabel, onSelect, places, tripId }: HotelSearchProps) {
+  useTheme();
   const [query, setQuery] = React.useState('');
   const deferredQuery = React.useDeferredValue(query.trim());
   const localHotels = React.useMemo(() => matchingHotels(places, query), [places, query]);
