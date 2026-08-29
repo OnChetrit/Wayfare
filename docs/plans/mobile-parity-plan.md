@@ -68,7 +68,7 @@ Add the remaining account controls and web invitation flow to mobile.
 
 Verification: test metadata parsing/updating and deep-link token parsing; manually verify theme persistence, sign-in redirect/resume, valid invitation redemption, and invalid/expired invitation errors.
 
-## Plan 7 — Public mobile onboarding
+## Plan 7 — Public mobile onboarding (implementation and iPhone verification complete)
 
 Decide whether the web marketing landing experience requires a native counterpart; if approved, implement it as an unauthenticated onboarding screen.
 
