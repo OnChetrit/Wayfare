@@ -85,7 +85,7 @@ describe('shared domain contracts', () => {
     ).toEqual(['first', 'later']);
   });
 
-  it('orders itinerary stops chronologically and keeps manual ties stable', () => {
+  it('orders timed itinerary stops chronologically and keeps manual ties stable', () => {
     expect(
       orderScheduleItemsForDay(
         [
@@ -125,7 +125,117 @@ describe('shared domain contracts', () => {
     ).toEqual(['same-time-first', 'same-time-second', 'late']);
   });
 
-  it('routes a day from the waking hotel through stops to the overnight hotel', () => {
+  it('puts untimed items after timed items using their manual order', () => {
+    expect(
+      orderScheduleItemsForDay(
+        [
+          {
+            id: 'untimed-later',
+            savedPlaceId: null,
+            date: '2026-10-11',
+            startTime: null,
+            duration: 60,
+            sortOrder: 8,
+          },
+          {
+            id: 'untimed-earlier',
+            savedPlaceId: null,
+            date: '2026-10-11',
+            startTime: null,
+            duration: 60,
+            sortOrder: 3,
+          },
+          {
+            id: 'timed',
+            savedPlaceId: null,
+            date: '2026-10-11',
+            startTime: '18:00',
+            duration: 60,
+            sortOrder: 99,
+          },
+        ],
+        '2026-10-11',
+      ).map(item => item.id),
+    ).toEqual(['timed', 'untimed-earlier', 'untimed-later']);
+  });
+
+  it('orders legacy items with missing manual order by ID without mutating input', () => {
+    const items = [
+      {
+        id: 'z-last',
+        savedPlaceId: null,
+        date: '2026-10-11',
+        startTime: '10:00',
+        duration: 60,
+      },
+      {
+        id: 'a-first',
+        savedPlaceId: null,
+        date: '2026-10-11',
+        startTime: '10:00',
+        duration: 60,
+      },
+      {
+        id: 'explicit-order',
+        savedPlaceId: null,
+        date: '2026-10-11',
+        startTime: '10:00',
+        duration: 60,
+        sortOrder: 4,
+      },
+    ];
+
+    expect(orderScheduleItemsForDay(items, '2026-10-11').map(item => item.id)).toEqual([
+      'explicit-order',
+      'a-first',
+      'z-last',
+    ]);
+    expect(items.map(item => item.id)).toEqual(['z-last', 'a-first', 'explicit-order']);
+  });
+
+  it('uses IDs as the final deterministic tie-breaker in every group', () => {
+    expect(
+      orderScheduleItemsForDay(
+        [
+          {
+            id: 'untimed-b',
+            savedPlaceId: null,
+            date: '2026-10-11',
+            startTime: null,
+            duration: 60,
+            sortOrder: 2,
+          },
+          {
+            id: 'untimed-a',
+            savedPlaceId: null,
+            date: '2026-10-11',
+            startTime: null,
+            duration: 60,
+            sortOrder: 2,
+          },
+          {
+            id: 'timed-b',
+            savedPlaceId: null,
+            date: '2026-10-11',
+            startTime: '10:00',
+            duration: 60,
+            sortOrder: 2,
+          },
+          {
+            id: 'timed-a',
+            savedPlaceId: null,
+            date: '2026-10-11',
+            startTime: '10:00',
+            duration: 60,
+            sortOrder: 2,
+          },
+        ],
+        '2026-10-11',
+      ).map(item => item.id),
+    ).toEqual(['timed-a', 'timed-b', 'untimed-a', 'untimed-b']);
+  });
+
+  it('routes only the ordered, mappable scheduled stops', () => {
     expect(
       dayRouteSavedPlaceIds(
         [
@@ -151,19 +261,9 @@ describe('shared domain contracts', () => {
             duration: 60,
           },
         ],
-        [
-          {
-            id: 'hotel',
-            tripId: 'trip',
-            name: 'Hotel',
-            savedPlaceId: 'hotel-place',
-            checkInDate: '2026-10-10',
-            checkOutDate: '2026-10-13',
-          },
-        ],
         '2026-10-11',
       ),
-    ).toEqual(['hotel-place', 'coffee-place', 'museum-place', 'hotel-place']);
+    ).toEqual(['coffee-place', 'museum-place']);
   });
 
   it('validates the camel-case trip editor API contract', () => {

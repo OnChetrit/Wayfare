@@ -1114,19 +1114,58 @@ export function TripEditor({
     }
   }
 
-  function moveScheduleItem(item: ScheduleItem, direction: 'up' | 'down') {
+  async function moveScheduleItem(item: ScheduleItem, direction: 'up' | 'down') {
     const items = orderScheduleItemsForDay(schedule, item.date);
     const index = items.findIndex(candidate => candidate.id === item.id);
     const target = direction === 'up' ? index - 1 : index + 1;
     if (index < 0 || target < 0 || target >= items.length) return;
-    const swapped = [...items];
-    [swapped[index].startTime, swapped[target].startTime] = [
-      swapped[target].startTime,
-      swapped[index].startTime,
+    const targetItem = items[target];
+    if (item.sortOrder === undefined || targetItem.sortOrder === undefined) {
+      showTimelineError('This legacy activity needs to be refreshed before it can be reordered.');
+      return;
+    }
+
+    const previousSchedule = schedule;
+    const swappedItems = [
+      { ...item, sortOrder: targetItem.sortOrder },
+      { ...targetItem, sortOrder: item.sortOrder },
     ];
     setSchedule(current =>
-      current.map(candidate => swapped.find(next => next.id === candidate.id) ?? candidate),
+      current.map(candidate => swappedItems.find(next => next.id === candidate.id) ?? candidate),
     );
+    if (!initialTrip || item.id.startsWith('schedule-') || item.id.startsWith('activity-')) return;
+
+    try {
+      const [updatedItem, updatedTarget] = await Promise.all(
+        swappedItems.map(async next => {
+          const body = await requestJson<{ schedule: ScheduleItem }>(
+            `/api/trips/${initialTrip.id}/schedule/${next.id}`,
+            {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                date: next.date,
+                startTime: next.startTime,
+                sortOrder: next.sortOrder,
+              }),
+            },
+          );
+          return body.schedule;
+        }),
+      );
+      setSchedule(current =>
+        current.map(candidate =>
+          candidate.id === updatedItem.id
+            ? updatedItem
+            : candidate.id === updatedTarget.id
+              ? updatedTarget
+              : candidate,
+        ),
+      );
+    } catch (error) {
+      setSchedule(previousSchedule);
+      showTimelineError(error);
+    }
   }
 
   async function moveScheduleItemToDate(itemId: string, date: string) {

@@ -1,4 +1,5 @@
 import { Fragment } from 'react';
+import { orderScheduleItemsForDay } from '@wayfare/domain';
 import { ArrowDown, ArrowUp, MessageSquareText, Plane, Plus, Sparkles, X } from 'lucide-react';
 import styles from './DayPlanPanel.module.scss';
 import { categoryMeta } from './data';
@@ -236,8 +237,11 @@ export function DayPlanPanel({
   // Only carry a hotel into the start of the day when it began earlier.
   const startStay = morningStay;
   const selectedDayDate = selectedDay?.date;
+  const orderedSchedule = selectedDayDate
+    ? orderScheduleItemsForDay(selectedSchedule, selectedDayDate)
+    : [];
   const timelineEntries = [
-    ...selectedSchedule.map(item => ({
+    ...orderedSchedule.map(item => ({
       kind: 'schedule' as const,
       item,
       sortTime: item.startTime,
@@ -381,7 +385,7 @@ export function DayPlanPanel({
                         <button
                           onClick={event => {
                             event.stopPropagation();
-                            onMove(item, 'up');
+                            void onMove(item, 'up');
                           }}
                           aria-label="Move activity up"
                         >
@@ -390,7 +394,7 @@ export function DayPlanPanel({
                         <button
                           onClick={event => {
                             event.stopPropagation();
-                            onMove(item, 'down');
+                            void onMove(item, 'down');
                           }}
                           aria-label="Move activity down"
                         >

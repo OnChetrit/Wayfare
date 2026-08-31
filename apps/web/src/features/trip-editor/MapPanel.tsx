@@ -1,10 +1,11 @@
 'use client';
 
 import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react';
-import { dayRouteSavedPlaceIds, orderScheduleItemsForDay } from '@wayfare/domain';
+import { orderScheduleItemsForDay } from '@wayfare/domain';
 import { ArrowLeft, ArrowRight, MapPinPlus, Route, Search, Star, X } from 'lucide-react';
 import styles from './MapPanel.module.scss';
 import { GoogleMapCanvas } from './GoogleMapCanvas';
+import { groundRoutePlacesForDay } from './map-route-data';
 import { usePlaceHover } from './PlaceHoverContext';
 import type {
   EditorMode,
@@ -389,10 +390,8 @@ export function MapPanel({
   }, [airportPlaces, selectedDayAirports]);
 
   const dayRoutePlaces = useMemo(() => {
-    return dayRouteSavedPlaceIds(schedule, stays, selectedDate)
-      .map(placeId => places.find(place => place.id === placeId))
-      .filter((place): place is SavedPlace => Boolean(place));
-  }, [places, schedule, selectedDate, stays]);
+    return groundRoutePlacesForDay(schedule, places, selectedDate);
+  }, [places, schedule, selectedDate]);
   const dayPlanPlaces = useMemo(() => {
     const planPlaces = [
       ...selectedDayLocations.map(segment => locationPlaceFromSegment(segment)),

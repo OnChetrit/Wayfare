@@ -121,19 +121,20 @@ export function ItineraryScreen() {
   function moveItem(index: number, direction: -1 | 1) {
     const next = timeline[index + direction];
     const current = timeline[index];
-    if (!next || !current) return;
+    if (!next || !current || current.sortOrder === undefined || next.sortOrder === undefined)
+      return;
     void Promise.all([
       reorderMutation.mutateAsync({
         id: current.id,
         date: current.date,
         startTime: current.startTime,
-        sortOrder: next.sortOrder ?? index + direction,
+        sortOrder: next.sortOrder,
       }),
       reorderMutation.mutateAsync({
         id: next.id,
         date: next.date,
         startTime: next.startTime,
-        sortOrder: current.sortOrder ?? index,
+        sortOrder: current.sortOrder,
       }),
     ]).catch(() => undefined);
   }

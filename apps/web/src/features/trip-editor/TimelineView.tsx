@@ -12,6 +12,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { useState, type DragEvent } from 'react';
+import { orderScheduleItemsForDay } from '@wayfare/domain';
 import styles from './TimelineView.module.scss';
 import { categoryMeta } from './data';
 import { parseTimelineDragPayload, setTimelineDragPayload } from './timeline-dnd';
@@ -122,9 +123,11 @@ export function TimelineView({
       >
         {days.map((day, index) => {
           const dayActivities = [
-            ...schedule
-              .filter(item => item.date === day.date)
-              .map(item => ({ kind: 'schedule' as const, item, sortTime: item.startTime })),
+            ...orderScheduleItemsForDay(schedule, day.date).map(item => ({
+              kind: 'schedule' as const,
+              item,
+              sortTime: item.startTime,
+            })),
             ...flights.flatMap(flight =>
               (['departure', 'arrival'] as const)
                 .filter(event =>

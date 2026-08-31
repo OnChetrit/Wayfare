@@ -55,6 +55,27 @@ export async function PATCH(
       );
   }
 
+  const movedToAnotherDay = item.trip_day_id !== day.id;
+  const { data: lastTargetDayItem, error: lastTargetDayItemError } = movedToAnotherDay
+    ? await auth.supabase
+        .from('schedule_items')
+        .select('sort_order')
+        .eq('trip_day_id', day.id)
+        .order('sort_order', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+    : { data: null, error: null };
+  if (lastTargetDayItemError) {
+    return NextResponse.json({ error: lastTargetDayItemError.message }, { status: 400 });
+  }
+
+  // Cross-day moves receive a fresh server-issued target-day order. Same-day
+  // reorders may request an explicit position and receive it back as the
+  // authoritative map refresh value.
+  const sortOrder =
+    result.data.sortOrder ??
+    (movedToAnotherDay ? (lastTargetDayItem?.sort_order ?? -1) + 1 : (item.sort_order ?? 0));
+
   const { error: updateError } = await auth.supabase
     .from('schedule_items')
     .update({
@@ -66,7 +87,7 @@ export async function PATCH(
       ),
       time_zone: trip.default_time_zone,
       ...(result.data.duration === undefined ? {} : { duration_minutes: result.data.duration }),
-      ...(result.data.sortOrder === undefined ? {} : { sort_order: result.data.sortOrder }),
+      sort_order: sortOrder,
       ...(result.data.note === undefined ? {} : { notes: result.data.note }),
       ...(result.data.title === undefined ? {} : { title_override: result.data.title }),
       ...(result.data.category === undefined ? {} : { category: result.data.category }),
@@ -91,7 +112,7 @@ export async function PATCH(
       date: result.data.date,
       startTime: result.data.startTime,
       duration: result.data.duration ?? item.duration_minutes ?? 60,
-      sortOrder: result.data.sortOrder ?? item.sort_order ?? 0,
+      sortOrder,
       title:
         result.data.title === undefined
           ? (item.title_override ?? undefined)

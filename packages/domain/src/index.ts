@@ -455,45 +455,59 @@ export function sortQueueOperations(operations: QueueOperation[]) {
   );
 }
 
-/**
- * Returns a day's itinerary in its stable, chronological display order without
- * mutating the API data array.
- */
-export function orderScheduleItemsForDay(items: ScheduleItem[], date: string) {
-  return items
-    .filter(item => item.date === date)
-    .sort(
-      (left, right) =>
-        left.startTime.localeCompare(right.startTime) ||
-        (left.sortOrder ?? 0) - (right.sortOrder ?? 0) ||
-        left.id.localeCompare(right.id),
-    );
+type ScheduleItemForDayOrdering = Pick<
+  ScheduleItem,
+  'date' | 'id' | 'savedPlaceId' | 'sortOrder'
+> & {
+  /** `null` is accepted now so this helper remains correct for untimed API items. */
+  startTime: string | null;
+};
+
+function scheduleSortOrder(item: ScheduleItemForDayOrdering) {
+  // Legacy responses without a server-issued sort order belong after explicit
+  // manual positions. Their ID remains the stable final tie-breaker.
+  return item.sortOrder ?? Number.POSITIVE_INFINITY;
 }
 
 /**
- * Lists the saved places a day route should visit: the hotel the traveler woke
- * up in, chronological scheduled places, then the hotel where they are staying
- * that night. Repeated IDs are intentional: they preserve return legs.
+ * Returns a day's itinerary in its stable, chronological display order without
+ * mutating the API data array. Timed items sort by local start time; equal-time
+ * and untimed items use the server-owned manual order, then their ID.
  */
-export function dayRouteSavedPlaceIds(schedule: ScheduleItem[], stays: Stay[], date: string) {
-  const stayOrder = (left: Stay, right: Stay) =>
-    right.checkInDate.localeCompare(left.checkInDate) ||
-    right.checkOutDate.localeCompare(left.checkOutDate) ||
-    left.id.localeCompare(right.id);
-  const wakingStay = stays
-    .filter(stay => stay.checkInDate < date && date <= stay.checkOutDate)
-    .sort(stayOrder)[0];
-  const overnightStay = stays
-    .filter(stay => stay.checkInDate <= date && date < stay.checkOutDate)
-    .sort(stayOrder)[0];
+export function orderScheduleItemsForDay<T extends ScheduleItemForDayOrdering>(
+  items: readonly T[],
+  date: string,
+) {
+  return items
+    .filter(item => item.date === date)
+    .sort((left, right) => {
+      const leftTime = left.startTime;
+      const rightTime = right.startTime;
+      const leftIsTimed = leftTime !== null;
+      const rightIsTimed = rightTime !== null;
+      if (leftIsTimed !== rightIsTimed) return leftIsTimed ? -1 : 1;
 
-  return [
-    ...(wakingStay?.savedPlaceId ? [wakingStay.savedPlaceId] : []),
-    ...orderScheduleItemsForDay(schedule, date).flatMap(item =>
-      item.savedPlaceId ? [item.savedPlaceId] : [],
-    ),
-    ...(overnightStay?.savedPlaceId ? [overnightStay.savedPlaceId] : []),
-  ];
+      if (leftTime !== null && rightTime !== null) {
+        const timeComparison = leftTime.localeCompare(rightTime);
+        if (timeComparison) return timeComparison;
+      }
+
+      return scheduleSortOrder(left) - scheduleSortOrder(right) || left.id.localeCompare(right.id);
+    });
+}
+
+/**
+ * Lists only the scheduled saved places a green ground route should visit.
+ * Manual activities without a saved place are intentionally skipped without
+ * breaking the path between the remaining mappable stops.
+ */
+export function dayRouteSavedPlaceIds<T extends ScheduleItemForDayOrdering>(
+  schedule: readonly T[],
+  date: string,
+) {
+  return orderScheduleItemsForDay(schedule, date).flatMap(item =>
+    item.savedPlaceId ? [item.savedPlaceId] : [],
+  );
 }
 
 export function makeTripDays(startDate: string, endDate: string) {

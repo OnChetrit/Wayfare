@@ -1,14 +1,10 @@
-import {
-  dayRouteSavedPlaceIds,
-  orderScheduleItemsForDay,
-  type TripEditorTrip,
-  type TripFlight,
-} from '@wayfare/domain';
+import { orderScheduleItemsForDay, type TripEditorTrip, type TripFlight } from '@wayfare/domain';
 import { useQueries } from '@tanstack/react-query';
 import * as React from 'react';
 
 import { searchGooglePlaces } from '@/api/trips';
 import type { MapPlace, MapRoute } from '@/components/trip-map';
+import { groundRoutePlacesForDay } from '@/features/itinerary/day-route-map-data';
 
 type Airport = {
   id: string;
@@ -188,10 +184,9 @@ export function useDayPlanMap({
       const place = item.savedPlaceId ? placesById.get(item.savedPlaceId) : undefined;
       return place ? [mapPlaceForSavedPlace(place)] : [];
     });
-    const routePlaces = dayRouteSavedPlaceIds(trip.schedule, trip.stays, date).flatMap(placeId => {
-      const place = placesById.get(placeId);
-      return place ? [mapPlaceForSavedPlace(place)] : [];
-    });
+    const routePlaces = groundRoutePlacesForDay(trip.schedule, trip.places, date).map(
+      mapPlaceForSavedPlace,
+    );
     const flightRoutes = inputs.flightAirportRoutes
       .map(route =>
         route

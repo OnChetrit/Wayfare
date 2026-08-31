@@ -1,9 +1,9 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { isSessionInvalidError, WayfareApiError } from '@/api/error';
-import { tripKeys } from '@/api/query-keys';
 import { useIsOnline } from '@/api/query-client';
 import { useAuth } from '@/features/auth/auth-context';
+import { invalidateTripData } from './trip-query-invalidation';
 
 type TripMutationOptions<TData, TVariables> = {
   onSuccess?: (data: TData, variables: TVariables) => Promise<void> | void;
@@ -33,10 +33,7 @@ export function useTripMutation<TData, TVariables>(
       },
       onSuccess: async (data, variables) => {
         await options.onSuccess?.(data, variables);
-        await Promise.all([
-          ...(tripId ? [queryClient.invalidateQueries({ queryKey: tripKeys.detail(tripId) })] : []),
-          queryClient.invalidateQueries({ queryKey: tripKeys.all }),
-        ]);
+        await invalidateTripData(queryClient, tripId);
       },
     }),
   };
