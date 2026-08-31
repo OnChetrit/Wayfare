@@ -1,6 +1,12 @@
 import * as React from 'react';
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE, type Region } from 'react-native-maps';
 
+import {
+  isValidMapCoordinate,
+  mapCameraKey,
+  sameMapRegion,
+  uniqueMapCoordinates,
+} from '@/components/trip-map-coordinates';
 import { useTheme } from '@/theme/theme-provider';
 
 const initialRegion: Region = {
@@ -47,6 +53,7 @@ type TripMapProps = {
   onVisiblePlacesChange?: (placeIds: string[]) => void;
   places?: MapPlace[];
   routes?: MapRoute[];
+  showRouteLines?: boolean;
   selectedPlace?: MapPlace | null;
 };
 
@@ -73,21 +80,34 @@ export function TripMap({
   onVisiblePlacesChange,
   places = [],
   routes = [],
+  showRouteLines = true,
   selectedPlace,
 }: TripMapProps) {
   const { colors, theme } = useTheme();
   const map = React.useRef<MapView>(null);
+  const lastFittedCameraKey = React.useRef<string | null>(null);
   const [region, setRegion] = React.useState(initialRegion);
+  const [mapReady, setMapReady] = React.useState(false);
   const mapPlaces = React.useMemo(() => {
     const uniquePlaces = new Map<string, MapPlace>();
     for (const place of [...(selectedPlace ? [selectedPlace] : []), ...places]) {
-      if (!uniquePlaces.has(place.id)) uniquePlaces.set(place.id, place);
+      if (
+        !uniquePlaces.has(place.id) &&
+        isValidMapCoordinate({ latitude: place.lat, longitude: place.lng })
+      ) {
+        uniquePlaces.set(place.id, place);
+      }
     }
     return Array.from(uniquePlaces.values());
   }, [places, selectedPlace]);
 
   React.useEffect(() => {
-    if (!selectedPlace) return;
+    if (
+      !mapReady ||
+      !selectedPlace ||
+      !isValidMapCoordinate({ latitude: selectedPlace.lat, longitude: selectedPlace.lng })
+    )
+      return;
 
     map.current?.animateToRegion(
       {
@@ -98,23 +118,39 @@ export function TripMap({
       },
       360,
     );
-  }, [selectedPlace]);
+  }, [mapReady, selectedPlace]);
 
-  const routeCoordinates = React.useMemo(
-    () => routes.flatMap(route => route.coordinates),
-    [routes],
+  const visibleRoutes = React.useMemo(
+    () =>
+      showRouteLines
+        ? routes
+            .map(route => ({
+              ...route,
+              coordinates: route.coordinates.filter(isValidMapCoordinate),
+            }))
+            .filter(route => route.coordinates.length >= 2)
+        : [],
+    [routes, showRouteLines],
   );
+  const cameraCoordinates = React.useMemo(
+    () =>
+      uniqueMapCoordinates([
+        ...places.map(place => ({ latitude: place.lat, longitude: place.lng })),
+        ...visibleRoutes.flatMap(route => route.coordinates),
+      ]),
+    [places, visibleRoutes],
+  );
+  const nextCameraKey = React.useMemo(() => mapCameraKey(cameraCoordinates), [cameraCoordinates]);
 
   React.useEffect(() => {
-    if (!fitToPlaces || !mapPlaces.length) return;
-    const coordinates = [
-      ...mapPlaces.map(place => ({ latitude: place.lat, longitude: place.lng })),
-      ...routeCoordinates,
-    ];
-    if (coordinates.length === 1) {
+    if (!fitToPlaces || !mapReady || !cameraCoordinates.length) return;
+    if (lastFittedCameraKey.current === nextCameraKey) return;
+
+    lastFittedCameraKey.current = nextCameraKey;
+    if (cameraCoordinates.length === 1) {
       map.current?.animateToRegion(
         {
-          ...coordinates[0],
+          ...cameraCoordinates[0],
           latitudeDelta: 0.045,
           longitudeDelta: 0.045,
         },
@@ -122,11 +158,11 @@ export function TripMap({
       );
       return;
     }
-    map.current?.fitToCoordinates(coordinates, {
+    map.current?.fitToCoordinates(cameraCoordinates, {
       animated: true,
       edgePadding: { bottom: 56, left: 40, right: 40, top: 56 },
     });
-  }, [fitToPlaces, mapPlaces, routeCoordinates]);
+  }, [cameraCoordinates, fitToPlaces, mapReady, nextCameraKey]);
 
   React.useEffect(() => {
     onVisiblePlacesChange?.(
@@ -141,7 +177,12 @@ export function TripMap({
       style={{ flex: 1 }}
       initialRegion={initialRegion}
       mapType="standard"
-      onRegionChangeComplete={setRegion}
+      onMapReady={() => setMapReady(true)}
+      onRegionChangeComplete={nextRegion =>
+        setRegion(currentRegion =>
+          sameMapRegion(currentRegion, nextRegion) ? currentRegion : nextRegion,
+        )
+      }
       customMapStyle={theme === 'dark' ? darkMapStyle : undefined}
     >
       {mapPlaces.map(place => (
@@ -154,17 +195,15 @@ export function TripMap({
           title={place.name}
         />
       ))}
-      {routes.map(route =>
-        route.coordinates.length >= 2 ? (
-          <Polyline
-            coordinates={route.coordinates}
-            key={route.id}
-            lineDashPattern={route.dashed ? [8, 8] : undefined}
-            strokeColor={route.color ?? colors.accent}
-            strokeWidth={route.dashed ? 2 : 4}
-          />
-        ) : null,
-      )}
+      {visibleRoutes.map(route => (
+        <Polyline
+          coordinates={route.coordinates}
+          key={route.id}
+          lineDashPattern={route.dashed ? [8, 8] : undefined}
+          strokeColor={route.color ?? colors.accent}
+          strokeWidth={route.dashed ? 2 : 4}
+        />
+      ))}
     </MapView>
   );
 }

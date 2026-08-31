@@ -3,9 +3,8 @@ import ImportIcon from '@expo/material-symbols/playlist_add.xml';
 import SavedPlacesIcon from '@expo/material-symbols/list.xml';
 import { router, Stack } from 'expo-router';
 import * as React from 'react';
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import type { SavedPlace } from '@wayfare/domain';
 
 import {
   assignPlaceToSegment,
@@ -21,13 +20,12 @@ import { Screen } from '@/components/ui/screen';
 import { TripMap, type MapPlace } from '@/components/trip-map';
 import { useTripMutation } from '@/features/itinerary/use-trip-mutation';
 import { useTripEditor } from '@/features/trips/use-trip-editor';
-import { mapPlacesForExplore, toMapPlace } from '@/features/explore/saved-place-map';
+import { toMapPlace } from '@/features/explore/saved-place-map';
 import { SavedPlacesDrawer } from '@/features/explore/saved-places-drawer';
-import { filterSavedPlacesForLocation } from '@/features/explore/saved-places-filter';
+import { tripDaysForExplore } from '@/features/explore/explore-trip-days';
+import { useDayPlanMap } from '@/features/itinerary/use-day-plan-map';
 import { messageFromError } from '@/lib/format';
 import { useTheme } from '@/theme/theme-provider';
-
-const emptySavedPlaces: SavedPlace[] = [];
 
 function haveSamePlaceIds(left: string[], right: string[]) {
   return left.length === right.length && left.every((placeId, index) => placeId === right[index]);
@@ -44,29 +42,16 @@ export function ExploreScreen() {
   const [locationScopeId, setLocationScopeId] = React.useState<string>();
   const [locationMessage, setLocationMessage] = React.useState<string | null>(null);
   const [visibleMapPlaceIds, setVisibleMapPlaceIds] = React.useState<string[]>([]);
+  const [selectedDate, setSelectedDate] = React.useState<string>();
   const trip = tripQuery.data;
-  const tripPlaces = trip?.places ?? emptySavedPlaces;
-  const firstSavedPlace = tripPlaces[0];
-  const initialPlace = React.useMemo(
-    () => (firstSavedPlace ? toMapPlace(firstSavedPlace) : null),
-    [firstSavedPlace],
-  );
-  const activePlace = selectedPlace ?? initialPlace;
-  const locationScopedPlaces = React.useMemo(
-    () => filterSavedPlacesForLocation(tripPlaces, locationScopeId),
-    [locationScopeId, tripPlaces],
-  );
-  const selectedSavedPlace = tripPlaces.find(place => place.id === activePlace?.id);
-  const mapActivePlace =
-    locationScopeId &&
-    selectedSavedPlace &&
-    !locationScopedPlaces.some(place => place.id === selectedSavedPlace.id)
-      ? null
-      : activePlace;
-  const mapPlaces = React.useMemo(
-    () => mapPlacesForExplore(locationScopedPlaces, mapActivePlace),
-    [locationScopedPlaces, mapActivePlace],
-  );
+  const exploreDays = React.useMemo(() => tripDaysForExplore(trip), [trip]);
+  const currentDate = exploreDays.some(day => day.date === selectedDate)
+    ? selectedDate
+    : exploreDays[0]?.date;
+  const { mapPlaces: dayPlanMapPlaces, routes: dayPlanRoutes } = useDayPlanMap({
+    date: currentDate,
+    trip,
+  });
   const updateVisibleMapPlaceIds = React.useCallback((placeIds: string[]) => {
     setVisibleMapPlaceIds(current => (haveSamePlaceIds(current, placeIds) ? current : placeIds));
   }, []);
@@ -150,10 +135,12 @@ export function ExploreScreen() {
     <>
       <View style={{ backgroundColor: colors.background, flex: 1 }}>
         <TripMap
+          fitToPlaces
           onSelectPlace={showMapPlace}
           onVisiblePlacesChange={updateVisibleMapPlaceIds}
-          places={mapPlaces}
-          selectedPlace={mapActivePlace}
+          places={dayPlanMapPlaces}
+          routes={dayPlanRoutes}
+          selectedPlace={selectedPlace}
         />
         <View
           style={{
@@ -169,7 +156,12 @@ export function ExploreScreen() {
             <Card style={{ maxHeight: 360 }}>
               {placesQuery.isLoading ? (
                 <View
-                  style={{ alignItems: 'center', flexDirection: 'row', gap: 8, paddingVertical: 8 }}
+                  style={{
+                    alignItems: 'center',
+                    flexDirection: 'row',
+                    gap: 8,
+                    paddingVertical: 8,
+                  }}
                 >
                   <ActivityIndicator color={colors.accent} />
                   <Text selectable style={{ color: colors.textMuted }}>
@@ -265,10 +257,42 @@ export function ExploreScreen() {
                 );
             }}
             places={trip.places}
-            selectedPlaceId={activePlace?.id}
+            selectedPlaceId={selectedPlace?.id}
             visiblePlaceIds={visibleMapPlaceIds}
             visible
           />
+        ) : null}
+        {exploreDays.length ? (
+          <View
+            style={{
+              paddingVertical: 8,
+              position: 'absolute',
+              top: 175,
+              width: '100%',
+              zIndex: 2,
+            }}
+          >
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ gap: 8, paddingHorizontal: 16 }}
+            >
+              {exploreDays.map(day => (
+                <Button
+                  accessibilityLabel={`Show ${day.label}, ${day.shortDate} on the map`}
+                  accessibilityState={{ selected: day.date === currentDate }}
+                  key={day.id}
+                  onPress={() => {
+                    setSelectedDate(day.date);
+                    setSelectedPlace(null);
+                  }}
+                  tone={day.date === currentDate ? 'primary' : 'secondary'}
+                >
+                  {day.shortDate}
+                </Button>
+              ))}
+            </ScrollView>
+          </View>
         ) : null}
       </View>
       <Stack.SearchBar

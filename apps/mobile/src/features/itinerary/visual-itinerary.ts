@@ -1,4 +1,9 @@
-import type { LocationSegment, ScheduleItem, TripDay } from '@wayfare/domain';
+import {
+  orderScheduleItemsForDay,
+  type LocationSegment,
+  type ScheduleItem,
+  type TripDay,
+} from '@wayfare/domain';
 
 export type LocationBoundary = {
   left: LocationSegment;
@@ -7,11 +12,7 @@ export type LocationBoundary = {
 };
 
 export function sortScheduleForDay(schedule: ScheduleItem[], date: string) {
-  return schedule
-    .filter(item => item.date === date)
-    .sort(
-      (a, b) => a.startTime.localeCompare(b.startTime) || (a.sortOrder ?? 0) - (b.sortOrder ?? 0),
-    );
+  return orderScheduleItemsForDay(schedule, date);
 }
 
 export function nextScheduleStartTime(schedule: ScheduleItem[], date: string) {

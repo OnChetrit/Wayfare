@@ -5,6 +5,7 @@ import gsap from 'gsap';
 import dynamic from 'next/dynamic';
 import { usePathname, useRouter } from 'next/navigation';
 import { startTransition, useEffect, useMemo, useRef, useState } from 'react';
+import { orderScheduleItemsForDay } from '@wayfare/domain';
 import styles from './TripEditor.module.scss';
 import { ActivityEditor, type ActivityDraft, type ActivityEditorKind } from './ActivityEditor';
 import type { LocationDraft, StayDraft } from './DateBar';
@@ -17,6 +18,7 @@ import { PlacesPanel } from './PlacesPanel';
 import { useTripHeaderLayout } from './TripHeaderLayout';
 import { TripSettingsModal } from './TripSettingsModal';
 import { UserModal } from './UserModal';
+import { useMapRouteLinePreference } from '@/lib/map-route-line-preference';
 import { createClient } from '@/lib/supabase/client';
 import { parseAmount } from '@/lib/trips/amounts';
 import { expenseFromDatabase } from '@/lib/trips/expenses';
@@ -88,6 +90,7 @@ export function TripEditor({
   const [activityEditorOpen, setActivityEditorOpen] = useState<ActivityEditorKind | null>(null);
   const [dayNotesOpen, setDayNotesOpen] = useState(false);
   const [showDayPlanOnly, setShowDayPlanOnly] = useState(true);
+  const { showRouteLines, setShowRouteLines } = useMapRouteLinePreference();
   const [showOnlyVisiblePlaces, setShowOnlyVisiblePlaces] = useState(false);
   const [visibleMapPlaceIds, setVisibleMapPlaceIds] = useState<string[]>([]);
   const editorRef = useRef<HTMLDivElement>(null);
@@ -167,9 +170,7 @@ export function TripEditor({
     () => locationSegments.find(segment => segment.id === selectedLocationId) ?? null,
     [locationSegments, selectedLocationId],
   );
-  const selectedSchedule = schedule
-    .filter(item => item.date === selectedDate)
-    .sort((a, b) => a.startTime.localeCompare(b.startTime));
+  const selectedSchedule = orderScheduleItemsForDay(schedule, selectedDate);
   const selectedFlights = flights
     .filter(flight => flight.departureDate === selectedDate || flight.arrivalDate === selectedDate)
     .sort((a, b) => a.scheduledDepartureUtc.localeCompare(b.scheduledDepartureUtc));
@@ -1114,9 +1115,7 @@ export function TripEditor({
   }
 
   function moveScheduleItem(item: ScheduleItem, direction: 'up' | 'down') {
-    const items = schedule
-      .filter(candidate => candidate.date === item.date)
-      .sort((a, b) => a.startTime.localeCompare(b.startTime));
+    const items = orderScheduleItemsForDay(schedule, item.date);
     const index = items.findIndex(candidate => candidate.id === item.id);
     const target = direction === 'up' ? index - 1 : index + 1;
     if (index < 0 || target < 0 || target >= items.length) return;
@@ -1330,9 +1329,11 @@ export function TripEditor({
                     selectedPlaceId={selectedPlaceId}
                     previewPlace={previewPlace}
                     showDayPlanOnly={showDayPlanOnly}
+                    showRouteLines={showRouteLines}
                     selectedDayLabel={selectedDay?.weekday.toLowerCase() ?? 'your day'}
                     onSelectPlace={selectPlace}
                     onShowDayPlanOnlyChange={setShowDayPlanOnly}
+                    onShowRouteLinesChange={setShowRouteLines}
                     onVisibleMapPlacesChange={setVisibleMapPlaceIds}
                     onClosePreview={() => setPreviewPlace(null)}
                     onSavePlace={savePlace}

@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   currencyTotals,
+  dayRouteSavedPlaceIds,
   makeTripDays,
+  orderScheduleItemsForDay,
   sortQueueOperations,
   tripEditorTripResponseSchema,
   tripInputSchema,
@@ -81,6 +83,87 @@ describe('shared domain contracts', () => {
         },
       ]).map(operation => operation.id),
     ).toEqual(['first', 'later']);
+  });
+
+  it('orders itinerary stops chronologically and keeps manual ties stable', () => {
+    expect(
+      orderScheduleItemsForDay(
+        [
+          {
+            id: 'late',
+            savedPlaceId: 'late-place',
+            date: '2026-10-11',
+            startTime: '15:00',
+            duration: 60,
+          },
+          {
+            id: 'same-time-second',
+            savedPlaceId: 'second-place',
+            date: '2026-10-11',
+            startTime: '10:00',
+            duration: 60,
+            sortOrder: 2,
+          },
+          {
+            id: 'same-time-first',
+            savedPlaceId: 'first-place',
+            date: '2026-10-11',
+            startTime: '10:00',
+            duration: 60,
+            sortOrder: 1,
+          },
+          {
+            id: 'another-day',
+            savedPlaceId: 'other-place',
+            date: '2026-10-12',
+            startTime: '09:00',
+            duration: 60,
+          },
+        ],
+        '2026-10-11',
+      ).map(item => item.id),
+    ).toEqual(['same-time-first', 'same-time-second', 'late']);
+  });
+
+  it('routes a day from the waking hotel through stops to the overnight hotel', () => {
+    expect(
+      dayRouteSavedPlaceIds(
+        [
+          {
+            id: 'museum',
+            savedPlaceId: 'museum-place',
+            date: '2026-10-11',
+            startTime: '11:00',
+            duration: 90,
+          },
+          {
+            id: 'coffee',
+            savedPlaceId: 'coffee-place',
+            date: '2026-10-11',
+            startTime: '09:00',
+            duration: 30,
+          },
+          {
+            id: 'unmapped-activity',
+            savedPlaceId: null,
+            date: '2026-10-11',
+            startTime: '13:00',
+            duration: 60,
+          },
+        ],
+        [
+          {
+            id: 'hotel',
+            tripId: 'trip',
+            name: 'Hotel',
+            savedPlaceId: 'hotel-place',
+            checkInDate: '2026-10-10',
+            checkOutDate: '2026-10-13',
+          },
+        ],
+        '2026-10-11',
+      ),
+    ).toEqual(['hotel-place', 'coffee-place', 'museum-place', 'hotel-place']);
   });
 
   it('validates the camel-case trip editor API contract', () => {

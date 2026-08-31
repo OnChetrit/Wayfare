@@ -455,6 +455,47 @@ export function sortQueueOperations(operations: QueueOperation[]) {
   );
 }
 
+/**
+ * Returns a day's itinerary in its stable, chronological display order without
+ * mutating the API data array.
+ */
+export function orderScheduleItemsForDay(items: ScheduleItem[], date: string) {
+  return items
+    .filter(item => item.date === date)
+    .sort(
+      (left, right) =>
+        left.startTime.localeCompare(right.startTime) ||
+        (left.sortOrder ?? 0) - (right.sortOrder ?? 0) ||
+        left.id.localeCompare(right.id),
+    );
+}
+
+/**
+ * Lists the saved places a day route should visit: the hotel the traveler woke
+ * up in, chronological scheduled places, then the hotel where they are staying
+ * that night. Repeated IDs are intentional: they preserve return legs.
+ */
+export function dayRouteSavedPlaceIds(schedule: ScheduleItem[], stays: Stay[], date: string) {
+  const stayOrder = (left: Stay, right: Stay) =>
+    right.checkInDate.localeCompare(left.checkInDate) ||
+    right.checkOutDate.localeCompare(left.checkOutDate) ||
+    left.id.localeCompare(right.id);
+  const wakingStay = stays
+    .filter(stay => stay.checkInDate < date && date <= stay.checkOutDate)
+    .sort(stayOrder)[0];
+  const overnightStay = stays
+    .filter(stay => stay.checkInDate <= date && date < stay.checkOutDate)
+    .sort(stayOrder)[0];
+
+  return [
+    ...(wakingStay?.savedPlaceId ? [wakingStay.savedPlaceId] : []),
+    ...orderScheduleItemsForDay(schedule, date).flatMap(item =>
+      item.savedPlaceId ? [item.savedPlaceId] : [],
+    ),
+    ...(overnightStay?.savedPlaceId ? [overnightStay.savedPlaceId] : []),
+  ];
+}
+
 export function makeTripDays(startDate: string, endDate: string) {
   if (
     !z.iso.date().safeParse(startDate).success ||

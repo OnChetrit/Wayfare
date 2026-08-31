@@ -193,6 +193,37 @@
     }
   }
 
+  .routeLinesButton {
+    min-height: 29px;
+    padding: 0 8px;
+    border: 1px solid var(--line-strong);
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    color: var(--muted);
+    background: var(--surface-strong);
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+
+    &[aria-pressed='true'] {
+      border-color: var(--green);
+      color: white;
+      background: var(--green-button);
+    }
+
+    &:hover {
+      color: var(--green-dark);
+      background: var(--surface-green);
+    }
+
+    &[aria-pressed='true']:hover {
+      color: white;
+      background: var(--green-button-hover);
+    }
+  }
+
   .switchTrack {
     position: relative;
     width: 30px;
@@ -508,7 +539,30 @@
       top: 73px;
       right: 15px;
       left: 15px;
-      justify-content: space-between;
+      min-height: 44px;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 6px;
+      padding: 6px;
+    }
+
+    .mapControlLabel {
+      display: none;
+    }
+
+    .switchButton,
+    .routeLinesButton {
+      min-width: 0;
+      justify-content: center;
+    }
+
+    .mapControls > span:not(.mapControlLabel) {
+      grid-column: 1 / -1;
+      padding: 0 6px;
+    }
+
+    .mapControls > span:not(.mapControlLabel) + .routeLinesButton {
+      grid-column: 1 / -1;
     }
 
     .dayRouteBadge {

@@ -1,7 +1,8 @@
 'use client';
 
 import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, ArrowRight, MapPinPlus, Search, Star, X } from 'lucide-react';
+import { dayRouteSavedPlaceIds, orderScheduleItemsForDay } from '@wayfare/domain';
+import { ArrowLeft, ArrowRight, MapPinPlus, Route, Search, Star, X } from 'lucide-react';
 import styles from './MapPanel.module.scss';
 import { GoogleMapCanvas } from './GoogleMapCanvas';
 import { usePlaceHover } from './PlaceHoverContext';
@@ -30,9 +31,11 @@ type MapPanelProps = {
   selectedPlaceId: string | null;
   previewPlace: SavedPlace | null;
   showDayPlanOnly: boolean;
+  showRouteLines: boolean;
   selectedDayLabel: string;
   onSelectPlace: (place: SavedPlace) => void;
   onShowDayPlanOnlyChange: (value: boolean) => void;
+  onShowRouteLinesChange: (value: boolean) => void;
   onVisibleMapPlacesChange: (placeIds: string[]) => void;
   onClosePreview: () => void;
   onSavePlace: (place: SavedPlace) => Promise<SavedPlace>;
@@ -169,9 +172,11 @@ export function MapPanel({
   selectedPlaceId,
   previewPlace,
   showDayPlanOnly,
+  showRouteLines,
   selectedDayLabel,
   onSelectPlace,
   onShowDayPlanOnlyChange,
+  onShowRouteLinesChange,
   onVisibleMapPlacesChange,
   onClosePreview,
   onSavePlace,
@@ -253,10 +258,7 @@ export function MapPanel({
   }, [destinationLabel, localResults, query]);
 
   const selectedDaySchedule = useMemo(
-    () =>
-      schedule
-        .filter(item => item.date === selectedDate)
-        .sort((a, b) => a.startTime.localeCompare(b.startTime)),
+    () => orderScheduleItemsForDay(schedule, selectedDate),
     [schedule, selectedDate],
   );
   const selectedDayLocations = useMemo(
@@ -338,12 +340,6 @@ export function MapPanel({
       (airport, index, all) => all.findIndex(candidate => candidate.id === airport.id) === index,
     );
   }, [flights, selectedDate, tripEndDate, tripStartDate]);
-  const selectedDayArrivalAirports = selectedDayGroundAirports.filter(
-    airport => airport.phase === 'arrival',
-  );
-  const selectedDayDepartureAirports = selectedDayGroundAirports.filter(
-    airport => airport.phase === 'departure',
-  );
   const selectedDayAirports = useMemo(() => {
     const airports = [...selectedDayFlightRoutes.flat(), ...selectedDayGroundAirports];
     return airports.filter(
@@ -393,8 +389,12 @@ export function MapPanel({
   }, [airportPlaces, selectedDayAirports]);
 
   const dayRoutePlaces = useMemo(() => {
-    const routePlaces = [
-      ...selectedDayArrivalAirports.map(airport => airportPlaces[airport.id]),
+    return dayRouteSavedPlaceIds(schedule, stays, selectedDate)
+      .map(placeId => places.find(place => place.id === placeId))
+      .filter((place): place is SavedPlace => Boolean(place));
+  }, [places, schedule, selectedDate, stays]);
+  const dayPlanPlaces = useMemo(() => {
+    const planPlaces = [
       ...selectedDayLocations.map(segment => locationPlaceFromSegment(segment)),
       ...selectedDayStays.map(stay =>
         stay.savedPlaceId ? places.find(place => place.id === stay.savedPlaceId) : undefined,
@@ -402,17 +402,15 @@ export function MapPanel({
       ...selectedDaySchedule.map(item =>
         item.savedPlaceId ? places.find(place => place.id === item.savedPlaceId) : undefined,
       ),
-      ...selectedDayDepartureAirports.map(airport => airportPlaces[airport.id]),
-    ];
-    const availablePlaces = routePlaces.filter((place): place is SavedPlace => Boolean(place));
-    return availablePlaces.filter(
+      ...selectedDayAirports.map(airport => airportPlaces[airport.id]),
+    ].filter((place): place is SavedPlace => Boolean(place));
+    return planPlaces.filter(
       (place, index, all) => all.findIndex(candidate => candidate.id === place.id) === index,
     );
   }, [
     airportPlaces,
     places,
-    selectedDayArrivalAirports,
-    selectedDayDepartureAirports,
+    selectedDayAirports,
     selectedDayLocations,
     selectedDaySchedule,
     selectedDayStays,
@@ -440,7 +438,7 @@ export function MapPanel({
   const baseMapPlaces = isShowingLocationPlaces
     ? locationPlaces
     : showDayPlanOnly
-      ? dayRoutePlaces
+      ? dayPlanPlaces
       : places;
   const mapPlaces = useMemo(() => {
     // Search results are cleared as soon as one is selected. Keep the selected
@@ -597,6 +595,7 @@ export function MapPanel({
           places={mapPlaces}
           routePlaces={isShowingLocationPlaces ? [] : dayRoutePlaces}
           flightRoutePlaces={isShowingLocationPlaces ? [] : flightRoutePlaces}
+          showRouteLines={showRouteLines}
           selectedDate={selectedDate}
           scheduledPlaceIds={scheduledPlaceIds}
           selectedPlaceId={selectedPlaceId}
@@ -623,6 +622,15 @@ export function MapPanel({
               <span>{showDayPlanOnly ? 'Day plan' : 'All saved places'}</span>
             </button>
           )}
+          <button
+            type="button"
+            className={styles.routeLinesButton}
+            aria-pressed={showRouteLines}
+            onClick={() => onShowRouteLinesChange(!showRouteLines)}
+          >
+            <Route aria-hidden="true" size={15} />
+            <span>Route lines</span>
+          </button>
         </div>
         <div ref={mapSearchRef} className={styles.mapSearch}>
           <Search size={17} />

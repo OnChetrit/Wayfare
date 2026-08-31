@@ -140,6 +140,7 @@ type GoogleMapCanvasProps = {
   places: SavedPlace[];
   routePlaces: SavedPlace[];
   flightRoutePlaces: SavedPlace[][];
+  showRouteLines: boolean;
   selectedDate: string;
   scheduledPlaceIds: Set<string>;
   selectedPlaceId: string | null;
@@ -153,6 +154,7 @@ export function GoogleMapCanvas({
   places,
   routePlaces,
   flightRoutePlaces,
+  showRouteLines,
   selectedDate,
   scheduledPlaceIds,
   selectedPlaceId,
@@ -444,7 +446,7 @@ export function GoogleMapCanvas({
   }, [places, selectedPlaceId, transitionToCamera]);
 
   useEffect(() => {
-    if (!map.current || routePlaces.length < 2) return;
+    if (!showRouteLines || !map.current || routePlaces.length < 2) return;
     const googleApi = (window as Window & { google?: GoogleApi }).google;
     if (!googleApi?.maps?.Polyline) return;
     const routeLine = new googleApi.maps.Polyline({
@@ -457,10 +459,10 @@ export function GoogleMapCanvas({
       zIndex: 1,
     });
     return () => routeLine.setMap(null);
-  }, [isDarkTheme, routePlaces]);
+  }, [isDarkTheme, routePlaces, showRouteLines]);
 
   useEffect(() => {
-    if (!map.current || !flightRoutePlaces.length) return;
+    if (!showRouteLines || !map.current || !flightRoutePlaces.length) return;
     const googleApi = (window as Window & { google?: GoogleApi }).google;
     if (!googleApi?.maps?.Polyline) return;
     const flightLines = flightRoutePlaces.map(
@@ -476,7 +478,7 @@ export function GoogleMapCanvas({
         }),
     );
     return () => flightLines.forEach(line => line.setMap(null));
-  }, [flightRoutePlaces, isDarkTheme]);
+  }, [flightRoutePlaces, isDarkTheme, showRouteLines]);
 
   useEffect(() => {
     if (!map.current) return;

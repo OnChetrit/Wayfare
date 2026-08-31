@@ -11,6 +11,7 @@ import {
   VStack,
 } from '@expo/ui/swift-ui';
 import { buttonStyle, disabled, listStyle, refreshable } from '@expo/ui/swift-ui/modifiers';
+import { orderScheduleItemsForDay } from '@wayfare/domain';
 import { Link, router, Stack } from 'expo-router';
 import * as React from 'react';
 import { Alert, RefreshControl, ScrollView, Text, View } from 'react-native';
@@ -104,11 +105,7 @@ export function ItineraryScreen() {
   if (!currentDate) return null;
 
   const selectedDay = trip.days.find(day => day.date === currentDate) ?? trip.days[0];
-  const timeline = trip.schedule
-    .filter(item => item.date === selectedDay.date)
-    .sort(
-      (a, b) => a.startTime.localeCompare(b.startTime) || (a.sortOrder ?? 0) - (b.sortOrder ?? 0),
-    );
+  const timeline = orderScheduleItemsForDay(trip.schedule, selectedDay.date);
   const stays = trip.stays.filter(
     stay => stay.checkInDate <= selectedDay.date && stay.checkOutDate >= selectedDay.date,
   );
