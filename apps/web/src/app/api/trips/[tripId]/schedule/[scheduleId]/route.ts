@@ -55,36 +55,18 @@ export async function PATCH(
       );
   }
 
-  const movedToAnotherDay = item.trip_day_id !== day.id;
-  const { data: lastTargetDayItem, error: lastTargetDayItemError } = movedToAnotherDay
-    ? await auth.supabase
-        .from('schedule_items')
-        .select('sort_order')
-        .eq('trip_day_id', day.id)
-        .order('sort_order', { ascending: false })
-        .limit(1)
-        .maybeSingle()
-    : { data: null, error: null };
-  if (lastTargetDayItemError) {
-    return NextResponse.json({ error: lastTargetDayItemError.message }, { status: 400 });
-  }
+  // Same-day reorders carry an explicit manual order. The database trigger
+  // allocates a fresh target-day position for cross-day moves in this update's
+  // transaction, so concurrent drops cannot reuse a position.
+  const sortOrder = result.data.sortOrder ?? item.sort_order ?? 0;
 
-  // Cross-day moves receive a fresh server-issued target-day order. Same-day
-  // reorders may request an explicit position and receive it back as the
-  // authoritative map refresh value.
-  const sortOrder =
-    result.data.sortOrder ??
-    (movedToAnotherDay ? (lastTargetDayItem?.sort_order ?? -1) + 1 : (item.sort_order ?? 0));
-
-  const { error: updateError } = await auth.supabase
+  const { data: updatedItem, error: updateError } = await auth.supabase
     .from('schedule_items')
     .update({
       trip_day_id: day.id,
-      start_at_utc: localDateTimeToUtc(
-        result.data.date,
-        result.data.startTime,
-        trip.default_time_zone,
-      ),
+      start_at_utc: result.data.startTime
+        ? localDateTimeToUtc(result.data.date, result.data.startTime, trip.default_time_zone)
+        : null,
       time_zone: trip.default_time_zone,
       ...(result.data.duration === undefined ? {} : { duration_minutes: result.data.duration }),
       sort_order: sortOrder,
@@ -101,7 +83,9 @@ export async function PATCH(
           }
         : {}),
     })
-    .eq('id', scheduleId);
+    .eq('id', scheduleId)
+    .select('sort_order')
+    .single();
   if (updateError) return NextResponse.json({ error: updateError.message }, { status: 400 });
 
   return NextResponse.json({
@@ -112,7 +96,7 @@ export async function PATCH(
       date: result.data.date,
       startTime: result.data.startTime,
       duration: result.data.duration ?? item.duration_minutes ?? 60,
-      sortOrder,
+      sortOrder: updatedItem.sort_order,
       title:
         result.data.title === undefined
           ? (item.title_override ?? undefined)

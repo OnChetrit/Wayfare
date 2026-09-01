@@ -1,5 +1,21 @@
 type TripWithId = { id: string };
 
+export function selectedTripDayDate(
+  selectedDayDates: Readonly<Record<string, string>>,
+  selectedTripId: string | null,
+) {
+  return selectedTripId ? (selectedDayDates[selectedTripId] ?? null) : null;
+}
+
+export function withSelectedTripDayDate(
+  selectedDayDates: Readonly<Record<string, string>>,
+  selectedTripId: string | null,
+  date: string,
+) {
+  if (!selectedTripId || selectedDayDates[selectedTripId] === date) return selectedDayDates;
+  return { ...selectedDayDates, [selectedTripId]: date };
+}
+
 export function lastTripIdFromMetadata(metadata: Record<string, unknown> | null | undefined) {
   const lastTripId = metadata?.lastTripId;
   return typeof lastTripId === 'string' ? lastTripId : null;

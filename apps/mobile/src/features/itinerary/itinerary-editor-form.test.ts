@@ -91,6 +91,22 @@ describe('itinerary editor form mapping', () => {
     ).toEqual({ error: 'Amount must be zero or greater.' });
   });
 
+  it('sends null when an activity has no selected time', () => {
+    expect(
+      scheduleInputFromForm({
+        date: '2026-10-10',
+        startTime: null,
+        duration: '60',
+        savedPlaceId: '',
+        title: 'Wander Trastevere',
+        category: 'ATTRACTION',
+        note: '',
+        amount: '',
+        currency: 'EUR',
+      }),
+    ).toMatchObject({ data: { startTime: null } });
+  });
+
   it('maps all stay detail fields and clears optional values with nulls', () => {
     expect(stayInputFromForm(stayForm)).toEqual({
       data: {

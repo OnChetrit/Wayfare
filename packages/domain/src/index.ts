@@ -122,7 +122,8 @@ export type ScheduleItem = {
   id: string;
   savedPlaceId: string | null;
   date: string;
-  startTime: string;
+  /** A local trip time, or `null` when this activity can happen at any time. */
+  startTime: string | null;
   duration: number;
   sortOrder?: number;
   note?: string;
@@ -311,7 +312,10 @@ export const scheduleItemSchema = z.object({
   id: z.uuid(),
   savedPlaceId: z.uuid().nullable(),
   date: z.iso.date(),
-  startTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
+  startTime: z
+    .string()
+    .regex(/^([01]\d|2[0-3]):[0-5]\d$/)
+    .nullable(),
   duration: z.number().int().positive(),
   sortOrder: z.number().int().nonnegative().optional(),
   note: z.string().optional(),
@@ -457,11 +461,8 @@ export function sortQueueOperations(operations: QueueOperation[]) {
 
 type ScheduleItemForDayOrdering = Pick<
   ScheduleItem,
-  'date' | 'id' | 'savedPlaceId' | 'sortOrder'
-> & {
-  /** `null` is accepted now so this helper remains correct for untimed API items. */
-  startTime: string | null;
-};
+  'date' | 'id' | 'savedPlaceId' | 'sortOrder' | 'startTime'
+>;
 
 function scheduleSortOrder(item: ScheduleItemForDayOrdering) {
   // Legacy responses without a server-issued sort order belong after explicit
@@ -470,9 +471,9 @@ function scheduleSortOrder(item: ScheduleItemForDayOrdering) {
 }
 
 /**
- * Returns a day's itinerary in its stable, chronological display order without
- * mutating the API data array. Timed items sort by local start time; equal-time
- * and untimed items use the server-owned manual order, then their ID.
+ * Returns a day's itinerary in its stable manual display order without mutating
+ * the API data array. A time is a marker on an activity, not a rule that moves
+ * it past an untimed activity; the server-owned manual order always comes first.
  */
 export function orderScheduleItemsForDay<T extends ScheduleItemForDayOrdering>(
   items: readonly T[],
@@ -481,18 +482,15 @@ export function orderScheduleItemsForDay<T extends ScheduleItemForDayOrdering>(
   return items
     .filter(item => item.date === date)
     .sort((left, right) => {
-      const leftTime = left.startTime;
-      const rightTime = right.startTime;
-      const leftIsTimed = leftTime !== null;
-      const rightIsTimed = rightTime !== null;
-      if (leftIsTimed !== rightIsTimed) return leftIsTimed ? -1 : 1;
+      const manualOrder = scheduleSortOrder(left) - scheduleSortOrder(right);
+      if (manualOrder) return manualOrder;
 
-      if (leftTime !== null && rightTime !== null) {
-        const timeComparison = leftTime.localeCompare(rightTime);
+      if (left.startTime !== null && right.startTime !== null) {
+        const timeComparison = left.startTime.localeCompare(right.startTime);
         if (timeComparison) return timeComparison;
       }
 
-      return scheduleSortOrder(left) - scheduleSortOrder(right) || left.id.localeCompare(right.id);
+      return left.id.localeCompare(right.id);
     });
 }
 

@@ -55,6 +55,11 @@ export type TripEditorProps = {
   tripBackHref?: string;
 };
 
+type ActivityEditorState = {
+  kind: ActivityEditorKind;
+  scheduleItemId?: string;
+};
+
 export function TripEditor({
   user,
   initialTrip,
@@ -87,7 +92,7 @@ export function TripEditor({
   const [accountOpen, setAccountOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsFlightDate, setSettingsFlightDate] = useState<string | undefined>();
-  const [activityEditorOpen, setActivityEditorOpen] = useState<ActivityEditorKind | null>(null);
+  const [activityEditorOpen, setActivityEditorOpen] = useState<ActivityEditorState | null>(null);
   const [dayNotesOpen, setDayNotesOpen] = useState(false);
   const [showDayPlanOnly, setShowDayPlanOnly] = useState(true);
   const { showRouteLines, setShowRouteLines } = useMapRouteLinePreference();
@@ -171,6 +176,16 @@ export function TripEditor({
     [locationSegments, selectedLocationId],
   );
   const selectedSchedule = orderScheduleItemsForDay(schedule, selectedDate);
+  const editingScheduleItem = activityEditorOpen?.scheduleItemId
+    ? (schedule.find(item => item.id === activityEditorOpen.scheduleItemId) ?? null)
+    : null;
+  const editingActivityName =
+    editingScheduleItem?.title ??
+    places.find(place => place.id === editingScheduleItem?.savedPlaceId)?.name ??
+    '';
+  const editingActivityCategory =
+    editingScheduleItem?.category ??
+    places.find(place => place.id === editingScheduleItem?.savedPlaceId)?.category;
   const selectedFlights = flights
     .filter(flight => flight.departureDate === selectedDate || flight.arrivalDate === selectedDate)
     .sort((a, b) => a.scheduledDepartureUtc.localeCompare(b.scheduledDepartureUtc));
@@ -413,14 +428,7 @@ export function TripEditor({
       showTimelineError(error);
       return;
     }
-    const alreadyScheduled = schedule.some(
-      item => item.date === date && item.savedPlaceId === savedPlace.id,
-    );
-    const nextTime = alreadyScheduled
-      ? '20:00'
-      : date === selectedDate && selectedSchedule.length
-        ? '14:00'
-        : '10:00';
+    const nextTime = null;
     const optimisticId = `schedule-${savedPlace.id}-${Date.now()}`;
     const optimisticItem: ScheduleItem = {
       id: optimisticId,
@@ -495,6 +503,52 @@ export function TripEditor({
     } catch (error) {
       setSchedule(items => items.filter(item => item.id !== optimisticId));
       showTimelineError(error);
+      throw error;
+    }
+  }
+
+  async function updateScheduleActivity(item: ScheduleItem, draft: ActivityDraft) {
+    if (!initialTrip) return;
+    const previousSchedule = schedule;
+    const optimisticItem: ScheduleItem = {
+      ...item,
+      startTime: draft.startTime,
+      duration: draft.duration,
+      note: draft.note || undefined,
+      title: draft.name,
+      category: draft.category,
+      amount: draft.amount ?? undefined,
+      currency: draft.amount == null ? undefined : draft.currency,
+    };
+    setSchedule(current =>
+      current.map(candidate => (candidate.id === item.id ? optimisticItem : candidate)),
+    );
+
+    try {
+      const body = await requestJson<{ schedule: ScheduleItem }>(
+        `/api/trips/${initialTrip.id}/schedule/${item.id}`,
+        {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            date: item.date,
+            startTime: draft.startTime,
+            duration: draft.duration,
+            title: draft.name,
+            category: draft.category,
+            note: draft.note || null,
+            amount: draft.amount,
+            currency: draft.amount == null ? undefined : draft.currency,
+          }),
+        },
+      );
+      setSchedule(current =>
+        current.map(candidate => (candidate.id === item.id ? body.schedule : candidate)),
+      );
+    } catch (error) {
+      setSchedule(previousSchedule);
+      showTimelineError(error);
+      throw error;
     }
   }
 
@@ -1208,7 +1262,7 @@ export function TripEditor({
 
   function addActivityForDate(date: string) {
     setSelectedDate(date);
-    setActivityEditorOpen('activity');
+    setActivityEditorOpen({ kind: 'activity' });
   }
 
   function openDayNotesForDate(date: string) {
@@ -1345,8 +1399,11 @@ export function TripEditor({
                       onSelectPlace={selectPlace}
                       onClose={() => setMode('map')}
                       onMove={moveScheduleItem}
+                      onEdit={item =>
+                        setActivityEditorOpen({ kind: 'activity', scheduleItemId: item.id })
+                      }
                       onRemove={removeFromSchedule}
-                      onOpenActivityEditor={() => setActivityEditorOpen('activity')}
+                      onOpenActivityEditor={() => setActivityEditorOpen({ kind: 'activity' })}
                       onOpenTravelDetails={() => openTripSettings(selectedDate)}
                       hasArrivalFlight={hasArrivalFlight}
                       hasDepartureFlight={hasDepartureFlight}
@@ -1449,45 +1506,48 @@ export function TripEditor({
       )}
       {currentTrip && selectedDay && activityEditorOpen && (
         <ActivityEditor
-          key={`${selectedDay.date}-${activityEditorOpen}`}
+          key={`${selectedDay.date}-${activityEditorOpen.kind}-${editingScheduleItem?.id ?? 'new'}`}
           open
           dayLabel={selectedDay.label}
           shortDate={selectedDay.shortDate}
-          initialTime={
-            activityEditorOpen === 'arrival'
-              ? '09:00'
-              : activityEditorOpen === 'departure'
-                ? '18:00'
-                : selectedSchedule.length
-                  ? '14:00'
-                  : '10:00'
+          initialTime={editingScheduleItem?.startTime ?? null}
+          initialName={editingActivityName}
+          initialDuration={editingScheduleItem?.duration}
+          initialNote={editingScheduleItem?.note}
+          initialAmount={editingScheduleItem?.amount}
+          initialCurrency={editingScheduleItem?.currency}
+          initialCategory={
+            editingActivityCategory ??
+            (activityEditorOpen.kind === 'activity' ? 'CUSTOM' : 'TRANSPORT')
           }
-          initialCategory={activityEditorOpen === 'activity' ? 'CUSTOM' : 'TRANSPORT'}
           defaultCurrency={user.preferences.currency}
           title={
-            activityEditorOpen === 'arrival'
-              ? 'Add arrival details'
-              : activityEditorOpen === 'departure'
-                ? 'Add departure details'
-                : 'Add an activity'
+            editingScheduleItem
+              ? 'Edit activity'
+              : activityEditorOpen.kind === 'arrival'
+                ? 'Add arrival details'
+                : activityEditorOpen.kind === 'departure'
+                  ? 'Add departure details'
+                  : 'Add an activity'
           }
           nameLabel={
-            activityEditorOpen === 'arrival'
+            activityEditorOpen.kind === 'arrival'
               ? 'How are you arriving?'
-              : activityEditorOpen === 'departure'
+              : activityEditorOpen.kind === 'departure'
                 ? 'How are you leaving?'
                 : undefined
           }
           namePlaceholder={
-            activityEditorOpen === 'arrival'
+            activityEditorOpen.kind === 'arrival'
               ? 'Flight, train from home, airport transfer…'
-              : activityEditorOpen === 'departure'
+              : activityEditorOpen.kind === 'departure'
                 ? 'Flight, train home, airport transfer…'
                 : undefined
           }
           onClose={() => setActivityEditorOpen(null)}
-          onSave={draft => {
-            addManualActivity(draft);
+          onSave={async draft => {
+            if (editingScheduleItem) await updateScheduleActivity(editingScheduleItem, draft);
+            else await addManualActivity(draft);
             setActivityEditorOpen(null);
           }}
         />

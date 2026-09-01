@@ -217,6 +217,14 @@
   gap: 9px;
 }
 
+.daySectionHorizontal .scheduleActivityCard {
+  grid-template-areas:
+    'drag icon .'
+    '. details details'
+    'place . remove';
+  grid-template-columns: 16px 32px minmax(0, 1fr);
+}
+
 .daySectionHorizontal .dragHandle {
   grid-area: drag;
   margin-top: 2px;
@@ -433,6 +441,19 @@
   gap: 8px;
 }
 
+.scheduledActivity {
+  display: grid;
+  gap: 6px;
+}
+
+.scheduledActivityTime {
+  margin-left: 25px;
+  color: var(--muted);
+  font:
+    12px 'DM Mono',
+    monospace;
+}
+
 .activityCard {
   min-height: 63px;
   padding: 10px 12px 10px 8px;
@@ -446,6 +467,10 @@
   box-shadow: 0 3px 12px rgba(33, 54, 45, 0.03);
   cursor: grab;
   transition: 180ms ease;
+}
+
+.scheduleActivityCard {
+  grid-template-columns: 17px 32px minmax(0, 1fr) 20px 20px;
 }
 
 .activityCard:hover,

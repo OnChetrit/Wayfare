@@ -48,10 +48,9 @@ function entryTitle(
 
 export function ItineraryScreen() {
   const { theme } = useTheme();
-  const { selectedTrip } = useTrips();
+  const { selectedTrip, selectedTripDayDate, selectTripDay } = useTrips();
   const tripQuery = useTripEditor();
   const trip = tripQuery.data;
-  const [selectedDate, setSelectedDate] = React.useState<string | null>(null);
   const { isOnline, mutation: deleteScheduleMutation } = useTripMutation(
     trip?.id ?? '',
     (scheduleId: string) => deleteSchedule(trip!.id, scheduleId),
@@ -72,7 +71,7 @@ export function ItineraryScreen() {
     }: {
       id: string;
       date: string;
-      startTime: string;
+      startTime: string | null;
       sortOrder: number;
     }) => updateSchedule(trip!.id, id, { date, startTime, sortOrder }),
   );
@@ -99,9 +98,10 @@ export function ItineraryScreen() {
   }
   if (!trip) return null;
 
-  const currentDate = trip.days.some(day => day.date === selectedDate)
-    ? selectedDate
-    : trip.days[0]?.date;
+  const currentDate =
+    selectedTripDayDate && trip.days.some(day => day.date === selectedTripDayDate)
+      ? selectedTripDayDate
+      : trip.days[0]?.date;
   if (!currentDate) return null;
 
   const selectedDay = trip.days.find(day => day.date === currentDate) ?? trip.days[0];
@@ -171,7 +171,7 @@ export function ItineraryScreen() {
                           day.date === selectedDay.date ? 'borderedProminent' : 'bordered',
                         ),
                       ]}
-                      onPress={() => setSelectedDate(day.date)}
+                      onPress={() => selectTripDay(day.date)}
                     />
                   ))}
                 </HStack>
@@ -187,6 +187,7 @@ export function ItineraryScreen() {
               {timeline.length ? (
                 timeline.map((item, index) => (
                   <VStack alignment="leading" key={item.id} spacing={8}>
+                    {item.startTime ? <SwiftText>{item.startTime}</SwiftText> : null}
                     <SwiftButton
                       modifiers={[buttonStyle('plain')]}
                       onPress={() =>
@@ -197,7 +198,6 @@ export function ItineraryScreen() {
                       }
                     >
                       <HStack spacing={12}>
-                        <SwiftText>{item.startTime}</SwiftText>
                         <VStack alignment="leading" spacing={3}>
                           <SwiftText>{entryTitle(item, trip.places)}</SwiftText>
                           <SwiftText>
@@ -398,7 +398,7 @@ export function ItineraryScreen() {
             <Button
               key={day.id}
               accessibilityLabel={`View ${day.label}, ${day.shortDate}`}
-              onPress={() => setSelectedDate(day.date)}
+              onPress={() => selectTripDay(day.date)}
               style={{ minHeight: 54, minWidth: 72 }}
               tone={day.date === selectedDay.date ? 'primary' : 'secondary'}
             >
@@ -447,73 +447,76 @@ export function ItineraryScreen() {
         <View style={{ gap: space.sm }}>
           {timeline.length ? (
             timeline.map((item, index) => (
-              <Card key={item.id}>
-                <View style={{ alignItems: 'center', flexDirection: 'row', gap: 12 }}>
+              <View key={item.id} style={{ gap: 6 }}>
+                {item.startTime ? (
                   <Text
                     selectable
                     style={{
-                      color: colors.accent,
+                      color: colors.textMuted,
                       fontSize: 14,
                       fontVariant: ['tabular-nums'],
                       fontWeight: '800',
-                      width: 48,
                     }}
                   >
                     {item.startTime}
                   </Text>
-                  <View style={{ flex: 1, gap: 3 }}>
-                    <Text
-                      selectable
-                      style={{ color: colors.text, fontSize: 16, fontWeight: '700' }}
+                ) : null}
+                <Card>
+                  <View style={{ alignItems: 'center', flexDirection: 'row', gap: 12 }}>
+                    <View style={{ flex: 1, gap: 3 }}>
+                      <Text
+                        selectable
+                        style={{ color: colors.text, fontSize: 16, fontWeight: '700' }}
+                      >
+                        {entryTitle(item, trip.places)}
+                      </Text>
+                      <Text selectable style={{ color: colors.textMuted, fontSize: 13 }}>
+                        {formatDuration(item.duration)}
+                        {item.amount != null && item.currency
+                          ? ` · ${formatMoney(item.amount, item.currency)}`
+                          : ''}
+                        {item.note ? ` · ${item.note}` : ''}
+                      </Text>
+                    </View>
+                    <Link
+                      href={{
+                        pathname: '/itinerary-editor',
+                        params: { kind: 'schedule', id: item.id, date: item.date },
+                      }}
+                      asChild
                     >
-                      {entryTitle(item, trip.places)}
-                    </Text>
-                    <Text selectable style={{ color: colors.textMuted, fontSize: 13 }}>
-                      {formatDuration(item.duration)}
-                      {item.amount != null && item.currency
-                        ? ` · ${formatMoney(item.amount, item.currency)}`
-                        : ''}
-                      {item.note ? ` · ${item.note}` : ''}
-                    </Text>
+                      <IconButton label={`Edit ${entryTitle(item, trip.places)}`}>Edit</IconButton>
+                    </Link>
                   </View>
-                  <Link
-                    href={{
-                      pathname: '/itinerary-editor',
-                      params: { kind: 'schedule', id: item.id, date: item.date },
-                    }}
-                    asChild
-                  >
-                    <IconButton label={`Edit ${entryTitle(item, trip.places)}`}>Edit</IconButton>
-                  </Link>
-                </View>
-                <View style={{ flexDirection: 'row', gap: 8 }}>
-                  <IconButton
-                    disabled={!isOnline || index === 0 || reorderMutation.isPending}
-                    label="Move item earlier"
-                    onPress={() => moveItem(index, -1)}
-                  >
-                    ↑
-                  </IconButton>
-                  <IconButton
-                    disabled={
-                      !isOnline || index === timeline.length - 1 || reorderMutation.isPending
-                    }
-                    label="Move item later"
-                    onPress={() => moveItem(index, 1)}
-                  >
-                    ↓
-                  </IconButton>
-                  <Button
-                    disabled={!isOnline || deleteScheduleMutation.isPending}
-                    onPress={() =>
-                      confirmDelete('this item', () => deleteScheduleMutation.mutate(item.id))
-                    }
-                    tone="danger"
-                  >
-                    Delete
-                  </Button>
-                </View>
-              </Card>
+                  <View style={{ flexDirection: 'row', gap: 8 }}>
+                    <IconButton
+                      disabled={!isOnline || index === 0 || reorderMutation.isPending}
+                      label="Move item earlier"
+                      onPress={() => moveItem(index, -1)}
+                    >
+                      ↑
+                    </IconButton>
+                    <IconButton
+                      disabled={
+                        !isOnline || index === timeline.length - 1 || reorderMutation.isPending
+                      }
+                      label="Move item later"
+                      onPress={() => moveItem(index, 1)}
+                    >
+                      ↓
+                    </IconButton>
+                    <Button
+                      disabled={!isOnline || deleteScheduleMutation.isPending}
+                      onPress={() =>
+                        confirmDelete('this item', () => deleteScheduleMutation.mutate(item.id))
+                      }
+                      tone="danger"
+                    >
+                      Delete
+                    </Button>
+                  </View>
+                </Card>
+              </View>
             ))
           ) : (
             <EmptyState

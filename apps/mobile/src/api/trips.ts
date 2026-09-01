@@ -63,7 +63,7 @@ export type GoogleMapsListImportResult = {
 
 export type ScheduleInput = {
   date: string;
-  startTime: string;
+  startTime: string | null;
   duration: number;
   savedPlaceId?: string | null;
   title?: string;
@@ -239,7 +239,7 @@ export function updateSchedule(
   scheduleId: string,
   input: Partial<ScheduleInput> & {
     date: string;
-    startTime: string;
+    startTime: string | null;
     sortOrder?: number;
     title?: string | null;
     note?: string | null;

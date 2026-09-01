@@ -122,11 +122,13 @@ export function TimelineView({
         className={`${styles.timelineScroll} ${timelineLayout === 'horizontal' ? styles.timelineScrollHorizontal : ''}`}
       >
         {days.map((day, index) => {
+          const orderedSchedule = orderScheduleItemsForDay(schedule, day.date);
           const dayActivities = [
-            ...orderScheduleItemsForDay(schedule, day.date).map(item => ({
+            ...orderedSchedule.map((item, order) => ({
               kind: 'schedule' as const,
               item,
-              sortTime: item.startTime,
+              order,
+              sortTime: item.startTime ?? '',
             })),
             ...flights.flatMap(flight =>
               (['departure', 'arrival'] as const)
@@ -135,18 +137,26 @@ export function TimelineView({
                     ? flight.departureDate === day.date
                     : flight.arrivalDate === day.date,
                 )
-                .map(event => ({
-                  kind: 'flight' as const,
-                  flight,
-                  event,
-                  sortTime: flightTime(
+                .map(event => {
+                  const sortTime = flightTime(
                     event === 'arrival'
                       ? flight.scheduledArrivalLocal
                       : flight.scheduledDepartureLocal,
-                  ),
-                })),
+                  );
+                  const nextTimedActivity = orderedSchedule.findIndex(
+                    item => item.startTime !== null && item.startTime >= sortTime,
+                  );
+                  return {
+                    kind: 'flight' as const,
+                    flight,
+                    event,
+                    order:
+                      nextTimedActivity === -1 ? orderedSchedule.length : nextTimedActivity - 0.5,
+                    sortTime,
+                  };
+                }),
             ),
-          ].sort((a, b) => a.sortTime.localeCompare(b.sortTime));
+          ].sort((a, b) => a.order - b.order || a.sortTime.localeCompare(b.sortTime));
           const isDropTarget = dragOverDate === day.date;
           const isSelected = selectedDate === day.date;
 
@@ -308,58 +318,59 @@ export function TimelineView({
                     const title = place?.name ?? item.title ?? 'Activity';
 
                     return (
-                      <article
-                        key={item.id}
-                        className={`${styles.activityCard} ${place && selectedPlaceId === place.id ? styles.activityCardSelected : ''}`}
-                        draggable
-                        onDragStart={event =>
-                          setTimelineDragPayload(event, { type: 'activity', itemId: item.id })
-                        }
-                        onDragEnd={() => setDragOverDate(null)}
-                      >
-                        <span className={styles.dragHandle} aria-hidden="true">
-                          <GripVertical size={15} />
-                        </span>
-                        <span className={styles.activityTime}>
-                          <Clock3 size={12} /> {item.startTime}
-                        </span>
-                        <span
-                          className={styles.activityIcon}
-                          style={{ backgroundColor: `${color}18`, color }}
-                        >
-                          {place?.emoji ?? meta.emoji}
-                        </span>
-                        <button
-                          type="button"
-                          className={styles.activityDetails}
-                          onClick={() => {
-                            onSelectDay(day.date);
-                            if (place) onSelectPlace(place);
-                          }}
-                        >
-                          <strong>{title}</strong>
-                          <span>
-                            {meta.label} · {item.duration} min{item.note ? ' · note added' : ''}
-                          </span>
-                        </button>
-                        {place && (
-                          <span className={styles.placeMarker} title={place.subtitle}>
-                            <MapPin size={13} />
-                          </span>
+                      <div key={item.id} className={styles.scheduledActivity}>
+                        {item.startTime && (
+                          <span className={styles.scheduledActivityTime}>{item.startTime}</span>
                         )}
-                        <button
-                          type="button"
-                          className={styles.activityRemove}
-                          onClick={event => {
-                            event.stopPropagation();
-                            onRemoveActivity(item.id);
-                          }}
-                          aria-label={`Remove ${title} from ${day.label}`}
-                          title="Remove from day"
+                        <article
+                          className={`${styles.activityCard} ${styles.scheduleActivityCard} ${place && selectedPlaceId === place.id ? styles.activityCardSelected : ''}`}
+                          draggable
+                          onDragStart={event =>
+                            setTimelineDragPayload(event, { type: 'activity', itemId: item.id })
+                          }
+                          onDragEnd={() => setDragOverDate(null)}
                         >
-                          <Trash2 size={13} />
-                        </button>
-                      </article>
+                          <span className={styles.dragHandle} aria-hidden="true">
+                            <GripVertical size={15} />
+                          </span>
+                          <span
+                            className={styles.activityIcon}
+                            style={{ backgroundColor: `${color}18`, color }}
+                          >
+                            {place?.emoji ?? meta.emoji}
+                          </span>
+                          <button
+                            type="button"
+                            className={styles.activityDetails}
+                            onClick={() => {
+                              onSelectDay(day.date);
+                              if (place) onSelectPlace(place);
+                            }}
+                          >
+                            <strong>{title}</strong>
+                            <span>
+                              {meta.label} · {item.duration} min{item.note ? ' · note added' : ''}
+                            </span>
+                          </button>
+                          {place && (
+                            <span className={styles.placeMarker} title={place.subtitle}>
+                              <MapPin size={13} />
+                            </span>
+                          )}
+                          <button
+                            type="button"
+                            className={styles.activityRemove}
+                            onClick={event => {
+                              event.stopPropagation();
+                              onRemoveActivity(item.id);
+                            }}
+                            aria-label={`Remove ${title} from ${day.label}`}
+                            title="Remove from day"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </article>
+                      </div>
                     );
                   })}
                   {dayActivities.length === 0 && (

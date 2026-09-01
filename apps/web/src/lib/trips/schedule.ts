@@ -12,12 +12,15 @@ export const scheduleCategorySchema = z.enum([
   'CUSTOM',
 ]);
 
-const timeSchema = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'A valid start time is required');
+export const scheduleTimeSchema = z
+  .string()
+  .regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Use a valid 24-hour start time.');
+const nullableScheduleTimeSchema = scheduleTimeSchema.nullable();
 
 export const scheduleUpdateSchema = z
   .object({
     date: z.iso.date(),
-    startTime: timeSchema,
+    startTime: nullableScheduleTimeSchema,
     duration: z.number().int().min(15).max(1440).optional(),
     sortOrder: z.number().int().nonnegative().optional(),
     note: z.string().trim().max(1000).nullable().optional(),
@@ -35,7 +38,9 @@ export const scheduleUpdateSchema = z
 export const scheduleCreateSchema = z
   .object({
     date: z.iso.date(),
-    startTime: timeSchema,
+    // Older clients omitted this field. Normalize that representation at the
+    // boundary so every response and database write uses `null` for Any time.
+    startTime: nullableScheduleTimeSchema.optional().transform(value => value ?? null),
     duration: z.number().int().min(15).max(1440),
     savedPlaceId: z.string().uuid().nullable().optional(),
     title: z.string().trim().max(200).optional(),
@@ -89,4 +94,18 @@ export function localDateTimeToUtc(date: string, time: string, timeZone: string)
   }
 
   return new Date(utc).toISOString();
+}
+
+/** Formats a persisted UTC instant in the trip's local time, preserving an untimed item. */
+export function scheduleStartTimeFromUtc(
+  startAtUtc: string | null,
+  timeZone: string,
+): string | null {
+  if (!startAtUtc) return null;
+  return new Intl.DateTimeFormat('en-GB', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+    timeZone,
+  }).format(new Date(startAtUtc));
 }

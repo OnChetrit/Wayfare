@@ -4,6 +4,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { flightFromDatabase, flightSelect } from '@/lib/trips/flights';
 import { expenseFromDatabase, expenseSelect } from '@/lib/trips/expenses';
 import { categoryMeta } from '@/features/trip-editor/data';
+import { scheduleStartTimeFromUtc } from '@/lib/trips/schedule';
 import type {
   PlaceCategory,
   SavedPlace,
@@ -262,14 +263,10 @@ export async function getTripEditorTrip(
   const schedule = (scheduleRows ?? []).flatMap(row => {
     const date = dayById.get(row.trip_day_id);
     if (!date || (row.saved_place_id && !placeIds.includes(row.saved_place_id))) return [];
-    const time = row.start_at_utc
-      ? new Intl.DateTimeFormat('en-GB', {
-          hour: '2-digit',
-          minute: '2-digit',
-          hour12: false,
-          timeZone: tripRow.default_time_zone ?? 'Europe/Madrid',
-        }).format(new Date(row.start_at_utc))
-      : '09:00';
+    const time = scheduleStartTimeFromUtc(
+      row.start_at_utc,
+      tripRow.default_time_zone ?? 'Europe/Madrid',
+    );
     return [
       {
         id: row.id,

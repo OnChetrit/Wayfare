@@ -2,6 +2,7 @@ node_modules
 .agents
 .expo
 apps/mobile/.expo
+apps/mobile/ios
 **/.expo/**
 .next
 out

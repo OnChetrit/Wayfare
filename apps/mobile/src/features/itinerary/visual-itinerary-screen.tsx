@@ -22,12 +22,12 @@ import {
 import { useTripMutation } from '@/features/itinerary/use-trip-mutation';
 import {
   isValidLocationRange,
-  nextScheduleStartTime,
   orderedLocationBoundaries,
   sortScheduleForDay,
   validBoundaryDates,
 } from '@/features/itinerary/visual-itinerary';
 import { useTripEditor } from '@/features/trips/use-trip-editor';
+import { useTrips } from '@/features/trips/trip-context';
 import {
   formatDate,
   formatDateRange,
@@ -93,27 +93,41 @@ function DayColumn({
             </View>
           ))}
           {entries.map(item => (
-            <View
-              key={item.id}
-              style={{ borderLeftColor: colors.accent, borderLeftWidth: 3, gap: 4, paddingLeft: 9 }}
-            >
-              <Text selectable style={{ color: colors.text, fontSize: 14, fontWeight: '700' }}>
-                {item.startTime} · {entryTitle(item, places)}
-              </Text>
-              <Text selectable style={{ color: colors.textMuted, fontSize: 13 }}>
-                {formatDuration(item.duration)}
-                {item.amount != null && item.currency
-                  ? ` · ${formatMoney(item.amount, item.currency)}`
-                  : ''}
-                {item.note ? ` · ${item.note}` : ''}
-              </Text>
-              <Button
-                accessibilityLabel={`Move ${entryTitle(item, places)} to another day`}
-                onPress={() => onMove(item)}
-                tone="quiet"
+            <View key={item.id} style={{ gap: 4 }}>
+              {item.startTime ? (
+                <Text
+                  selectable
+                  style={{ color: colors.textMuted, fontSize: 13, fontVariant: ['tabular-nums'] }}
+                >
+                  {item.startTime}
+                </Text>
+              ) : null}
+              <View
+                style={{
+                  borderLeftColor: colors.accent,
+                  borderLeftWidth: 3,
+                  gap: 4,
+                  paddingLeft: 9,
+                }}
               >
-                Move to day
-              </Button>
+                <Text selectable style={{ color: colors.text, fontSize: 14, fontWeight: '700' }}>
+                  {entryTitle(item, places)}
+                </Text>
+                <Text selectable style={{ color: colors.textMuted, fontSize: 13 }}>
+                  {formatDuration(item.duration)}
+                  {item.amount != null && item.currency
+                    ? ` · ${formatMoney(item.amount, item.currency)}`
+                    : ''}
+                  {item.note ? ` · ${item.note}` : ''}
+                </Text>
+                <Button
+                  accessibilityLabel={`Move ${entryTitle(item, places)} to another day`}
+                  onPress={() => onMove(item)}
+                  tone="quiet"
+                >
+                  Move to day
+                </Button>
+              </View>
             </View>
           ))}
         </View>
@@ -157,11 +171,11 @@ function DateChooser({
 
 export function VisualItineraryScreen() {
   useTheme();
+  const { selectedTripDayDate, selectTripDay } = useTrips();
   const tripQuery = useTripEditor();
   const trip = tripQuery.data;
   const [layout, setLayout] = React.useState<BoardLayout>('horizontal');
   const [mode, setMode] = React.useState<ViewMode>('board');
-  const [selectedDate, setSelectedDate] = React.useState<string | null>(null);
   const [movingItem, setMovingItem] = React.useState<ScheduleItem | null>(null);
   const [showPlaces, setShowPlaces] = React.useState(false);
   const [locationName, setLocationName] = React.useState('');
@@ -189,7 +203,7 @@ export function VisualItineraryScreen() {
       if (!place) throw new Error('Saved place not found.');
       return createSchedule(activeTripId, {
         date,
-        startTime: nextScheduleStartTime(trip.schedule, date),
+        startTime: null,
         duration: 60,
         savedPlaceId: place.id,
         title: place.name,
@@ -254,9 +268,10 @@ export function VisualItineraryScreen() {
     return <ErrorState message="This trip does not have any days to plan." />;
   }
 
-  const currentDate = trip.days.some(day => day.date === selectedDate)
-    ? selectedDate!
-    : trip.days[0].date;
+  const currentDate =
+    selectedTripDayDate && trip.days.some(day => day.date === selectedTripDayDate)
+      ? selectedTripDayDate
+      : trip.days[0].date;
   const selectedDay = trip.days.find(day => day.date === currentDate) ?? trip.days[0];
   const boundaries = orderedLocationBoundaries(trip.locationSegments);
 
@@ -289,7 +304,7 @@ export function VisualItineraryScreen() {
         <Text selectable style={{ color: colors.textMuted, fontSize: 13, fontWeight: '700' }}>
           Selected day
         </Text>
-        <DateChooser days={trip.days} onSelect={setSelectedDate} selectedDate={currentDate} />
+        <DateChooser days={trip.days} onSelect={selectTripDay} selectedDate={currentDate} />
       </View>
 
       {mode === 'route' ? (
@@ -333,7 +348,7 @@ export function VisualItineraryScreen() {
                   flights={trip.flights}
                   key={day.id}
                   onMove={setMovingItem}
-                  onSelect={() => setSelectedDate(day.date)}
+                  onSelect={() => selectTripDay(day.date)}
                   places={trip.places}
                   schedule={trip.schedule}
                   selected={day.date === currentDate}
@@ -348,7 +363,7 @@ export function VisualItineraryScreen() {
                   flights={trip.flights}
                   key={day.id}
                   onMove={setMovingItem}
-                  onSelect={() => setSelectedDate(day.date)}
+                  onSelect={() => selectTripDay(day.date)}
                   places={trip.places}
                   schedule={trip.schedule}
                   selected={day.date === currentDate}
@@ -363,7 +378,9 @@ export function VisualItineraryScreen() {
                 Move {entryTitle(movingItem, trip.places)}
               </Text>
               <Text selectable style={{ color: colors.textMuted }}>
-                Select a new day. Its time stays {movingItem.startTime}.
+                {movingItem.startTime
+                  ? `Its time stays ${movingItem.startTime}.`
+                  : 'It keeps its current place in the day.'}
               </Text>
               <DateChooser
                 days={trip.days}
@@ -384,7 +401,7 @@ export function VisualItineraryScreen() {
               Add a saved place to {selectedDay.label}
             </Text>
             <Text selectable style={{ color: colors.textMuted }}>
-              It is placed after the day’s last activity, with a 60-minute default duration.
+              It is added with a 60-minute duration. Add a start time if you need one.
             </Text>
             <Button
               disabled={!isOnline}

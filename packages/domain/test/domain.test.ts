@@ -4,6 +4,7 @@ import {
   dayRouteSavedPlaceIds,
   makeTripDays,
   orderScheduleItemsForDay,
+  scheduleItemSchema,
   sortQueueOperations,
   tripEditorTripResponseSchema,
   tripInputSchema,
@@ -125,20 +126,36 @@ describe('shared domain contracts', () => {
     ).toEqual(['same-time-first', 'same-time-second', 'late']);
   });
 
-  it('puts untimed items after timed items using their manual order', () => {
+  it('keeps untimed activities between their manually ordered timed neighbours', () => {
     expect(
       orderScheduleItemsForDay(
         [
           {
-            id: 'untimed-later',
+            id: 'hotel',
             savedPlaceId: null,
             date: '2026-10-11',
             startTime: null,
             duration: 60,
-            sortOrder: 8,
+            sortOrder: 0,
           },
           {
-            id: 'untimed-earlier',
+            id: 'other-location',
+            savedPlaceId: null,
+            date: '2026-10-11',
+            startTime: null,
+            duration: 60,
+            sortOrder: 1,
+          },
+          {
+            id: 'reservation',
+            savedPlaceId: null,
+            date: '2026-10-11',
+            startTime: '12:00',
+            duration: 60,
+            sortOrder: 2,
+          },
+          {
+            id: 'another-location',
             savedPlaceId: null,
             date: '2026-10-11',
             startTime: null,
@@ -146,17 +163,17 @@ describe('shared domain contracts', () => {
             sortOrder: 3,
           },
           {
-            id: 'timed',
+            id: 'evening-restaurant',
             savedPlaceId: null,
             date: '2026-10-11',
-            startTime: '18:00',
+            startTime: '19:00',
             duration: 60,
-            sortOrder: 99,
+            sortOrder: 4,
           },
         ],
         '2026-10-11',
       ).map(item => item.id),
-    ).toEqual(['timed', 'untimed-earlier', 'untimed-later']);
+    ).toEqual(['hotel', 'other-location', 'reservation', 'another-location', 'evening-restaurant']);
   });
 
   it('orders legacy items with missing manual order by ID without mutating input', () => {
@@ -264,6 +281,70 @@ describe('shared domain contracts', () => {
         '2026-10-11',
       ),
     ).toEqual(['coffee-place', 'museum-place']);
+  });
+
+  it('keeps untimed saved places in their manual route position', () => {
+    expect(
+      dayRouteSavedPlaceIds(
+        [
+          {
+            id: 'untimed-second',
+            savedPlaceId: 'gallery-place',
+            date: '2026-10-11',
+            startTime: null,
+            duration: 60,
+            sortOrder: 2,
+          },
+          {
+            id: 'timed',
+            savedPlaceId: 'coffee-place',
+            date: '2026-10-11',
+            startTime: '09:00',
+            duration: 30,
+            sortOrder: 9,
+          },
+          {
+            id: 'untimed-first',
+            savedPlaceId: 'market-place',
+            date: '2026-10-11',
+            startTime: null,
+            duration: 60,
+            sortOrder: 1,
+          },
+          {
+            id: 'unmappable',
+            savedPlaceId: null,
+            date: '2026-10-11',
+            startTime: null,
+            duration: 60,
+            sortOrder: 0,
+          },
+        ],
+        '2026-10-11',
+      ),
+    ).toEqual(['market-place', 'gallery-place', 'coffee-place']);
+  });
+
+  it('accepts null as the only untimed schedule-item representation', () => {
+    expect(
+      scheduleItemSchema.parse({
+        id: '018f7f0e-7c54-7b24-a9d2-4e3683c98f41',
+        savedPlaceId: null,
+        date: '2026-10-11',
+        startTime: null,
+        duration: 60,
+        sortOrder: 0,
+      }).startTime,
+    ).toBeNull();
+    expect(
+      scheduleItemSchema.safeParse({
+        id: '018f7f0e-7c54-7b24-a9d2-4e3683c98f41',
+        savedPlaceId: null,
+        date: '2026-10-11',
+        startTime: '',
+        duration: 60,
+      }).success,
+    ).toBe(false);
   });
 
   it('validates the camel-case trip editor API contract', () => {

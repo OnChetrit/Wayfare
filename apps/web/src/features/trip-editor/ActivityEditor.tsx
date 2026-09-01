@@ -8,7 +8,7 @@ import { currencyLabels, supportedCurrencies } from '@/lib/trips/currencies';
 export type ActivityDraft = {
   name: string;
   category: PlaceCategory;
-  startTime: string;
+  startTime: string | null;
   duration: number;
   note: string;
   amount: number | null;
@@ -31,14 +31,19 @@ type ActivityEditorProps = {
   open: boolean;
   dayLabel: string;
   shortDate: string;
-  initialTime: string;
+  initialTime?: string | null;
+  initialName?: string;
+  initialDuration?: number;
+  initialNote?: string;
+  initialAmount?: number | null;
+  initialCurrency?: string;
   initialCategory?: PlaceCategory;
   defaultCurrency: string;
   title?: string;
   nameLabel?: string;
   namePlaceholder?: string;
   onClose: () => void;
-  onSave: (draft: ActivityDraft) => void;
+  onSave: (draft: ActivityDraft) => void | Promise<void>;
 };
 
 export function ActivityEditor({
@@ -46,6 +51,11 @@ export function ActivityEditor({
   dayLabel,
   shortDate,
   initialTime,
+  initialName = '',
+  initialDuration = 60,
+  initialNote = '',
+  initialAmount = null,
+  initialCurrency,
   initialCategory = 'CUSTOM',
   defaultCurrency,
   title = 'Add an activity',
@@ -55,13 +65,13 @@ export function ActivityEditor({
   onSave,
 }: ActivityEditorProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
-  const [name, setName] = useState('');
+  const [name, setName] = useState(initialName);
   const [category, setCategory] = useState<PlaceCategory>(initialCategory);
-  const [startTime, setStartTime] = useState(initialTime);
-  const [duration, setDuration] = useState('60');
-  const [note, setNote] = useState('');
-  const [amount, setAmount] = useState('');
-  const [currency, setCurrency] = useState(defaultCurrency);
+  const [startTime, setStartTime] = useState<string | null>(initialTime ?? null);
+  const [duration, setDuration] = useState(String(initialDuration));
+  const [note, setNote] = useState(initialNote);
+  const [amount, setAmount] = useState(initialAmount == null ? '' : String(initialAmount));
+  const [currency, setCurrency] = useState(initialCurrency ?? defaultCurrency);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -71,7 +81,7 @@ export function ActivityEditor({
     if (!open && dialog.open) dialog.close();
   }, [open]);
 
-  function submit(event: FormEvent<HTMLFormElement>) {
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const trimmedName = name.trim();
     const durationMinutes = Number(duration);
@@ -88,15 +98,19 @@ export function ActivityEditor({
       setError('Amount must be zero or greater.');
       return;
     }
-    onSave({
-      name: trimmedName,
-      category,
-      startTime,
-      duration: durationMinutes,
-      note: note.trim(),
-      amount: numericAmount,
-      currency,
-    });
+    try {
+      await onSave({
+        name: trimmedName,
+        category,
+        startTime,
+        duration: durationMinutes,
+        note: note.trim(),
+        amount: numericAmount,
+        currency,
+      });
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Could not save this activity.');
+    }
   }
 
   return (
@@ -179,16 +193,34 @@ export function ActivityEditor({
               ))}
             </select>
           </label>
-          <label>
-            <span className={styles.labelWithIcon}>
-              <Clock3 size={12} /> Start time
-            </span>
-            <input
-              type="time"
-              value={startTime}
-              onChange={event => setStartTime(event.target.value)}
-            />
-          </label>
+          {startTime === null ? (
+            <div className={styles.timeControl}>
+              <span className={styles.labelWithIcon}>
+                <Clock3 size={12} /> Start time
+              </span>
+              <button type="button" onClick={() => setStartTime('09:00')}>
+                Add a time
+              </button>
+            </div>
+          ) : (
+            <label>
+              <span className={styles.labelWithIcon}>
+                <Clock3 size={12} /> Start time
+              </span>
+              <input
+                type="time"
+                value={startTime}
+                onChange={event => setStartTime(event.target.value || null)}
+              />
+              <button
+                className={styles.clearTimeButton}
+                type="button"
+                onClick={() => setStartTime(null)}
+              >
+                Clear time
+              </button>
+            </label>
+          )}
         </div>
 
         <label>
@@ -227,7 +259,7 @@ export function ActivityEditor({
             Cancel
           </button>
           <button type="submit" className={styles.saveButton}>
-            Add activity
+            {title === 'Add an activity' ? 'Add activity' : 'Save activity'}
           </button>
         </div>
       </form>

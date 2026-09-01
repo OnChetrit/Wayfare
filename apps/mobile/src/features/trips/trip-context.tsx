@@ -9,14 +9,18 @@ import { supabase } from '@/lib/supabase';
 
 import {
   lastTripIdFromMetadata,
+  selectedTripDayDate,
   selectedTripIdAfterDeletion,
   selectTripId,
+  withSelectedTripDayDate,
 } from './trip-selection';
 
 type TripContextValue = {
   isLoadingTrips: boolean;
   isRefreshingTrips: boolean;
+  selectedTripDayDate: string | null;
   selectedTripId: string | null;
+  selectTripDay: (date: string) => void;
   selectTrip: (tripId: string) => Promise<void>;
   selectCreatedTrip: (tripId: string) => Promise<void>;
   reselectAfterTripDeletion: (
@@ -38,6 +42,7 @@ export function TripProvider({ children }: React.PropsWithChildren) {
     tripId: string;
     userId: string;
   } | null>(null);
+  const [selectedDayDates, setSelectedDayDates] = React.useState<Record<string, string>>({});
   const userId = session?.user.id ?? null;
   const tripsQuery = useQuery({
     queryKey: tripKeys.all,
@@ -56,6 +61,7 @@ export function TripProvider({ children }: React.PropsWithChildren) {
   const lastTripId = lastTripIdFromMetadata(session?.user.user_metadata);
   const requestedTripId = requestedTrip?.userId === userId ? requestedTrip.tripId : null;
   const selectedTripId = session ? selectTripId({ lastTripId, requestedTripId, trips }) : null;
+  const selectedTripDay = selectedTripDayDate(selectedDayDates, selectedTripId);
 
   const persistTripSelection = React.useCallback(
     async (tripId: string | null) => {
@@ -81,6 +87,12 @@ export function TripProvider({ children }: React.PropsWithChildren) {
     },
     [persistTripSelection],
   );
+  const selectTripDay = React.useCallback(
+    (date: string) => {
+      setSelectedDayDates(current => withSelectedTripDayDate(current, selectedTripId, date));
+    },
+    [selectedTripId],
+  );
   const reselectAfterTripDeletion = React.useCallback(
     async (deletedTripId: string, remainingTrips: Awaited<ReturnType<typeof getTrips>>) => {
       const nextTripId = selectedTripIdAfterDeletion({
@@ -100,7 +112,9 @@ export function TripProvider({ children }: React.PropsWithChildren) {
     () => ({
       isLoadingTrips: tripsQuery.isLoading,
       isRefreshingTrips: tripsQuery.isRefetching,
+      selectedTripDayDate: selectedTripDay,
       selectedTripId,
+      selectTripDay,
       selectTrip,
       selectCreatedTrip,
       reselectAfterTripDeletion,
@@ -111,8 +125,10 @@ export function TripProvider({ children }: React.PropsWithChildren) {
     }),
     [
       selectedTrip,
+      selectedTripDay,
       selectedTripId,
       selectCreatedTrip,
+      selectTripDay,
       selectTrip,
       reselectAfterTripDeletion,
       trips,

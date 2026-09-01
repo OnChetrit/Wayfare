@@ -22,6 +22,7 @@ type DayPlanPanelProps = {
   onSelectPlace: (place: SavedPlace) => void;
   onClose: () => void;
   onMove: (item: ScheduleItem, direction: 'up' | 'down') => void;
+  onEdit: (item: ScheduleItem) => void;
   onRemove: (itemId: string) => void;
   onOpenActivityEditor: () => void;
   onOpenTravelDetails: () => void;
@@ -38,9 +39,9 @@ function StayTimelineItem({
   hasNext?: boolean;
 }) {
   return (
-    <>
+    <div className={styles.timelineEvent}>
+      <div className={styles.timelineMarker}>{position === 'start' ? 'Start' : 'Sleep'}</div>
       <div className={`${styles.timelineItem} ${styles.timelineItemHotel}`}>
-        <div className={styles.timelineTime}>{position === 'start' ? 'Start' : 'Sleep'}</div>
         <div className={styles.timelineTrack}>
           <div className={styles.timelineDot} style={{ backgroundColor: '#9b7bc4' }}>
             ⌂
@@ -64,7 +65,7 @@ function StayTimelineItem({
           </span>
         </div>
       </div>
-    </>
+    </div>
   );
 }
 
@@ -79,9 +80,9 @@ function TravelPlaceholder({
 }) {
   const arrival = kind === 'arrival';
   return (
-    <>
+    <div className={styles.timelineEvent}>
+      <div className={styles.timelineMarker}>{arrival ? 'Arrive' : 'Leave'}</div>
       <div className={`${styles.timelineItem} ${styles.timelineItemTravel}`}>
-        <div className={styles.timelineTime}>{arrival ? 'Arrive' : 'Leave'}</div>
         <div className={styles.timelineTrack}>
           <div className={styles.timelineDot} style={{ backgroundColor: '#6a9c88' }}>
             {arrival ? '↘' : '↗'}
@@ -104,7 +105,7 @@ function TravelPlaceholder({
           <span className={styles.travelAction}>＋ Add travel details</span>
         </button>
       </div>
-    </>
+    </div>
   );
 }
 
@@ -143,13 +144,13 @@ function FlightTimelineItem({
   ].filter(Boolean);
 
   return (
-    <>
+    <div className={styles.timelineEvent}>
+      <div className={styles.timelineMarker}>
+        {flightTime(isArrival ? flight.scheduledArrivalLocal : flight.scheduledDepartureLocal)}
+      </div>
       <div
         className={`${styles.timelineItem} ${styles.timelineItemFlight} ${isArrival ? styles.flightArrival : styles.flightDeparture}`}
       >
-        <div className={styles.timelineTime}>
-          {flightTime(isArrival ? flight.scheduledArrivalLocal : flight.scheduledDepartureLocal)}
-        </div>
         <div className={styles.timelineTrack}>
           <div className={styles.timelineDot}>
             <Plane
@@ -194,7 +195,7 @@ function FlightTimelineItem({
           )}
         </div>
       </div>
-    </>
+    </div>
   );
 }
 
@@ -214,6 +215,7 @@ export function DayPlanPanel({
   onSelectPlace,
   onClose,
   onMove,
+  onEdit,
   onRemove,
   onOpenActivityEditor,
   onOpenTravelDetails,
@@ -241,10 +243,11 @@ export function DayPlanPanel({
     ? orderScheduleItemsForDay(selectedSchedule, selectedDayDate)
     : [];
   const timelineEntries = [
-    ...orderedSchedule.map(item => ({
+    ...orderedSchedule.map((item, order) => ({
       kind: 'schedule' as const,
       item,
-      sortTime: item.startTime,
+      order,
+      sortTime: item.startTime ?? '',
     })),
     ...selectedFlights.flatMap(flight =>
       (['departure', 'arrival'] as const)
@@ -253,16 +256,25 @@ export function DayPlanPanel({
             ? flight.departureDate === selectedDayDate
             : flight.arrivalDate === selectedDayDate,
         )
-        .map(event => ({
-          kind: 'flight' as const,
-          flight,
-          event,
-          sortTime: flightTime(
+        .map(event => {
+          const sortTime = flightTime(
             event === 'arrival' ? flight.scheduledArrivalLocal : flight.scheduledDepartureLocal,
-          ),
-        })),
+          );
+          const nextTimedActivity = orderedSchedule.findIndex(
+            item => item.startTime !== null && item.startTime >= sortTime,
+          );
+          return {
+            kind: 'flight' as const,
+            flight,
+            event,
+            // Flights fit before the next timed activity without changing the
+            // relative order of itinerary activities.
+            order: nextTimedActivity === -1 ? orderedSchedule.length : nextTimedActivity - 0.5,
+            sortTime,
+          };
+        }),
     ),
-  ].sort((a, b) => a.sortTime.localeCompare(b.sortTime));
+  ].sort((a, b) => a.order - b.order || a.sortTime.localeCompare(b.sortTime));
   const showArrivalPlaceholder = isFirstDay && !hasArrivalFlight;
   const showDeparturePlaceholder = isLastDay && !hasDepartureFlight;
   const timelineCount =
@@ -352,63 +364,78 @@ export function DayPlanPanel({
               const timelineIndex = (showArrivalPlaceholder ? 1 : 0) + (startStay ? 1 : 0) + index;
               return (
                 <Fragment key={item.id}>
-                  <div
-                    className={`${styles.timelineItem} ${place && selectedPlaceId === place.id ? styles.timelineItemSelected : ''} ${!place ? styles.timelineItemManual : ''}`}
-                    onClick={() => {
-                      if (place) {
-                        onSelectPlace(place);
-                        onClose();
-                      }
-                    }}
-                  >
-                    <div className={styles.timelineTime}>{item.startTime}</div>
-                    <div className={styles.timelineTrack}>
-                      <div className={styles.timelineDot} style={{ backgroundColor: color }}>
-                        {emoji}
+                  <div className={styles.scheduleTimelineItem}>
+                    {item.startTime && (
+                      <div className={styles.timelineMarker}>{item.startTime}</div>
+                    )}
+                    <div
+                      className={`${styles.timelineItem} ${place && selectedPlaceId === place.id ? styles.timelineItemSelected : ''} ${!place ? styles.timelineItemManual : ''}`}
+                      onClick={() => {
+                        if (place) {
+                          onSelectPlace(place);
+                          onClose();
+                        }
+                      }}
+                    >
+                      <div className={styles.timelineTrack}>
+                        <div className={styles.timelineDot} style={{ backgroundColor: color }}>
+                          {emoji}
+                        </div>
+                        {timelineIndex < timelineCount - 1 && (
+                          <div className={styles.timelineLine} />
+                        )}
                       </div>
-                      {timelineIndex < timelineCount - 1 && <div className={styles.timelineLine} />}
-                    </div>
-                    <div className={styles.scheduleCard}>
-                      <div className={styles.scheduleCardTop}>
-                        <span
-                          className={styles.categoryPill}
-                          style={{ color, backgroundColor: `${color}18` }}
-                        >
-                          {emoji} {meta.label}
+                      <div className={styles.scheduleCard}>
+                        <div className={styles.scheduleCardTop}>
+                          <span
+                            className={styles.categoryPill}
+                            style={{ color, backgroundColor: `${color}18` }}
+                          >
+                            {emoji} {meta.label}
+                          </span>
+                        </div>
+                        <strong>{title}</strong>
+                        <span>
+                          {item.duration} min{item.note ? ' · note added' : ''}
                         </span>
-                      </div>
-                      <strong>{title}</strong>
-                      <span>
-                        {item.duration} min{item.note ? ' · note added' : ''}
-                      </span>
-                      <div className={styles.cardControls}>
-                        <button
-                          onClick={event => {
-                            event.stopPropagation();
-                            void onMove(item, 'up');
-                          }}
-                          aria-label="Move activity up"
-                        >
-                          <ArrowUp size={13} />
-                        </button>
-                        <button
-                          onClick={event => {
-                            event.stopPropagation();
-                            void onMove(item, 'down');
-                          }}
-                          aria-label="Move activity down"
-                        >
-                          <ArrowDown size={13} />
-                        </button>
-                        <button
-                          onClick={event => {
-                            event.stopPropagation();
-                            onRemove(item.id);
-                          }}
-                          aria-label={`Remove ${title}`}
-                        >
-                          Remove
-                        </button>
+                        <div className={styles.cardControls}>
+                          <button
+                            onClick={event => {
+                              event.stopPropagation();
+                              onEdit(item);
+                            }}
+                            aria-label={`Edit ${title}`}
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={event => {
+                              event.stopPropagation();
+                              void onMove(item, 'up');
+                            }}
+                            aria-label="Move activity up"
+                          >
+                            <ArrowUp size={13} />
+                          </button>
+                          <button
+                            onClick={event => {
+                              event.stopPropagation();
+                              void onMove(item, 'down');
+                            }}
+                            aria-label="Move activity down"
+                          >
+                            <ArrowDown size={13} />
+                          </button>
+                          <button
+                            onClick={event => {
+                              event.stopPropagation();
+                              onRemove(item.id);
+                            }}
+                            aria-label={`Remove ${title}`}
+                          >
+                            Remove
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>

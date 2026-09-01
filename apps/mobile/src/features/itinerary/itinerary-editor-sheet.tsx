@@ -157,7 +157,7 @@ function ItineraryEditor({
 
   const [scheduleForm, setScheduleForm] = React.useState(() => ({
     date: schedule?.date ?? initialDate ?? trip.days[0]?.date ?? '',
-    startTime: schedule?.startTime ?? '09:00',
+    startTime: schedule?.startTime ?? null,
     duration: String(schedule?.duration ?? 60),
     savedPlaceId: schedule?.savedPlaceId ?? initialSavedPlaceId ?? '',
     title: schedule?.title ?? '',
@@ -334,12 +334,31 @@ function ItineraryEditor({
               value={scheduleForm.date}
               onChangeText={date => setScheduleForm(current => ({ ...current, date }))}
             />
-            <Field
-              label="Start time (24 hour)"
-              value={scheduleForm.startTime}
-              onChangeText={startTime => setScheduleForm(current => ({ ...current, startTime }))}
-              placeholder="09:00"
-            />
+            {scheduleForm.startTime === null ? (
+              <Button
+                onPress={() => setScheduleForm(current => ({ ...current, startTime: '09:00' }))}
+                tone="secondary"
+              >
+                Add a time
+              </Button>
+            ) : (
+              <>
+                <Field
+                  label="Start time (24 hour)"
+                  value={scheduleForm.startTime}
+                  onChangeText={startTime =>
+                    setScheduleForm(current => ({ ...current, startTime }))
+                  }
+                  placeholder="09:00"
+                />
+                <Button
+                  onPress={() => setScheduleForm(current => ({ ...current, startTime: null }))}
+                  tone="quiet"
+                >
+                  Clear time
+                </Button>
+              </>
+            )}
             <Field
               label="Duration in minutes"
               keyboardType="number-pad"

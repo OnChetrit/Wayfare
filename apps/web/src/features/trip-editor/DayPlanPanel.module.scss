@@ -103,9 +103,25 @@
 
   .timelineItem {
     display: grid;
-    grid-template-columns: 39px 24px 1fr;
+    grid-template-columns: 24px 1fr;
     min-height: 106px;
     cursor: pointer;
+  }
+
+  .timelineEvent {
+    min-height: 106px;
+  }
+
+  .scheduleTimelineItem {
+    min-height: 106px;
+  }
+
+  .timelineMarker {
+    margin: 0 0 6px 34px;
+    color: var(--muted);
+    font:
+      500 12px 'DM Mono',
+      monospace;
   }
 
   .timelineItemManual {
@@ -210,14 +226,6 @@
     color: var(--green);
     font-size: 11px;
     font-weight: 700;
-  }
-
-  .timelineTime {
-    padding-top: 4px;
-    color: var(--muted);
-    font:
-      500 12px 'DM Mono',
-      monospace;
   }
 
   .timelineTrack {

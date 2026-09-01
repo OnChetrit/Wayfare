@@ -40,34 +40,23 @@ export async function POST(request: Request, context: { params: Promise<{ tripId
       );
   }
 
-  const { data: lastItem } = await auth.supabase
-    .from('schedule_items')
-    .select('sort_order')
-    .eq('trip_day_id', day.id)
-    .order('sort_order', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
   const { data, error } = await auth.supabase
     .from('schedule_items')
     .insert({
       trip_day_id: day.id,
       saved_place_id: result.data.savedPlaceId ?? null,
-      start_at_utc: localDateTimeToUtc(
-        result.data.date,
-        result.data.startTime,
-        trip.default_time_zone,
-      ),
+      start_at_utc: result.data.startTime
+        ? localDateTimeToUtc(result.data.date, result.data.startTime, trip.default_time_zone)
+        : null,
       time_zone: trip.default_time_zone,
       duration_minutes: result.data.duration,
-      sort_order: (lastItem?.sort_order ?? -1) + 1,
       title_override: result.data.title ?? null,
       category: result.data.category ?? null,
       notes: result.data.note ?? null,
       amount: result.data.amount ?? null,
       currency: result.data.amount == null ? null : result.data.currency,
     })
-    .select('id')
+    .select('id, sort_order')
     .single();
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
 
@@ -79,7 +68,7 @@ export async function POST(request: Request, context: { params: Promise<{ tripId
         date: result.data.date,
         startTime: result.data.startTime,
         duration: result.data.duration,
-        sortOrder: (lastItem?.sort_order ?? -1) + 1,
+        sortOrder: data.sort_order,
         title: result.data.title,
         category: result.data.category,
         note: result.data.note,

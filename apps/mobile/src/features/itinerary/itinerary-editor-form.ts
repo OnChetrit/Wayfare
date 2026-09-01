@@ -10,7 +10,7 @@ export type ScheduleFormValues = {
   duration: string;
   note: string;
   savedPlaceId: string;
-  startTime: string;
+  startTime: string | null;
   title: string;
 };
 
@@ -52,7 +52,7 @@ export function scheduleInputFromForm(form: ScheduleFormValues): FormResult<Sche
   return {
     data: {
       date: form.date,
-      startTime: form.startTime,
+      startTime: form.startTime || null,
       duration,
       savedPlaceId: form.savedPlaceId || null,
       title: form.title.trim() || undefined,

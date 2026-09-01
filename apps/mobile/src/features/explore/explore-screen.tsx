@@ -20,6 +20,7 @@ import { Screen } from '@/components/ui/screen';
 import { TripMap, type MapPlace } from '@/components/trip-map';
 import { useTripMutation } from '@/features/itinerary/use-trip-mutation';
 import { useTripEditor } from '@/features/trips/use-trip-editor';
+import { useTrips } from '@/features/trips/trip-context';
 import { toMapPlace } from '@/features/explore/saved-place-map';
 import { SavedPlacesDrawer } from '@/features/explore/saved-places-drawer';
 import { tripDaysForExplore } from '@/features/explore/explore-trip-days';
@@ -34,6 +35,7 @@ function haveSamePlaceIds(left: string[], right: string[]) {
 export function ExploreScreen() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
+  const { selectedTripDayDate, selectTripDay } = useTrips();
   const tripQuery = useTripEditor();
   const [query, setQuery] = React.useState('');
   const deferredQuery = React.useDeferredValue(query.trim());
@@ -42,12 +44,12 @@ export function ExploreScreen() {
   const [locationScopeId, setLocationScopeId] = React.useState<string>();
   const [locationMessage, setLocationMessage] = React.useState<string | null>(null);
   const [visibleMapPlaceIds, setVisibleMapPlaceIds] = React.useState<string[]>([]);
-  const [selectedDate, setSelectedDate] = React.useState<string>();
   const trip = tripQuery.data;
   const exploreDays = React.useMemo(() => tripDaysForExplore(trip), [trip]);
-  const currentDate = exploreDays.some(day => day.date === selectedDate)
-    ? selectedDate
-    : exploreDays[0]?.date;
+  const currentDate =
+    selectedTripDayDate && exploreDays.some(day => day.date === selectedTripDayDate)
+      ? selectedTripDayDate
+      : exploreDays[0]?.date;
   const { mapPlaces: dayPlanMapPlaces, routes: dayPlanRoutes } = useDayPlanMap({
     date: currentDate,
     trip,
@@ -283,7 +285,7 @@ export function ExploreScreen() {
                   accessibilityState={{ selected: day.date === currentDate }}
                   key={day.id}
                   onPress={() => {
-                    setSelectedDate(day.date);
+                    selectTripDay(day.date);
                     setSelectedPlace(null);
                   }}
                   tone={day.date === currentDate ? 'primary' : 'secondary'}

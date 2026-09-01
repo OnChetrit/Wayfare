@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest';
 
 import {
   lastTripIdFromMetadata,
+  selectedTripDayDate,
   selectedTripIdAfterDeletion,
   selectTripId,
+  withSelectedTripDayDate,
 } from './trip-selection';
 
 const trips = [{ id: 'tokyo' }, { id: 'kyoto' }];
@@ -47,5 +49,14 @@ describe('trip selection', () => {
         trips: [{ id: 'tokyo' }],
       }),
     ).toBeNull();
+  });
+
+  it('keeps the selected day scoped to its trip for every tab', () => {
+    const firstSelection = withSelectedTripDayDate({}, 'tokyo', '2026-10-12');
+    const selections = withSelectedTripDayDate(firstSelection, 'kyoto', '2026-10-16');
+
+    expect(selectedTripDayDate(selections, 'tokyo')).toBe('2026-10-12');
+    expect(selectedTripDayDate(selections, 'kyoto')).toBe('2026-10-16');
+    expect(selectedTripDayDate(selections, null)).toBeNull();
   });
 });

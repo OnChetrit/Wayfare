@@ -16,7 +16,13 @@ export function sortScheduleForDay(schedule: ScheduleItem[], date: string) {
 }
 
 export function nextScheduleStartTime(schedule: ScheduleItem[], date: string) {
-  const latest = sortScheduleForDay(schedule, date).at(-1);
+  const latest = schedule
+    .filter(
+      (item): item is ScheduleItem & { startTime: string } =>
+        item.date === date && item.startTime !== null,
+    )
+    .sort((left, right) => left.startTime.localeCompare(right.startTime))
+    .at(-1);
   if (!latest) return '09:00';
 
   const [hour, minute] = latest.startTime.split(':').map(Number);

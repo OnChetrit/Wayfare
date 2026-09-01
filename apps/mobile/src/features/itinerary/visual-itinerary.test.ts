@@ -25,6 +25,31 @@ describe('visual itinerary helpers', () => {
     ).toBe('12:05');
   });
 
+  it('bases a suggested time on the latest timed activity, not an any-time card', () => {
+    expect(
+      nextScheduleStartTime(
+        [
+          {
+            id: 'timed',
+            savedPlaceId: null,
+            date: '2026-09-02',
+            startTime: '10:30',
+            duration: 95,
+          },
+          {
+            id: 'any-time',
+            savedPlaceId: null,
+            date: '2026-09-02',
+            startTime: null,
+            duration: 60,
+            sortOrder: 1,
+          },
+        ],
+        '2026-09-02',
+      ),
+    ).toBe('12:05');
+  });
+
   it('finds only touching location boundaries and their safe dates', () => {
     const segments = [
       {
