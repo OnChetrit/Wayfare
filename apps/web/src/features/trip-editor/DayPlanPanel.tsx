@@ -1,6 +1,15 @@
 import { Fragment } from 'react';
 import { orderScheduleItemsForDay } from '@wayfare/domain';
-import { ArrowDown, ArrowUp, MessageSquareText, Plane, Plus, Sparkles, X } from 'lucide-react';
+import {
+  AlarmClock,
+  ArrowDown,
+  ArrowUp,
+  MessageSquareText,
+  Plane,
+  Plus,
+  Sparkles,
+  X,
+} from 'lucide-react';
 import styles from './DayPlanPanel.module.scss';
 import { categoryMeta } from './data';
 import { flightTime } from '@/lib/trips/flights';
@@ -27,6 +36,9 @@ type DayPlanPanelProps = {
   onOpenActivityEditor: () => void;
   onOpenTravelDetails: () => void;
   onOpenDayNotes: () => void;
+  onOpenReminders: () => void;
+  canCreateReminders: boolean;
+  onCreateReminder: (item: ScheduleItem, title: string) => void;
 };
 
 function StayTimelineItem({
@@ -220,6 +232,9 @@ export function DayPlanPanel({
   onOpenActivityEditor,
   onOpenTravelDetails,
   onOpenDayNotes,
+  onOpenReminders,
+  canCreateReminders,
+  onCreateReminder,
 }: DayPlanPanelProps) {
   const morningStay = selectedDay
     ? stays
@@ -312,6 +327,15 @@ export function DayPlanPanel({
           title={selectedDay?.notes ? 'Edit day notes' : 'Day notes'}
         >
           <MessageSquareText size={16} />
+        </button>
+        <button
+          type="button"
+          className={styles.dayNotesButton}
+          onClick={onOpenReminders}
+          aria-label="Open personal reminders"
+          title="Personal reminders"
+        >
+          <AlarmClock size={16} />
         </button>
         <button className={styles.panelClose} onClick={onClose} aria-label="Close day plan">
           <X size={16} />
@@ -408,6 +432,23 @@ export function DayPlanPanel({
                           >
                             Edit
                           </button>
+                          {item.note?.trim() ? (
+                            <button
+                              disabled={!canCreateReminders}
+                              onClick={event => {
+                                event.stopPropagation();
+                                onCreateReminder(item, title);
+                              }}
+                              aria-label={`Create a reminder from ${title}'s note`}
+                              title={
+                                canCreateReminders
+                                  ? 'Create a personal reminder from this note'
+                                  : 'Reconnect to create a reminder'
+                              }
+                            >
+                              Remind
+                            </button>
+                          ) : null}
                           <button
                             onClick={event => {
                               event.stopPropagation();

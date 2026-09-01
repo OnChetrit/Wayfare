@@ -17,12 +17,19 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   },
   android: {
     package: 'com.onchetrit.wayfare',
+    permissions: ['android.permission.SCHEDULE_EXACT_ALARM'],
   },
   plugins: [
     'expo-router',
     'expo-secure-store',
     'expo-web-browser',
     'expo-splash-screen',
+    [
+      'expo-notifications',
+      {
+        defaultChannel: 'reminders',
+      },
+    ],
     'react-native-quick-crypto',
     [
       'react-native-maps',

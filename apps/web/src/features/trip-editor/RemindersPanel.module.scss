@@ -1,0 +1,154 @@
+.dialog {
+  width: min(650px, calc(100% - 32px));
+  max-height: min(760px, calc(100vh - 32px));
+  margin: auto;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  color: var(--ink);
+  background: var(--surface-strong);
+  box-shadow: var(--shadow-float);
+
+  &::backdrop {
+    background: rgba(31, 45, 37, 0.35);
+  }
+
+  header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  h2,
+  p {
+    margin: 0;
+  }
+
+  h2 {
+    font-size: 20px;
+  }
+
+  header p {
+    margin-top: 3px;
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  header > button {
+    padding: 5px;
+    display: grid;
+    place-items: center;
+  }
+
+  button {
+    border: 0;
+    border-radius: 8px;
+    color: var(--muted);
+    background: var(--surface-subtle);
+    cursor: pointer;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 700;
+  }
+}
+
+.filters {
+  margin: 17px 0 12px;
+  display: flex;
+  gap: 6px;
+
+  button {
+    padding: 7px 10px;
+  }
+}
+
+.filterActive {
+  color: white !important;
+  background: var(--green-button) !important;
+}
+
+.list {
+  max-height: min(540px, calc(100vh - 220px));
+  overflow: auto;
+  display: grid;
+  gap: 9px;
+}
+
+.state,
+.error {
+  padding: 18px 10px;
+  color: var(--muted);
+  text-align: center;
+  font-size: 14px;
+}
+
+.error {
+  color: var(--danger);
+}
+
+.reminder {
+  padding: 12px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.reminderContent {
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+
+  strong {
+    font-size: 14px;
+  }
+
+  p,
+  small,
+  span {
+    margin: 0;
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.4;
+  }
+
+  span {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+}
+
+.overdue {
+  color: var(--danger) !important;
+  font-weight: 700;
+}
+
+.actions {
+  flex: 0 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 5px;
+
+  button {
+    padding: 6px 7px;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+  }
+}
+
+@media (max-width: 520px) {
+  .reminder {
+    display: grid;
+  }
+
+  .actions {
+    justify-content: flex-start;
+  }
+}

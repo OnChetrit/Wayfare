@@ -30,6 +30,19 @@
 - Keep Maps keys environment-only and platform restricted: iOS key → bundle identifier; Android key → package name and signing certificate. Rotate any exposed key through Google Cloud before release.
 - EAS profiles use remote versioning. Before a development, preview, or production build: run `config:check`, `doctor`, lint, typecheck, tests, and verify the intended environment values and deep links.
 
+### Rebuilding a simulator after native changes
+
+- Adding or upgrading a native Expo package, or changing an `app.config.ts` plugin, requires a new native binary. A Metro reload is not enough.
+- For the iOS simulator, regenerate the ignored native project and replace the installed app:
+
+  ```bash
+  cd apps/mobile
+  npx expo prebuild --clean --platform ios
+  npx expo run:ios --device "iPhone 17 Pro Max"
+  ```
+
+- If an error says a native module cannot be found (for example, `ExpoPushTokenManager`), first check whether `ios/Podfile.lock` contains the expected pod. Regenerate with the commands above; do not edit `ios/` directly.
+
 ## Verification
 
 - Add unit tests for formatting, validators/contracts, API error parsing, and query-key/invalidation behavior. Add component tests whenever behavior changes in auth redirects, trip selection, editors, confirmations, or map search.

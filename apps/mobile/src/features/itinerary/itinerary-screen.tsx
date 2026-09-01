@@ -343,6 +343,7 @@ export function ItineraryScreen() {
                 label="Visual itinerary"
                 onPress={() => router.push('/itinerary/visual')}
               />
+              <SwiftButton label="Personal reminders" onPress={() => router.push('/reminders')} />
               <SwiftButton
                 label="Day note"
                 onPress={() =>
@@ -607,6 +608,9 @@ export function ItineraryScreen() {
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
             <Link href="/itinerary/visual" asChild>
               <Button tone="secondary">Visual itinerary</Button>
+            </Link>
+            <Link href="/reminders" asChild>
+              <Button tone="secondary">Personal reminders</Button>
             </Link>
             <Link
               href={{ pathname: '/itinerary-editor', params: { kind: 'day', id: selectedDay.id } }}

@@ -1,8 +1,11 @@
 import {
   tripEditorTripResponseSchema,
   locationSegmentSchema,
+  reminderSchema,
   tripSummarySchema,
   type Expense,
+  type ReminderCreateInput,
+  type ReminderUpdateInput,
   type LocationSegment,
   type PlaceCategory,
   type ScheduleItem,
@@ -370,4 +373,37 @@ export function updateExpense(tripId: string, expenseId: string, input: Partial<
 
 export function deleteExpense(tripId: string, expenseId: string) {
   return write(tripPath(tripId, `/expenses/${encodeURIComponent(expenseId)}`), 'DELETE');
+}
+
+export function getReminders(tripId: string, status: 'OPEN' | 'COMPLETED', signal?: AbortSignal) {
+  return requestWayfareApi<{ reminders: unknown[] }>(
+    `${tripPath(tripId, '/reminders')}?${new URLSearchParams({ status }).toString()}`,
+    { signal },
+  ).then(response => response.reminders.map(reminder => reminderSchema.parse(reminder)));
+}
+
+export type ReminderCreateRequest = Pick<
+  ReminderCreateInput,
+  'body' | 'remindAt' | 'savedPlaceId' | 'scheduleItemId' | 'sourceKind' | 'title'
+>;
+
+export function createReminder(tripId: string, input: ReminderCreateRequest) {
+  return write<{ reminder: unknown }>(tripPath(tripId, '/reminders'), 'POST', input).then(
+    response => reminderSchema.parse(response.reminder),
+  );
+}
+
+export function updateReminder(tripId: string, reminderId: string, input: ReminderUpdateInput) {
+  return write<{ reminder: unknown }>(
+    tripPath(tripId, `/reminders/${encodeURIComponent(reminderId)}`),
+    'PATCH',
+    input,
+  ).then(response => reminderSchema.parse(response.reminder));
+}
+
+export function deleteReminder(tripId: string, reminderId: string) {
+  return write<{ deleted: string }>(
+    tripPath(tripId, `/reminders/${encodeURIComponent(reminderId)}`),
+    'DELETE',
+  );
 }

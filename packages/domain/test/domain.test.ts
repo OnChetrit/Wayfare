@@ -4,6 +4,9 @@ import {
   dayRouteSavedPlaceIds,
   makeTripDays,
   orderScheduleItemsForDay,
+  reminderCompletionTime,
+  reminderCreateSchema,
+  reminderSchema,
   scheduleItemSchema,
   sortQueueOperations,
   tripEditorTripResponseSchema,
@@ -369,5 +372,75 @@ describe('shared domain contracts', () => {
         },
       }).trip.id,
     ).toBe(id);
+  });
+
+  it('validates reminder sources, future UTC times, and snapshots', () => {
+    const id = '018f7f0e-7c54-7b24-a9d2-4e3683c98f41';
+    const sourceId = '018f7f0e-7c54-7b24-a9d2-4e3683c98f42';
+    const future = new Date(Date.now() + 60 * 60_000).toISOString();
+
+    expect(
+      reminderCreateSchema.safeParse({
+        sourceKind: 'SAVED_PLACE',
+        savedPlaceId: sourceId,
+        scheduleItemId: null,
+        title: 'Reserve a table',
+        body: 'Call before 5 pm',
+        remindAt: future,
+      }).success,
+    ).toBe(true);
+    expect(
+      reminderCreateSchema.safeParse({
+        sourceKind: 'SAVED_PLACE',
+        savedPlaceId: sourceId,
+        scheduleItemId: id,
+        title: 'Invalid source',
+        body: 'Two source references',
+        remindAt: future,
+      }).success,
+    ).toBe(false);
+    expect(
+      reminderCreateSchema.safeParse({
+        sourceKind: 'SAVED_PLACE',
+        savedPlaceId: sourceId,
+        scheduleItemId: null,
+        title: 'Invalid time',
+        body: 'Offset timestamps are not UTC snapshots',
+        remindAt: '2099-01-01T12:00:00+02:00',
+      }).success,
+    ).toBe(false);
+    expect(
+      reminderSchema.safeParse({
+        id,
+        tripId: '018f7f0e-7c54-7b24-a9d2-4e3683c98f43',
+        userId: '018f7f0e-7c54-7b24-a9d2-4e3683c98f44',
+        sourceKind: 'SAVED_PLACE',
+        savedPlaceId: sourceId,
+        scheduleItemId: null,
+        sourceTitleSnapshot: 'Luna',
+        sourceBodySnapshot: 'Call before 5 pm',
+        sourceTitle: 'Luna Trattoria',
+        sourceAvailable: true,
+        title: 'Reserve a table',
+        body: 'Call before 5 pm',
+        remindAt: future,
+        status: 'OPEN',
+        completedAt: null,
+        createdAt: future,
+        updatedAt: future,
+      }).success,
+    ).toBe(true);
+  });
+
+  it('derives completion timestamps for complete and reopen transitions', () => {
+    const completedAt = reminderCompletionTime(
+      'OPEN',
+      'COMPLETED',
+      null,
+      new Date('2026-10-10T10:00:00.000Z'),
+    );
+    expect(completedAt).toBe('2026-10-10T10:00:00.000Z');
+    expect(reminderCompletionTime('COMPLETED', 'COMPLETED', completedAt)).toBe(completedAt);
+    expect(reminderCompletionTime('COMPLETED', 'OPEN', completedAt)).toBeNull();
   });
 });

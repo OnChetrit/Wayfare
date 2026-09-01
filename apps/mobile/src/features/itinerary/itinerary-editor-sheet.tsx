@@ -432,6 +432,28 @@ function ItineraryEditor({
               onChangeText={note => setScheduleForm(current => ({ ...current, note }))}
               placeholder="Reservations, reminders, or directions"
             />
+            {schedule?.note?.trim() ? (
+              <Button
+                disabled={!isOnline}
+                onPress={() =>
+                  router.push({
+                    pathname: '/reminder-editor',
+                    params: {
+                      scheduleItemId: schedule.id,
+                      sourceBody: schedule.note,
+                      sourceKind: 'SCHEDULE_ITEM',
+                      sourceTitle:
+                        schedule.title ??
+                        trip.places.find(place => place.id === schedule.savedPlaceId)?.name ??
+                        'Activity',
+                    },
+                  })
+                }
+                tone="secondary"
+              >
+                Create reminder from note
+              </Button>
+            ) : null}
           </>
         ) : null}
         {kind === 'place' ? (

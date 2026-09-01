@@ -5,6 +5,7 @@ import * as React from 'react';
 import { LaunchScreen } from '@/components/launch-screen';
 import { WayfareQueryProvider } from '@/api/query-client';
 import { AuthProvider, useAuth } from '@/features/auth/auth-context';
+import { useReminderNotificationNavigation } from '@/features/reminders/reminder-notifications';
 import { TripProvider } from '@/features/trips/trip-context';
 import { WayfareThemeProvider, useTheme } from '@/theme/theme-provider';
 
@@ -25,6 +26,7 @@ export default function RootLayout() {
 }
 
 function RootNavigator() {
+  useReminderNotificationNavigation();
   const { isReady } = useAuth();
   const { colors } = useTheme();
   const [showLaunchScreen, setShowLaunchScreen] = React.useState(true);
@@ -127,6 +129,31 @@ function RootNavigator() {
           sheetAllowedDetents: [0.5, 0.75],
           sheetGrabberVisible: true,
           title: 'Import places',
+        }}
+      />
+      <Stack.Screen
+        name="reminders"
+        options={{
+          contentStyle: { backgroundColor: colors.background },
+          headerShown: true,
+          headerStyle: { backgroundColor: colors.background },
+          headerTintColor: colors.text,
+          headerTitleStyle: { color: colors.text },
+          title: 'Personal reminders',
+        }}
+      />
+      <Stack.Screen
+        name="reminder-editor"
+        options={{
+          contentStyle: { backgroundColor: colors.background },
+          headerShown: true,
+          headerStyle: { backgroundColor: colors.background },
+          headerTintColor: colors.text,
+          headerTitleStyle: { color: colors.text },
+          presentation: 'formSheet',
+          sheetAllowedDetents: [0.75, 1],
+          sheetGrabberVisible: true,
+          title: 'Reminder',
         }}
       />
     </Stack>

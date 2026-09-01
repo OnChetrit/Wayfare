@@ -310,6 +310,25 @@ function PlaceDetails({
           >
             Save comment
           </Button>
+          {storedPlace?.comment?.trim() ? (
+            <Button
+              disabled={!isOnline}
+              onPress={() =>
+                router.push({
+                  pathname: '/reminder-editor',
+                  params: {
+                    savedPlaceId: storedPlace.id,
+                    sourceBody: storedPlace.comment,
+                    sourceKind: 'SAVED_PLACE',
+                    sourceTitle: storedPlace.name,
+                  },
+                })
+              }
+              tone="secondary"
+            >
+              Create reminder from comment
+            </Button>
+          ) : null}
           <View style={{ gap: 5 }}>
             <Text selectable style={{ color: colors.text, fontSize: 17, fontWeight: '800' }}>
               Add to a trip day

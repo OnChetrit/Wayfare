@@ -1,0 +1,113 @@
+.dialog {
+  width: min(520px, calc(100% - 32px));
+  max-height: min(720px, calc(100vh - 32px));
+  margin: auto;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  color: var(--ink);
+  background: var(--surface-strong);
+  box-shadow: var(--shadow-float);
+
+  &::backdrop {
+    background: rgba(31, 45, 37, 0.35);
+  }
+
+  form {
+    padding: 20px;
+    display: grid;
+    gap: 14px;
+  }
+
+  header,
+  footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  h2,
+  p {
+    margin: 0;
+  }
+
+  h2 {
+    font-size: 19px;
+  }
+
+  header p {
+    margin-top: 3px;
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  label {
+    display: grid;
+    gap: 6px;
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  input,
+  textarea {
+    width: 100%;
+    box-sizing: border-box;
+    border: 1px solid var(--line-strong);
+    border-radius: 9px;
+    padding: 9px 10px;
+    color: var(--ink);
+    background: var(--surface);
+    font: inherit;
+    font-size: 14px;
+    font-weight: 400;
+  }
+
+  textarea {
+    resize: vertical;
+  }
+
+  button {
+    border: 0;
+    border-radius: 8px;
+    padding: 8px 11px;
+    color: var(--muted);
+    background: var(--surface-subtle);
+    cursor: pointer;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 700;
+  }
+
+  header button {
+    padding: 5px;
+    display: grid;
+    place-items: center;
+  }
+
+  footer button:last-child {
+    color: white;
+    background: var(--green-button);
+  }
+
+  button:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+  }
+}
+
+.error,
+.offline {
+  padding: 9px 10px;
+  border-radius: 8px;
+  color: var(--danger);
+  background: var(--danger-surface);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.offline {
+  color: var(--warning);
+  background: var(--warning-surface);
+}

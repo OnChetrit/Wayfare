@@ -4,8 +4,8 @@ import { useGSAP } from '@gsap/react';
 import gsap from 'gsap';
 import dynamic from 'next/dynamic';
 import { usePathname, useRouter } from 'next/navigation';
-import { startTransition, useEffect, useMemo, useRef, useState } from 'react';
-import { orderScheduleItemsForDay } from '@wayfare/domain';
+import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { orderScheduleItemsForDay, type Reminder } from '@wayfare/domain';
 import styles from './TripEditor.module.scss';
 import { ActivityEditor, type ActivityDraft, type ActivityEditorKind } from './ActivityEditor';
 import type { LocationDraft, StayDraft } from './DateBar';
@@ -15,6 +15,8 @@ import { DayPlanPanel } from './DayPlanPanel';
 import { LocationPlanPanel } from './LocationPlanPanel';
 import { PlaceHoverProvider } from './PlaceHoverContext';
 import { PlacesPanel } from './PlacesPanel';
+import { ReminderModal, type ReminderSourceDraft } from './ReminderModal';
+import { RemindersPanel } from './RemindersPanel';
 import { useTripHeaderLayout } from './TripHeaderLayout';
 import { TripSettingsModal } from './TripSettingsModal';
 import { UserModal } from './UserModal';
@@ -60,6 +62,42 @@ type ActivityEditorState = {
   scheduleItemId?: string;
 };
 
+type ReminderEditorState =
+  { kind: 'create'; source: ReminderSourceDraft } | { kind: 'edit'; reminder: Reminder };
+
+function formatRequestError(error: unknown) {
+  if (typeof error === 'string' && error.trim()) return error;
+  if (!error || typeof error !== 'object') return 'Could not save this change.';
+
+  const payload = error as {
+    message?: unknown;
+    formErrors?: unknown;
+    fieldErrors?: unknown;
+  };
+  const messages: string[] = [];
+  if (typeof payload.message === 'string') messages.push(payload.message);
+  if (Array.isArray(payload.formErrors)) {
+    messages.push(
+      ...payload.formErrors.filter((value): value is string => typeof value === 'string'),
+    );
+  }
+  if (payload.fieldErrors && typeof payload.fieldErrors === 'object') {
+    Object.values(payload.fieldErrors).forEach(value => {
+      if (Array.isArray(value)) {
+        messages.push(...value.filter((item): item is string => typeof item === 'string'));
+      }
+    });
+  }
+  return messages.join(' ') || 'Could not save this change.';
+}
+
+async function requestJson<T>(url: string, init: RequestInit): Promise<T> {
+  const response = await fetch(url, init);
+  const body = (await response.json().catch(() => ({}))) as { error?: unknown } & T;
+  if (!response.ok) throw new Error(formatRequestError(body.error));
+  return body;
+}
+
 export function TripEditor({
   user,
   initialTrip,
@@ -98,6 +136,13 @@ export function TripEditor({
   const { showRouteLines, setShowRouteLines } = useMapRouteLinePreference();
   const [showOnlyVisiblePlaces, setShowOnlyVisiblePlaces] = useState(false);
   const [visibleMapPlaceIds, setVisibleMapPlaceIds] = useState<string[]>([]);
+  const [isOnline, setIsOnline] = useState(true);
+  const [remindersOpen, setRemindersOpen] = useState(false);
+  const [reminders, setReminders] = useState<Reminder[]>([]);
+  const [remindersLoading, setRemindersLoading] = useState(false);
+  const [remindersError, setRemindersError] = useState<string | null>(null);
+  const [reminderEditor, setReminderEditor] = useState<ReminderEditorState | null>(null);
+  const currentTripId = currentTrip?.id;
   const editorRef = useRef<HTMLDivElement>(null);
   const lastSavedTripId = useRef(user.lastTripId);
   const workspaceTripId = useRef(currentTrip?.id);
@@ -142,6 +187,17 @@ export function TripEditor({
     mediaQuery.addEventListener('change', handleSystemThemeChange);
     return () => mediaQuery.removeEventListener('change', handleSystemThemeChange);
   }, [themePreference]);
+
+  useEffect(() => {
+    const updateOnlineStatus = () => setIsOnline(navigator.onLine);
+    updateOnlineStatus();
+    window.addEventListener('online', updateOnlineStatus);
+    window.addEventListener('offline', updateOnlineStatus);
+    return () => {
+      window.removeEventListener('online', updateOnlineStatus);
+      window.removeEventListener('offline', updateOnlineStatus);
+    };
+  }, []);
 
   useEffect(() => {
     if (workspaceTripId.current === currentTrip?.id) return;
@@ -225,6 +281,26 @@ export function TripEditor({
         );
       }),
     [filter, libraryQuery, places, scheduledPlaceIds, showOnlyVisiblePlaces, visibleMapPlaceIds],
+  );
+
+  const loadReminders = useCallback(
+    async (status: 'OPEN' | 'COMPLETED') => {
+      if (!currentTripId) return;
+      setRemindersLoading(true);
+      setRemindersError(null);
+      try {
+        const body = await requestJson<{ reminders: Reminder[] }>(
+          `/api/trips/${currentTripId}/reminders?status=${status}`,
+          { method: 'GET' },
+        );
+        setReminders(body.reminders);
+      } catch (error) {
+        setRemindersError(error instanceof Error ? error.message : 'Could not load reminders.');
+      } finally {
+        setRemindersLoading(false);
+      }
+    },
+    [currentTripId],
   );
 
   function selectDay(date: string) {
@@ -593,44 +669,106 @@ export function TripEditor({
     }
   }
 
+  function openReminderFromPlace(place: SavedPlace) {
+    const sourceBody = place.comment?.trim();
+    if (!sourceBody) return;
+    setReminderEditor({
+      kind: 'create',
+      source: {
+        sourceKind: 'SAVED_PLACE',
+        savedPlaceId: place.id,
+        scheduleItemId: null,
+        sourceTitle: place.name,
+        sourceBody,
+      },
+    });
+  }
+
+  function openReminderFromSchedule(item: ScheduleItem, sourceTitle: string) {
+    const sourceBody = item.note?.trim();
+    if (!sourceBody) return;
+    setReminderEditor({
+      kind: 'create',
+      source: {
+        sourceKind: 'SCHEDULE_ITEM',
+        savedPlaceId: null,
+        scheduleItemId: item.id,
+        sourceTitle,
+        sourceBody,
+      },
+    });
+  }
+
+  async function saveReminder(draft: { title: string; body: string; remindAt: string }) {
+    if (!currentTrip || !reminderEditor) return;
+    if (reminderEditor.kind === 'create') {
+      const source = reminderEditor.source;
+      const body = await requestJson<{ reminder: Reminder }>(
+        `/api/trips/${currentTrip.id}/reminders`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...source, ...draft }),
+        },
+      );
+      setReminders(current => [
+        body.reminder,
+        ...current.filter(item => item.id !== body.reminder.id),
+      ]);
+    } else {
+      const body = await requestJson<{ reminder: Reminder }>(
+        `/api/trips/${currentTrip.id}/reminders/${reminderEditor.reminder.id}`,
+        {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(draft),
+        },
+      );
+      setReminders(current =>
+        current.map(item => (item.id === body.reminder.id ? body.reminder : item)),
+      );
+    }
+    setReminderEditor(null);
+    setRemindersOpen(true);
+  }
+
+  async function setReminderStatus(reminder: Reminder, status: 'OPEN' | 'COMPLETED') {
+    if (!currentTrip) return;
+    try {
+      const body = await requestJson<{ reminder: Reminder }>(
+        `/api/trips/${currentTrip.id}/reminders/${reminder.id}`,
+        {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status }),
+        },
+      );
+      setReminders(current =>
+        current.map(item => (item.id === body.reminder.id ? body.reminder : item)),
+      );
+    } catch (error) {
+      showTimelineError(error);
+    }
+  }
+
+  async function deleteReminder(reminder: Reminder) {
+    if (!currentTrip || !window.confirm(`Delete “${reminder.title}”? This cannot be undone.`))
+      return;
+    try {
+      await requestJson(`/api/trips/${currentTrip.id}/reminders/${reminder.id}`, {
+        method: 'DELETE',
+      });
+      setReminders(current => current.filter(item => item.id !== reminder.id));
+    } catch (error) {
+      showTimelineError(error);
+    }
+  }
+
   function showTimelineError(error: unknown) {
     setTimelineError(
       error instanceof Error ? error.message : 'Could not save this timeline change.',
     );
     window.setTimeout(() => setTimelineError(null), 4500);
-  }
-
-  function formatRequestError(error: unknown) {
-    if (typeof error === 'string' && error.trim()) return error;
-    if (!error || typeof error !== 'object') return 'Could not save this change.';
-
-    const payload = error as {
-      message?: unknown;
-      formErrors?: unknown;
-      fieldErrors?: unknown;
-    };
-    const messages: string[] = [];
-    if (typeof payload.message === 'string') messages.push(payload.message);
-    if (Array.isArray(payload.formErrors)) {
-      messages.push(
-        ...payload.formErrors.filter((value): value is string => typeof value === 'string'),
-      );
-    }
-    if (payload.fieldErrors && typeof payload.fieldErrors === 'object') {
-      Object.values(payload.fieldErrors).forEach(value => {
-        if (Array.isArray(value)) {
-          messages.push(...value.filter((item): item is string => typeof item === 'string'));
-        }
-      });
-    }
-    return messages.join(' ') || 'Could not save this change.';
-  }
-
-  async function requestJson<T>(url: string, init: RequestInit): Promise<T> {
-    const response = await fetch(url, init);
-    const body = (await response.json().catch(() => ({}))) as { error?: unknown } & T;
-    if (!response.ok) throw new Error(formatRequestError(body.error));
-    return body;
   }
 
   function locationFromApi(row: {
@@ -1408,6 +1546,9 @@ export function TripEditor({
                       hasArrivalFlight={hasArrivalFlight}
                       hasDepartureFlight={hasDepartureFlight}
                       onOpenDayNotes={() => setDayNotesOpen(true)}
+                      onOpenReminders={() => setRemindersOpen(true)}
+                      canCreateReminders={isOnline}
+                      onCreateReminder={openReminderFromSchedule}
                     />
                   )}
                   <MapPanel
@@ -1435,6 +1576,8 @@ export function TripEditor({
                     onSavePlace={savePlace}
                     onToggleFavorite={toggleFavorite}
                     onSaveComment={savePlaceComment}
+                    canCreateReminders={isOnline}
+                    onCreateReminder={openReminderFromPlace}
                     onAddToDay={addToDay}
                   />
                 </>
@@ -1550,6 +1693,35 @@ export function TripEditor({
             else await addManualActivity(draft);
             setActivityEditorOpen(null);
           }}
+        />
+      )}
+      {currentTrip && (
+        <RemindersPanel
+          open={remindersOpen}
+          reminders={reminders}
+          loading={remindersLoading}
+          error={remindersError}
+          onClose={() => setRemindersOpen(false)}
+          onReload={loadReminders}
+          onEdit={reminder => setReminderEditor({ kind: 'edit', reminder })}
+          onComplete={reminder => void setReminderStatus(reminder, 'COMPLETED')}
+          onReopen={reminder => void setReminderStatus(reminder, 'OPEN')}
+          onDelete={reminder => void deleteReminder(reminder)}
+        />
+      )}
+      {currentTrip && reminderEditor && (
+        <ReminderModal
+          key={
+            reminderEditor.kind === 'create'
+              ? `${reminderEditor.source.sourceKind}-${reminderEditor.source.savedPlaceId ?? reminderEditor.source.scheduleItemId}`
+              : reminderEditor.reminder.id
+          }
+          open
+          reminder={reminderEditor.kind === 'edit' ? reminderEditor.reminder : undefined}
+          source={reminderEditor.kind === 'create' ? reminderEditor.source : undefined}
+          isOnline={isOnline}
+          onClose={() => setReminderEditor(null)}
+          onSave={saveReminder}
         />
       )}
       {accountOpen && (

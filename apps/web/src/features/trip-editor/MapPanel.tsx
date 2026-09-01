@@ -42,6 +42,8 @@ type MapPanelProps = {
   onSavePlace: (place: SavedPlace) => Promise<SavedPlace>;
   onToggleFavorite: (place: SavedPlace) => Promise<void> | void;
   onSaveComment: (place: SavedPlace, comment: string) => Promise<SavedPlace>;
+  canCreateReminders: boolean;
+  onCreateReminder: (place: SavedPlace) => void;
   onAddToDay: (place: SavedPlace) => void;
 };
 
@@ -114,10 +116,19 @@ type PlaceCommentFormProps = {
   place: SavedPlace;
   savedPlace: SavedPlace | undefined;
   onSaveComment: (place: SavedPlace, comment: string) => Promise<SavedPlace>;
+  canCreateReminders: boolean;
+  onCreateReminder: (place: SavedPlace) => void;
   onError: (message: string) => void;
 };
 
-function PlaceCommentForm({ place, savedPlace, onSaveComment, onError }: PlaceCommentFormProps) {
+function PlaceCommentForm({
+  place,
+  savedPlace,
+  onSaveComment,
+  canCreateReminders,
+  onCreateReminder,
+  onError,
+}: PlaceCommentFormProps) {
   const savedComment = savedPlace?.comment ?? '';
   const [comment, setComment] = useState(savedComment);
   const [savingComment, setSavingComment] = useState(false);
@@ -154,6 +165,20 @@ function PlaceCommentForm({ place, savedPlace, onSaveComment, onError }: PlaceCo
       <button type="submit" disabled={savingComment || comment === savedComment}>
         {savingComment ? 'Saving…' : savedPlace ? 'Save comment' : 'Add pin & comment'}
       </button>
+      {savedPlace?.comment?.trim() ? (
+        <button
+          type="button"
+          disabled={!canCreateReminders}
+          onClick={() => onCreateReminder(savedPlace)}
+          title={
+            canCreateReminders
+              ? 'Create a personal reminder from this comment'
+              : 'Reconnect to create a reminder'
+          }
+        >
+          Create reminder
+        </button>
+      ) : null}
     </form>
   );
 }
@@ -183,6 +208,8 @@ export function MapPanel({
   onSavePlace,
   onToggleFavorite,
   onSaveComment,
+  canCreateReminders,
+  onCreateReminder,
   onAddToDay,
 }: MapPanelProps) {
   const [query, setQuery] = useState('');
@@ -778,6 +805,8 @@ export function MapPanel({
             place={previewPlace}
             savedPlace={savedPreviewPlace}
             onSaveComment={onSaveComment}
+            canCreateReminders={canCreateReminders}
+            onCreateReminder={onCreateReminder}
             onError={setPlaceActionError}
           />
           <div className={styles.previewActions}>

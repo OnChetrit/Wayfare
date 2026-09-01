@@ -23,16 +23,22 @@ export const expenseCategories = [
 
 export const tripRoles = ['OWNER', 'EDITOR', 'VIEWER'] as const;
 export const invitationRoles = ['EDITOR', 'VIEWER'] as const;
+export const reminderSourceKinds = ['SAVED_PLACE', 'SCHEDULE_ITEM'] as const;
+export const reminderStatuses = ['OPEN', 'COMPLETED'] as const;
 
 export type PlaceCategory = (typeof placeCategories)[number];
 export type ExpenseCategory = (typeof expenseCategories)[number];
 export type TripRole = (typeof tripRoles)[number];
 export type InvitationRole = (typeof invitationRoles)[number];
+export type ReminderSourceKind = (typeof reminderSourceKinds)[number];
+export type ReminderStatus = (typeof reminderStatuses)[number];
 
 export const placeCategorySchema = z.enum(placeCategories);
 export const expenseCategorySchema = z.enum(expenseCategories);
 export const tripRoleSchema = z.enum(tripRoles);
 export const invitationRoleSchema = z.enum(invitationRoles);
+export const reminderSourceKindSchema = z.enum(reminderSourceKinds);
+export const reminderStatusSchema = z.enum(reminderStatuses);
 export const currencyCodeSchema = z
   .string()
   .trim()
@@ -89,6 +95,108 @@ export const expenseInputSchema = z.object({
   flightId: z.uuid().nullable().optional(),
   scheduleItemId: z.uuid().nullable().optional(),
 });
+
+const utcReminderTimeSchema = z.iso
+  .datetime({ offset: true })
+  .refine(value => value.endsWith('Z'), 'Use a UTC timestamp ending in Z.');
+
+const futureUtcReminderTimeSchema = utcReminderTimeSchema.refine(
+  value => new Date(value).getTime() > Date.now(),
+  'Choose a reminder time in the future.',
+);
+
+const reminderSourceInputShape = {
+  savedPlaceId: z.uuid().nullable().default(null),
+  scheduleItemId: z.uuid().nullable().default(null),
+};
+
+function sourceKindMatchesReferences(value: {
+  sourceKind: ReminderSourceKind;
+  savedPlaceId: string | null;
+  scheduleItemId: string | null;
+}) {
+  return value.sourceKind === 'SAVED_PLACE'
+    ? Boolean(value.savedPlaceId) && !value.scheduleItemId
+    : Boolean(value.scheduleItemId) && !value.savedPlaceId;
+}
+
+/** Input accepted when a member turns a current shared note into a personal reminder. */
+export const reminderCreateSchema = z
+  .object({
+    sourceKind: reminderSourceKindSchema,
+    ...reminderSourceInputShape,
+    title: z.string().trim().min(1).max(200),
+    body: z.string().trim().max(5_000),
+    remindAt: futureUtcReminderTimeSchema,
+  })
+  .refine(sourceKindMatchesReferences, {
+    message: 'The reminder source kind must match exactly one source.',
+    path: ['sourceKind'],
+  });
+
+/** Input accepted when changing a personal reminder. Sources and snapshots never change. */
+export const reminderUpdateSchema = z
+  .object({
+    title: z.string().trim().min(1).max(200).optional(),
+    body: z.string().trim().max(5_000).optional(),
+    remindAt: futureUtcReminderTimeSchema.optional(),
+    status: reminderStatusSchema.optional(),
+  })
+  .refine(
+    value =>
+      value.title !== undefined ||
+      value.body !== undefined ||
+      value.remindAt !== undefined ||
+      value.status !== undefined,
+    'Provide at least one reminder change.',
+  );
+
+/** The serialized personal reminder returned to web and mobile clients. */
+export const reminderSchema = z
+  .object({
+    id: z.uuid(),
+    tripId: z.uuid(),
+    userId: z.uuid(),
+    sourceKind: reminderSourceKindSchema,
+    savedPlaceId: z.uuid().nullable(),
+    scheduleItemId: z.uuid().nullable(),
+    sourceTitleSnapshot: z.string().trim().min(1).max(200),
+    sourceBodySnapshot: z.string().trim().min(1).max(5_000),
+    sourceTitle: z.string().trim().min(1).max(200),
+    sourceAvailable: z.boolean(),
+    title: z.string().trim().min(1).max(200),
+    body: z.string().trim().max(5_000),
+    remindAt: utcReminderTimeSchema,
+    status: reminderStatusSchema,
+    completedAt: utcReminderTimeSchema.nullable(),
+    createdAt: utcReminderTimeSchema,
+    updatedAt: utcReminderTimeSchema,
+  })
+  .refine(
+    value =>
+      (value.status === 'OPEN' && value.completedAt === null) ||
+      (value.status === 'COMPLETED' && value.completedAt !== null),
+    {
+      message: 'Completed reminders must have a completion timestamp.',
+      path: ['completedAt'],
+    },
+  );
+
+export type Reminder = z.output<typeof reminderSchema>;
+export type ReminderCreateInput = z.output<typeof reminderCreateSchema>;
+export type ReminderUpdateInput = z.output<typeof reminderUpdateSchema>;
+
+/** Returns the completion timestamp implied by an OPEN/COMPLETED status transition. */
+export function reminderCompletionTime(
+  previousStatus: ReminderStatus,
+  nextStatus: ReminderStatus,
+  previousCompletedAt: string | null,
+  now = new Date(),
+) {
+  if (nextStatus === 'OPEN') return null;
+  if (previousStatus === 'COMPLETED' && previousCompletedAt) return previousCompletedAt;
+  return now.toISOString();
+}
 
 export type TripDay = {
   id: string;
