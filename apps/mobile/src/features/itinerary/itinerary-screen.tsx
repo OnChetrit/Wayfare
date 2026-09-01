@@ -7,10 +7,18 @@ import {
   Section,
   ScrollView as SwiftScrollView,
   Spacer,
+  SwipeActions,
   Text as SwiftText,
   VStack,
 } from '@expo/ui/swift-ui';
-import { buttonStyle, disabled, listStyle, refreshable } from '@expo/ui/swift-ui/modifiers';
+import {
+  buttonStyle,
+  disabled,
+  listStyle,
+  refreshable,
+  tag,
+  tint,
+} from '@expo/ui/swift-ui/modifiers';
 import { orderScheduleItemsForDay } from '@wayfare/domain';
 import { Link, router, Stack } from 'expo-router';
 import * as React from 'react';
@@ -186,8 +194,7 @@ export function ItineraryScreen() {
               {selectedDay.notes ? <SwiftText>{selectedDay.notes}</SwiftText> : null}
               {timeline.length ? (
                 timeline.map((item, index) => (
-                  <VStack alignment="leading" key={item.id} spacing={8}>
-                    {item.startTime ? <SwiftText>{item.startTime}</SwiftText> : null}
+                  <SwipeActions key={item.id} modifiers={[tag(item.id)]}>
                     <SwiftButton
                       modifiers={[buttonStyle('plain')]}
                       onPress={() =>
@@ -199,7 +206,10 @@ export function ItineraryScreen() {
                     >
                       <HStack spacing={12}>
                         <VStack alignment="leading" spacing={3}>
-                          <SwiftText>{entryTitle(item, trip.places)}</SwiftText>
+                          <SwiftText>
+                            {item.startTime ? `${item.startTime} · ` : ''}
+                            {entryTitle(item, trip.places)}
+                          </SwiftText>
                           <SwiftText>
                             {formatDuration(item.duration)}
                             {item.amount != null && item.currency
@@ -212,38 +222,43 @@ export function ItineraryScreen() {
                         <SwiftText>›</SwiftText>
                       </HStack>
                     </SwiftButton>
-                    <HStack spacing={8}>
+                    <SwipeActions.Actions edge="leading" allowsFullSwipe={false}>
                       <SwiftButton
                         label="Earlier"
+                        systemImage="arrow.up"
                         modifiers={[
-                          buttonStyle('bordered'),
                           disabled(!isOnline || index === 0 || reorderMutation.isPending),
+                          tint(colors.accent),
                         ]}
                         onPress={() => moveItem(index, -1)}
                       />
                       <SwiftButton
                         label="Later"
+                        systemImage="arrow.down"
                         modifiers={[
-                          buttonStyle('bordered'),
                           disabled(
                             !isOnline || index === timeline.length - 1 || reorderMutation.isPending,
                           ),
+                          tint(colors.accent),
                         ]}
                         onPress={() => moveItem(index, 1)}
                       />
+                    </SwipeActions.Actions>
+                    <SwipeActions.Actions edge="trailing" allowsFullSwipe={false}>
                       <SwiftButton
                         label="Delete"
+                        systemImage="trash"
                         modifiers={[
-                          buttonStyle('bordered'),
                           disabled(!isOnline || deleteScheduleMutation.isPending),
+                          tint(colors.danger),
                         ]}
                         onPress={() =>
                           confirmDelete('this item', () => deleteScheduleMutation.mutate(item.id))
                         }
                         role="destructive"
                       />
-                    </HStack>
-                  </VStack>
+                    </SwipeActions.Actions>
+                  </SwipeActions>
                 ))
               ) : (
                 <VStack alignment="leading" spacing={4}>
@@ -255,7 +270,7 @@ export function ItineraryScreen() {
             {stays.length ? (
               <Section title="Stays">
                 {stays.map(stay => (
-                  <VStack alignment="leading" key={stay.id} spacing={8}>
+                  <SwipeActions key={stay.id} modifiers={[tag(stay.id)]}>
                     <SwiftButton
                       modifiers={[buttonStyle('plain')]}
                       onPress={() =>
@@ -272,25 +287,31 @@ export function ItineraryScreen() {
                         </SwiftText>
                       </VStack>
                     </SwiftButton>
-                    <SwiftButton
-                      label="Delete"
-                      modifiers={[
-                        buttonStyle('bordered'),
-                        disabled(!isOnline || deleteStayMutation.isPending),
-                      ]}
-                      onPress={() =>
-                        confirmDelete('this stay', () => deleteStayMutation.mutate(stay.id))
-                      }
-                      role="destructive"
-                    />
-                  </VStack>
+                    <SwipeActions.Actions edge="trailing" allowsFullSwipe={false}>
+                      <SwiftButton
+                        label="Delete"
+                        systemImage="trash"
+                        modifiers={[
+                          disabled(!isOnline || deleteStayMutation.isPending),
+                          tint(colors.danger),
+                        ]}
+                        onPress={() =>
+                          confirmDelete('this stay', () => deleteStayMutation.mutate(stay.id))
+                        }
+                        role="destructive"
+                      />
+                    </SwipeActions.Actions>
+                  </SwipeActions>
                 ))}
               </Section>
             ) : null}
             {flightEvents.length ? (
               <Section title="Flights">
                 {flightEvents.map(({ flight, kind }) => (
-                  <VStack alignment="leading" key={`${flight.id}-${kind}`} spacing={8}>
+                  <SwipeActions
+                    key={`${flight.id}-${kind}`}
+                    modifiers={[tag(`${flight.id}-${kind}`)]}
+                  >
                     <VStack alignment="leading" spacing={3}>
                       <SwiftText>
                         Flight {kind === 'arrival' ? 'arrival' : 'departure'} ·{' '}
@@ -299,18 +320,21 @@ export function ItineraryScreen() {
                       <SwiftText>{flightRoute(flight)}</SwiftText>
                       <SwiftText>{flightEventDetail(flight, kind)}</SwiftText>
                     </VStack>
-                    <SwiftButton
-                      label="Delete"
-                      modifiers={[
-                        buttonStyle('bordered'),
-                        disabled(!isOnline || deleteFlightMutation.isPending),
-                      ]}
-                      onPress={() =>
-                        confirmDelete('this flight', () => deleteFlightMutation.mutate(flight.id))
-                      }
-                      role="destructive"
-                    />
-                  </VStack>
+                    <SwipeActions.Actions edge="trailing" allowsFullSwipe={false}>
+                      <SwiftButton
+                        label="Delete"
+                        systemImage="trash"
+                        modifiers={[
+                          disabled(!isOnline || deleteFlightMutation.isPending),
+                          tint(colors.danger),
+                        ]}
+                        onPress={() =>
+                          confirmDelete('this flight', () => deleteFlightMutation.mutate(flight.id))
+                        }
+                        role="destructive"
+                      />
+                    </SwipeActions.Actions>
+                  </SwipeActions>
                 ))}
               </Section>
             ) : null}

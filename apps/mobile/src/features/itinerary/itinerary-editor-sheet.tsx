@@ -324,6 +324,11 @@ function ItineraryEditor({
         style={{ backgroundColor: colors.background }}
       >
         <OfflineNotice visible={!isOnline} />
+        {message || activeError ? (
+          <Text selectable style={{ color: colors.danger, lineHeight: 20 }}>
+            {message ?? messageFromError(activeError)}
+          </Text>
+        ) : null}
         <Text selectable style={{ color: colors.text, fontSize: 22, fontWeight: '800' }}>
           {titleForKind(kind)}
         </Text>
@@ -760,11 +765,6 @@ function ItineraryEditor({
           >
             Delete location
           </Button>
-        ) : null}
-        {message || activeError ? (
-          <Text selectable style={{ color: colors.danger, lineHeight: 20 }}>
-            {message ?? messageFromError(activeError)}
-          </Text>
         ) : null}
       </ScrollView>
       {kind !== 'flight' ? (

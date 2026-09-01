@@ -20,5 +20,9 @@ export function useTripEditor() {
       }
     },
     enabled: Boolean(selectedTripId),
+    // This data can also be changed from the web editor. Always reconcile it
+    // when an itinerary screen mounts or the app returns to the foreground.
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: 'always',
   });
 }

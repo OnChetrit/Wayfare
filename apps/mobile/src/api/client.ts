@@ -68,6 +68,7 @@ export async function requestWayfareApi<T>(path: string, init: RequestInit = {})
       sessionIsInvalid ? 'SESSION_INVALID' : 'AUTH',
     );
   }
+  console.log('response', response);
   if (!response.ok) {
     throw new WayfareApiError(
       apiErrorMessage(payload, 'Could not complete that request.'),
