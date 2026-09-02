@@ -318,6 +318,7 @@ export function DayPlanPanel({
             )}
           </p>
         </div>
+        <div className={styles.panelActions}>
         <button
           type="button"
           className={styles.dayNotesButton}
@@ -337,6 +338,7 @@ export function DayPlanPanel({
         >
           <AlarmClock size={16} />
         </button>
+        </div>
         <button className={styles.panelClose} onClick={onClose} aria-label="Close day plan">
           <X size={16} />
         </button>

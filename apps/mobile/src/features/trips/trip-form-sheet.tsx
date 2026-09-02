@@ -3,10 +3,31 @@ import { useQueryClient } from '@tanstack/react-query';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import * as React from 'react';
 import { Alert, ScrollView, Text } from 'react-native';
+import {
+  Button as SwiftButton,
+  ConfirmationDialog,
+  DatePicker,
+  Form,
+  Host,
+  Label,
+  Section,
+  Text as SwiftText,
+  TextField,
+  useNativeState,
+} from '@expo/ui/swift-ui';
+import {
+  datePickerStyle,
+  disabled,
+  foregroundStyle,
+  scrollDismissesKeyboard,
+  textInputAutocapitalization,
+} from '@expo/ui/swift-ui/modifiers';
 
 import { createTrip, deleteTrip, updateTrip, type TripSettingsInput } from '@/api/trips';
 import { tripKeys } from '@/api/query-keys';
 import { Button } from '@/components/ui/button';
+import { DateTimeField } from '@/components/ui/date-time-field';
+import { dateTimeFieldValue, dateTimePickerDate } from '@/components/ui/date-time-field-value';
 import { Field } from '@/components/ui/field';
 import { EmptyState, ErrorState, LoadingState, OfflineNotice } from '@/components/ui/state';
 import { useAuth } from '@/features/auth/auth-context';
@@ -22,7 +43,7 @@ import { useTrips } from '@/features/trips/trip-context';
 import { useTripEditor } from '@/features/trips/use-trip-editor';
 import { messageFromError } from '@/lib/format';
 import { preferredCurrency } from '@/lib/user-preferences';
-import { colors, space } from '@/theme/tokens';
+import { space } from '@/theme/tokens';
 import { useTheme } from '@/theme/theme-provider';
 
 type TripFormMode = 'create' | 'edit';
@@ -43,7 +64,6 @@ function tripSettingsFromInput(input: TripInput): TripSettingsInput {
 }
 
 export function TripFormSheet() {
-  useTheme();
   const { mode: rawMode } = useLocalSearchParams<{ mode?: string | string[] }>();
   const mode: TripFormMode = first(rawMode) === 'edit' ? 'edit' : 'create';
   const { session } = useAuth();
@@ -89,6 +109,7 @@ function TripForm({
   trip: TripEditorTrip | null | undefined;
 }) {
   const { session } = useAuth();
+  const { colors, theme } = useTheme();
   const queryClient = useQueryClient();
   const { trips, selectCreatedTrip, reselectAfterTripDeletion } = useTrips();
   const initialForm = React.useMemo<TripFormValues>(
@@ -97,6 +118,10 @@ function TripForm({
   );
   const [form, setForm] = React.useState(initialForm);
   const [message, setMessage] = React.useState<string | null>(null);
+  const [isDeleteConfirmationPresented, setIsDeleteConfirmationPresented] = React.useState(false);
+  const nativeName = useNativeState(initialForm.name);
+  const nativeDestination = useNativeState(initialForm.destinationLabel);
+  const nativeCurrency = useNativeState(initialForm.defaultCurrency);
   const defaultTimeZone = trip?.defaultTimeZone ?? deviceTimeZone();
   const tripSummary = trips.find(candidate => candidate.id === trip?.id);
   const isOwner = tripSummary?.ownerId === session?.user.id;
@@ -146,7 +171,16 @@ function TripForm({
   }
 
   async function save() {
-    const result = validateTripForm(form, defaultTimeZone);
+    const currentForm =
+      process.env.EXPO_OS === 'ios'
+        ? {
+            ...form,
+            defaultCurrency: nativeCurrency.get(),
+            destinationLabel: nativeDestination.get(),
+            name: nativeName.get(),
+          }
+        : form;
+    const result = validateTripForm(currentForm, defaultTimeZone);
     if ('error' in result) {
       setMessage(result.error);
       return;
@@ -185,6 +219,168 @@ function TripForm({
     );
   }
 
+  function deleteTripAndClose() {
+    void deleteMutation
+      .mutateAsync(undefined)
+      .then(() => router.back())
+      .catch(error => setMessage(messageFromError(error, 'Could not delete this trip.')));
+  }
+
+  const isFormDisabled = !isOnline || isSaving || deleteMutation.isPending;
+  const formError =
+    message ||
+    (createMutation.error || updateMutation.error || deleteMutation.error
+      ? messageFromError(createMutation.error ?? updateMutation.error ?? deleteMutation.error)
+      : null);
+  const toolbar = trip ? (
+    <Stack.Toolbar placement="right">
+      {isOwner && process.env.EXPO_OS !== 'ios' ? (
+        <Stack.Toolbar.Button
+          accessibilityLabel="Delete trip"
+          disabled={isFormDisabled}
+          onPress={confirmDelete}
+          tintColor={colors.danger}
+        >
+          {deleteMutation.isPending ? 'Deleting…' : 'Delete'}
+        </Stack.Toolbar.Button>
+      ) : null}
+      <Stack.Toolbar.Button
+        accessibilityLabel="Save trip"
+        disabled={isFormDisabled}
+        onPress={() => void save()}
+        tintColor={colors.accent}
+        variant="done"
+      >
+        {isSaving ? 'Saving…' : 'Save'}
+      </Stack.Toolbar.Button>
+    </Stack.Toolbar>
+  ) : (
+    <Stack.Toolbar placement="right">
+      <Stack.Toolbar.Button
+        accessibilityLabel="Create trip"
+        disabled={!isOnline || isSaving}
+        onPress={() => void save()}
+        tintColor={colors.accent}
+        variant="done"
+      >
+        {isSaving ? 'Creating…' : 'Create trip'}
+      </Stack.Toolbar.Button>
+    </Stack.Toolbar>
+  );
+
+  if (process.env.EXPO_OS === 'ios') {
+    return (
+      <>
+        <Host colorScheme={theme} seedColor={colors.accent} style={{ flex: 1 }}>
+          <Form modifiers={[scrollDismissesKeyboard('interactively')]}>
+            {!isOnline ? (
+              <Section title="Connection">
+                <Label title="You’re offline" systemImage="wifi.slash" />
+                <SwiftText>Reconnect to save changes to this trip.</SwiftText>
+              </Section>
+            ) : null}
+
+            <Section
+              title="Trip details"
+              footer={
+                <SwiftText>
+                  {trip
+                    ? 'Update the essentials for this trip.'
+                    : 'Start with the essentials. You can fill in the itinerary afterward.'}
+                </SwiftText>
+              }
+            >
+              <TextField
+                maxLength={80}
+                onTextChange={name => update('name', name)}
+                placeholder="Trip name"
+                text={nativeName}
+                modifiers={[textInputAutocapitalization('sentences'), disabled(isFormDisabled)]}
+              />
+              <TextField
+                maxLength={120}
+                onTextChange={destinationLabel => update('destinationLabel', destinationLabel)}
+                placeholder="Destination"
+                text={nativeDestination}
+                modifiers={[textInputAutocapitalization('words'), disabled(isFormDisabled)]}
+              />
+            </Section>
+
+            <Section title="Dates">
+              <DatePicker
+                displayedComponents={['date']}
+                onDateChange={startDate =>
+                  update('startDate', dateTimeFieldValue(startDate, 'date'))
+                }
+                selection={dateTimePickerDate(form.startDate, 'date')}
+                title="Start date"
+                modifiers={[datePickerStyle('compact'), disabled(isFormDisabled)]}
+              />
+              <DatePicker
+                displayedComponents={['date']}
+                onDateChange={endDate => update('endDate', dateTimeFieldValue(endDate, 'date'))}
+                selection={dateTimePickerDate(form.endDate, 'date')}
+                title="End date"
+                modifiers={[datePickerStyle('compact'), disabled(isFormDisabled)]}
+              />
+            </Section>
+
+            <Section title="Default currency">
+              <TextField
+                maxLength={3}
+                onTextChange={defaultCurrency => update('defaultCurrency', defaultCurrency)}
+                placeholder="EUR"
+                text={nativeCurrency}
+                modifiers={[textInputAutocapitalization('characters'), disabled(isFormDisabled)]}
+              />
+            </Section>
+
+            {formError ? (
+              <Section title="Couldn’t save trip">
+                <SwiftText modifiers={[foregroundStyle(colors.danger)]}>{formError}</SwiftText>
+              </Section>
+            ) : null}
+
+            {trip && isOwner ? (
+              <Section title="Danger zone">
+                <ConfirmationDialog
+                  isPresented={isDeleteConfirmationPresented}
+                  onIsPresentedChange={setIsDeleteConfirmationPresented}
+                  title={`Delete ${trip.name}?`}
+                  titleVisibility="visible"
+                >
+                  <ConfirmationDialog.Trigger>
+                    <SwiftButton
+                      label="Delete trip"
+                      role="destructive"
+                      systemImage="trash"
+                      onPress={() => setIsDeleteConfirmationPresented(true)}
+                      modifiers={[disabled(isFormDisabled)]}
+                    />
+                  </ConfirmationDialog.Trigger>
+                  <ConfirmationDialog.Actions>
+                    <SwiftButton
+                      label="Delete trip"
+                      role="destructive"
+                      onPress={deleteTripAndClose}
+                    />
+                    <SwiftButton label="Cancel" role="cancel" />
+                  </ConfirmationDialog.Actions>
+                  <ConfirmationDialog.Message>
+                    <SwiftText>
+                      This permanently removes its itinerary, places, stays, flights, and expenses.
+                    </SwiftText>
+                  </ConfirmationDialog.Message>
+                </ConfirmationDialog>
+              </Section>
+            ) : null}
+          </Form>
+        </Host>
+        {toolbar}
+      </>
+    );
+  }
+
   return (
     <>
       <ScrollView
@@ -216,20 +412,16 @@ function TripForm({
           placeholder="Lisbon"
           value={form.destinationLabel}
         />
-        <Field
-          accessibilityLabel="Start date in YYYY-MM-DD format"
-          label="Start date (YYYY-MM-DD)"
-          maxLength={10}
+        <DateTimeField
+          label="Start date"
+          mode="date"
           onChangeText={startDate => update('startDate', startDate)}
-          placeholder="2026-07-10"
           value={form.startDate}
         />
-        <Field
-          accessibilityLabel="End date in YYYY-MM-DD format"
-          label="End date (YYYY-MM-DD)"
-          maxLength={10}
+        <DateTimeField
+          label="End date"
+          mode="date"
           onChangeText={endDate => update('endDate', endDate)}
-          placeholder="2026-07-16"
           value={form.endDate}
         />
         <Field
@@ -241,48 +433,13 @@ function TripForm({
           placeholder="EUR"
           value={form.defaultCurrency}
         />
-        {message || createMutation.error || updateMutation.error || deleteMutation.error ? (
+        {formError ? (
           <Text selectable style={{ color: colors.danger, lineHeight: 20 }}>
-            {message ??
-              messageFromError(
-                createMutation.error ?? updateMutation.error ?? deleteMutation.error,
-              )}
+            {formError}
           </Text>
         ) : null}
       </ScrollView>
-      {trip ? (
-        <Stack.Toolbar placement="right">
-          {isOwner ? (
-            <Stack.Toolbar.Button
-              accessibilityLabel="Delete trip"
-              disabled={!isOnline || isSaving || deleteMutation.isPending}
-              onPress={confirmDelete}
-              tintColor={colors.danger}
-            >
-              {deleteMutation.isPending ? 'Deleting…' : 'Delete'}
-            </Stack.Toolbar.Button>
-          ) : null}
-          <Stack.Toolbar.Button
-            accessibilityLabel="Save trip"
-            disabled={!isOnline || isSaving || deleteMutation.isPending}
-            onPress={() => void save()}
-            variant="done"
-          >
-            {isSaving ? 'Saving…' : 'Save'}
-          </Stack.Toolbar.Button>
-        </Stack.Toolbar>
-      ) : (
-        <Stack.Toolbar placement="right">
-          <Stack.Toolbar.Button
-            accessibilityLabel="Create trip"
-            disabled={!isOnline || isSaving}
-            onPress={() => void save()}
-            variant="done"
-          >
-            {isSaving ? 'Creating…' : 'Create trip'}
-          </Stack.Toolbar.Button>
-        </Stack.Toolbar>
-      )}
+      {toolbar}
     </>
   );
 }

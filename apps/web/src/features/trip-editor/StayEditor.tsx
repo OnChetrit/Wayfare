@@ -296,9 +296,9 @@ export function StayEditor({
           <label>
             Cancellation time
             <input
+              type="time"
               value={draft.cancellationTime}
               onChange={event => onChangeDraft({ cancellationTime: event.target.value })}
-              placeholder="18:00"
             />
           </label>
         </div>

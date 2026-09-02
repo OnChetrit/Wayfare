@@ -314,11 +314,13 @@ export function ExploreScreen() {
           accessibilityLabel="Import a Google Maps list"
           icon={process.env.EXPO_OS === 'ios' ? 'square.and.arrow.down' : ImportIcon}
           onPress={() => router.push('/place-import')}
+          tintColor={colors.accent}
         />
         <Stack.Toolbar.Button
           accessibilityLabel={`Open ${trip.places.length} saved places`}
           icon={process.env.EXPO_OS === 'ios' ? 'list.bullet' : SavedPlacesIcon}
           onPress={() => setSavedPlacesVisible(true)}
+          tintColor={colors.accent}
         />
       </Stack.Toolbar>
     </>

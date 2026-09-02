@@ -8,6 +8,7 @@ import { expenseCategories, type ExpenseCategory } from '@wayfare/domain';
 import { createExpense, deleteExpense, updateExpense } from '@/api/trips';
 import { Button } from '@/components/ui/button';
 import { ChipGroup } from '@/components/ui/controls';
+import { DateTimeField } from '@/components/ui/date-time-field';
 import { Field } from '@/components/ui/field';
 import { EmptyState, ErrorState, LoadingState, OfflineNotice } from '@/components/ui/state';
 import {
@@ -185,8 +186,9 @@ function ExpenseEditor({
           value={form.currency}
           onChangeText={currency => setForm(current => ({ ...current, currency }))}
         />
-        <Field
-          label="Date (YYYY-MM-DD)"
+        <DateTimeField
+          label="Date"
+          mode="date"
           value={form.expenseDate}
           onChangeText={expenseDate => setForm(current => ({ ...current, expenseDate }))}
         />
@@ -260,6 +262,7 @@ function ExpenseEditor({
           disabled={!isOnline || saveMutation.isPending}
           icon={process.env.EXPO_OS === 'ios' ? undefined : expense ? CheckIcon : AddIcon}
           onPress={() => void save()}
+          tintColor={colors.accent}
           variant="done"
         >
           {expense ? 'Save' : 'Add'}

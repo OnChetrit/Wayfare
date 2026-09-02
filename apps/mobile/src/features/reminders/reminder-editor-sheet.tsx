@@ -1,9 +1,10 @@
-import { router, useLocalSearchParams } from 'expo-router';
+import CheckIcon from '@expo/material-symbols/check.xml';
+import { router, Stack, useLocalSearchParams } from 'expo-router';
 import * as React from 'react';
 import { Alert, ScrollView, Text, View } from 'react-native';
 
 import { createReminder, updateReminder } from '@/api/trips';
-import { Button } from '@/components/ui/button';
+import { DateTimeField } from '@/components/ui/date-time-field';
 import { Field } from '@/components/ui/field';
 import { EmptyState, ErrorState, LoadingState, OfflineNotice } from '@/components/ui/state';
 import {
@@ -164,45 +165,58 @@ function ReminderEditor({
   }
 
   return (
-    <ScrollView
-      contentInsetAdjustmentBehavior="automatic"
-      contentContainerStyle={{ gap: space.md, padding: space.md, paddingBottom: 36 }}
-      style={{ backgroundColor: colors.background }}
-    >
-      <OfflineNotice visible={!isOnline} />
-      <View style={{ gap: 3 }}>
-        <Text selectable style={{ color: themeColors.text, fontSize: 16, fontWeight: '800' }}>
-          {reminder ? reminder.sourceTitle : sourceTitle}
-        </Text>
-        <Text selectable style={{ color: themeColors.textMuted, lineHeight: 20 }}>
-          This reminder is private to you. Editing it never changes the shared note.
-        </Text>
-        <Text selectable style={{ color: themeColors.textMuted, lineHeight: 20 }}>
-          Wayfare will ask to send a phone alert at the selected time.
-        </Text>
-      </View>
-      {reminder ? (
-        <Field label="Reminder title" value={title} onChangeText={setTitle} maxLength={200} />
-      ) : null}
-      <Field label="Message" multiline value={body} onChangeText={setBody} maxLength={5000} />
-      <Field
-        label="Reminder time (your local time, YYYY-MM-DD HH:mm)"
-        value={remindAtLocal}
-        onChangeText={setRemindAtLocal}
-        placeholder="2026-10-12 09:00"
-      />
-      {message ? (
-        <Text selectable style={{ color: themeColors.danger }}>
-          {message}
-        </Text>
-      ) : null}
-      <Button
-        disabled={!isOnline || mutation.isPending}
-        loading={mutation.isPending}
-        onPress={() => void save()}
+    <>
+      <ScrollView
+        contentInsetAdjustmentBehavior="automatic"
+        contentContainerStyle={{ gap: space.md, padding: space.md, paddingBottom: 36 }}
+        style={{ backgroundColor: colors.background }}
       >
-        {reminder ? 'Save reminder' : 'Create reminder'}
-      </Button>
-    </ScrollView>
+        <OfflineNotice visible={!isOnline} />
+        <View style={{ gap: 3 }}>
+          <Text selectable style={{ color: themeColors.text, fontSize: 16, fontWeight: '800' }}>
+            {reminder ? reminder.sourceTitle : sourceTitle}
+          </Text>
+          <Text selectable style={{ color: themeColors.textMuted, lineHeight: 20 }}>
+            This reminder is private to you. Editing it never changes the shared note.
+          </Text>
+          <Text selectable style={{ color: themeColors.textMuted, lineHeight: 20 }}>
+            Wayfare will ask to send a phone alert at the selected time.
+          </Text>
+        </View>
+        {reminder ? (
+          <Field label="Reminder title" value={title} onChangeText={setTitle} maxLength={200} />
+        ) : null}
+        <Field label="Message" multiline value={body} onChangeText={setBody} maxLength={5000} />
+        <DateTimeField
+          label="Reminder date"
+          mode="date"
+          value={remindAtLocal.slice(0, 10)}
+          onChangeText={date => setRemindAtLocal(current => `${date}${current.slice(10)}`)}
+        />
+        <DateTimeField
+          label="Reminder time"
+          mode="time"
+          value={remindAtLocal.slice(11, 16)}
+          onChangeText={time => setRemindAtLocal(current => `${current.slice(0, 11)}${time}`)}
+        />
+        {message ? (
+          <Text selectable style={{ color: themeColors.danger }}>
+            {message}
+          </Text>
+        ) : null}
+      </ScrollView>
+      <Stack.Toolbar placement="right">
+        <Stack.Toolbar.Button
+          accessibilityLabel={
+            mutation.isPending ? 'Saving reminder' : reminder ? 'Save reminder' : 'Create reminder'
+          }
+          disabled={!isOnline || mutation.isPending}
+          icon={process.env.EXPO_OS === 'ios' ? 'checkmark' : CheckIcon}
+          onPress={() => void save()}
+          tintColor={themeColors.accent}
+          variant="done"
+        />
+      </Stack.Toolbar>
+    </>
   );
 }

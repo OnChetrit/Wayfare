@@ -34,6 +34,11 @@
   }
 
   .panelHeader {
+
+    .panelActions {
+      display: flex;
+      gap: 8px;
+    }
     h1 {
       color: var(--ink);
       font-size: 20px;

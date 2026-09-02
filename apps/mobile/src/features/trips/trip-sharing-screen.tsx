@@ -2,6 +2,34 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import * as React from 'react';
 import { Alert, Share, Text, View } from 'react-native';
 import type { InvitationRole, TripInvitation, TripMember } from '@wayfare/domain';
+import {
+  Button as SwiftButton,
+  ConfirmationDialog,
+  DatePicker,
+  Form,
+  Host,
+  HStack,
+  Label,
+  Picker,
+  ProgressView,
+  Section,
+  Spacer,
+  Text as SwiftText,
+  TextField,
+  Toggle,
+  VStack,
+  useNativeState,
+} from '@expo/ui/swift-ui';
+import {
+  datePickerStyle,
+  disabled,
+  foregroundStyle,
+  keyboardType,
+  pickerStyle,
+  refreshable,
+  scrollDismissesKeyboard,
+  tag,
+} from '@expo/ui/swift-ui/modifiers';
 
 import { tripKeys } from '@/api/query-keys';
 import {
@@ -15,6 +43,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { ChipGroup } from '@/components/ui/controls';
+import { DateTimeField } from '@/components/ui/date-time-field';
+import { dateTimeFieldValue, dateTimePickerDate } from '@/components/ui/date-time-field-value';
 import { Field } from '@/components/ui/field';
 import { Screen } from '@/components/ui/screen';
 import { EmptyState, ErrorState, LoadingState, OfflineNotice } from '@/components/ui/state';
@@ -52,7 +82,7 @@ function expiryFromDate(value: string) {
 }
 
 export function TripSharingScreen() {
-  const { colors } = useTheme();
+  const { colors, theme } = useTheme();
   const { session } = useAuth();
   const { selectedTrip } = useTrips();
   const tripQuery = useTripEditor();
@@ -61,6 +91,10 @@ export function TripSharingScreen() {
   const [expiryDate, setExpiryDate] = React.useState('');
   const [maxUses, setMaxUses] = React.useState('');
   const [newLink, setNewLink] = React.useState<string | null>(null);
+  const [isExpiryEnabled, setIsExpiryEnabled] = React.useState(false);
+  const [revokeConfirmationId, setRevokeConfirmationId] = React.useState<string | null>(null);
+  const [removalConfirmationId, setRemovalConfirmationId] = React.useState<string | null>(null);
+  const nativeMaxUses = useNativeState(maxUses);
   const trip = tripQuery.data;
   const isLegacyOwner = selectedTrip?.ownerId === session?.user.id;
   const canManageMembers = Boolean(trip?.access.canManageMembers || isLegacyOwner);
@@ -85,9 +119,12 @@ export function TripSharingScreen() {
     trip?.id ?? null,
     async () => {
       if (!trip) throw new Error('Choose a trip first.');
-      const expiresAt = expiryFromDate(expiryDate);
+      const hasExpiryDate =
+        process.env.EXPO_OS === 'ios' ? isExpiryEnabled : Boolean(expiryDate.trim());
+      const expiresAt = hasExpiryDate ? expiryFromDate(expiryDate) : null;
       if (expiresAt === undefined) throw new Error('Use an expiry date in YYYY-MM-DD format.');
-      const normalizedMaxUses = maxUses.trim() ? Number(maxUses) : null;
+      const currentMaxUses = process.env.EXPO_OS === 'ios' ? nativeMaxUses.get() : maxUses;
+      const normalizedMaxUses = currentMaxUses.trim() ? Number(currentMaxUses) : null;
       if (
         normalizedMaxUses !== null &&
         (!Number.isInteger(normalizedMaxUses) || normalizedMaxUses <= 0)
@@ -102,6 +139,8 @@ export function TripSharingScreen() {
         setNewLink(webUrl ? `${webUrl}/invite/${invitation.token}` : null);
         setExpiryDate('');
         setMaxUses('');
+        setIsExpiryEnabled(false);
+        nativeMaxUses.set('');
         await invalidateSharing();
       },
     },
@@ -186,6 +225,270 @@ export function TripSharingScreen() {
     updateMemberMutation.error ??
     removeMemberMutation.error;
 
+  const isInvitationFormDisabled = !isOnline || isMutating;
+
+  if (process.env.EXPO_OS === 'ios') {
+    return (
+      <Host colorScheme={theme} seedColor={colors.accent} style={{ flex: 1 }}>
+        <Form
+          modifiers={[
+            refreshable(async () => {
+              await Promise.all([invitationsQuery.refetch(), membersQuery.refetch()]);
+            }),
+            scrollDismissesKeyboard('interactively'),
+          ]}
+        >
+          {!isOnline ? (
+            <Section title="Connection">
+              <Label title="You’re offline" systemImage="wifi.slash" />
+              <SwiftText>Reconnect to create, revoke, or update access.</SwiftText>
+            </Section>
+          ) : null}
+
+          <Section
+            title="New invitation"
+            footer={
+              <SwiftText>
+                Create a private link for an editor or viewer. Treat every link like a credential.
+              </SwiftText>
+            }
+          >
+            <Picker
+              label="Access"
+              onSelectionChange={setRole}
+              selection={role}
+              systemImage="person.badge.key"
+              modifiers={[pickerStyle('segmented'), disabled(isInvitationFormDisabled)]}
+            >
+              {roleOptions.map(option => (
+                <SwiftText key={option.value} modifiers={[tag(option.value)]}>
+                  {option.label}
+                </SwiftText>
+              ))}
+            </Picker>
+            <Toggle
+              isOn={isExpiryEnabled}
+              label="Set an expiry date"
+              onIsOnChange={enabled => {
+                setIsExpiryEnabled(enabled);
+                if (enabled && !expiryDate) setExpiryDate(dateTimeFieldValue(new Date(), 'date'));
+                if (!enabled) setExpiryDate('');
+              }}
+              modifiers={[disabled(isInvitationFormDisabled)]}
+            />
+            {isExpiryEnabled ? (
+              <DatePicker
+                displayedComponents={['date']}
+                onDateChange={date => setExpiryDate(dateTimeFieldValue(date, 'date'))}
+                selection={dateTimePickerDate(expiryDate, 'date')}
+                title="Expiry date"
+                modifiers={[datePickerStyle('compact'), disabled(isInvitationFormDisabled)]}
+              />
+            ) : null}
+            <TextField
+              onTextChange={setMaxUses}
+              placeholder="Use limit (unlimited)"
+              text={nativeMaxUses}
+              modifiers={[
+                keyboardType('ascii-capable-number-pad'),
+                disabled(isInvitationFormDisabled),
+              ]}
+            />
+            <SwiftButton
+              label={createMutation.isPending ? 'Creating…' : 'Create invitation'}
+              systemImage="link.badge.plus"
+              onPress={() => createMutation.mutate()}
+              modifiers={[disabled(isInvitationFormDisabled)]}
+            />
+          </Section>
+
+          {newLink ? (
+            <Section title="Invitation link created">
+              <SwiftText>{newLink}</SwiftText>
+              <SwiftButton
+                label="Share invitation link"
+                systemImage="square.and.arrow.up"
+                onPress={() => void shareNewLink()}
+                modifiers={[disabled(!isOnline)]}
+              />
+            </Section>
+          ) : null}
+
+          <Section
+            title="Invitations"
+            footer={
+              !invitationsQuery.isLoading &&
+              !invitationsQuery.error &&
+              !invitationsQuery.data?.length ? (
+                <SwiftText>Create a link when you’re ready to invite someone.</SwiftText>
+              ) : undefined
+            }
+          >
+            {invitationsQuery.isLoading ? (
+              <HStack spacing={10}>
+                <ProgressView />
+                <SwiftText>Loading invitations…</SwiftText>
+              </HStack>
+            ) : null}
+            {invitationsQuery.error ? (
+              <VStack alignment="leading" spacing={8}>
+                <SwiftText modifiers={[foregroundStyle(colors.danger)]}>
+                  {messageFromError(invitationsQuery.error)}
+                </SwiftText>
+                <SwiftButton label="Try again" onPress={() => invitationsQuery.refetch()} />
+              </VStack>
+            ) : null}
+            {invitationsQuery.data?.map(invitation => (
+              <HStack key={invitation.id} spacing={12}>
+                <VStack alignment="leading" spacing={3}>
+                  <SwiftText>
+                    {invitation.role === 'EDITOR' ? 'Editor' : 'Viewer'} ·{' '}
+                    {invitationStatus(invitation)}
+                  </SwiftText>
+                  <SwiftText
+                    modifiers={[foregroundStyle({ type: 'hierarchical', style: 'secondary' })]}
+                  >
+                    {invitationExpiry(invitation.expiresAt)} · {invitation.useCount}
+                    {invitation.maxUses === null ? ' uses' : `/${invitation.maxUses} uses`}
+                  </SwiftText>
+                </VStack>
+                <Spacer />
+                {!invitation.revokedAt ? (
+                  <ConfirmationDialog
+                    isPresented={revokeConfirmationId === invitation.id}
+                    onIsPresentedChange={presented =>
+                      setRevokeConfirmationId(presented ? invitation.id : null)
+                    }
+                    title="Revoke invitation?"
+                    titleVisibility="visible"
+                  >
+                    <ConfirmationDialog.Trigger>
+                      <SwiftButton
+                        label={
+                          revokeMutation.isPending && revokeMutation.variables === invitation.id
+                            ? 'Revoking…'
+                            : 'Revoke'
+                        }
+                        role="destructive"
+                        onPress={() => setRevokeConfirmationId(invitation.id)}
+                        modifiers={[disabled(isInvitationFormDisabled)]}
+                      />
+                    </ConfirmationDialog.Trigger>
+                    <ConfirmationDialog.Actions>
+                      <SwiftButton
+                        label="Revoke"
+                        role="destructive"
+                        onPress={() => {
+                          setRevokeConfirmationId(null);
+                          revokeMutation.mutate(invitation.id);
+                        }}
+                      />
+                      <SwiftButton label="Cancel" role="cancel" />
+                    </ConfirmationDialog.Actions>
+                    <ConfirmationDialog.Message>
+                      <SwiftText>People who already joined keep their access.</SwiftText>
+                    </ConfirmationDialog.Message>
+                  </ConfirmationDialog>
+                ) : null}
+              </HStack>
+            ))}
+          </Section>
+
+          <Section title="Members">
+            {membersQuery.isLoading ? (
+              <HStack spacing={10}>
+                <ProgressView />
+                <SwiftText>Loading members…</SwiftText>
+              </HStack>
+            ) : null}
+            {membersQuery.error ? (
+              <VStack alignment="leading" spacing={8}>
+                <SwiftText modifiers={[foregroundStyle(colors.danger)]}>
+                  {messageFromError(membersQuery.error)}
+                </SwiftText>
+                <SwiftButton label="Try again" onPress={() => membersQuery.refetch()} />
+              </VStack>
+            ) : null}
+            {membersQuery.data?.map(member => (
+              <VStack key={member.userId} alignment="leading" spacing={6}>
+                <SwiftText>{member.name}</SwiftText>
+                <SwiftText
+                  modifiers={[foregroundStyle({ type: 'hierarchical', style: 'secondary' })]}
+                >
+                  {member.email}
+                </SwiftText>
+                {member.role === 'OWNER' ? (
+                  <SwiftText modifiers={[foregroundStyle(colors.success)]}>Owner</SwiftText>
+                ) : (
+                  <>
+                    <Picker
+                      label="Access"
+                      onSelectionChange={nextRole =>
+                        updateMemberMutation.mutate({ userId: member.userId, role: nextRole })
+                      }
+                      selection={member.role}
+                      modifiers={[pickerStyle('segmented'), disabled(isInvitationFormDisabled)]}
+                    >
+                      {roleOptions.map(option => (
+                        <SwiftText key={option.value} modifiers={[tag(option.value)]}>
+                          {option.label}
+                        </SwiftText>
+                      ))}
+                    </Picker>
+                    <ConfirmationDialog
+                      isPresented={removalConfirmationId === member.userId}
+                      onIsPresentedChange={presented =>
+                        setRemovalConfirmationId(presented ? member.userId : null)
+                      }
+                      title={`Remove ${member.name}?`}
+                      titleVisibility="visible"
+                    >
+                      <ConfirmationDialog.Trigger>
+                        <SwiftButton
+                          label={
+                            removeMemberMutation.isPending &&
+                            removeMemberMutation.variables === member.userId
+                              ? 'Removing…'
+                              : 'Remove member'
+                          }
+                          role="destructive"
+                          onPress={() => setRemovalConfirmationId(member.userId)}
+                          modifiers={[disabled(isInvitationFormDisabled)]}
+                        />
+                      </ConfirmationDialog.Trigger>
+                      <ConfirmationDialog.Actions>
+                        <SwiftButton
+                          label="Remove member"
+                          role="destructive"
+                          onPress={() => {
+                            setRemovalConfirmationId(null);
+                            removeMemberMutation.mutate(member.userId);
+                          }}
+                        />
+                        <SwiftButton label="Cancel" role="cancel" />
+                      </ConfirmationDialog.Actions>
+                      <ConfirmationDialog.Message>
+                        <SwiftText>They will no longer be able to open this trip.</SwiftText>
+                      </ConfirmationDialog.Message>
+                    </ConfirmationDialog>
+                  </>
+                )}
+              </VStack>
+            ))}
+          </Section>
+
+          {sharingError ? (
+            <Section title="Couldn’t update sharing">
+              <SwiftText modifiers={[foregroundStyle(colors.danger)]}>
+                {messageFromError(sharingError)}
+              </SwiftText>
+            </Section>
+          ) : null}
+        </Form>
+      </Host>
+    );
+  }
+
   return (
     <Screen>
       <View style={{ gap: 4 }}>
@@ -213,13 +516,11 @@ export function TripSharingScreen() {
               onChange={setRole}
             />
           </View>
-          <Field
-            accessibilityLabel="Invitation expiry date"
-            autoCapitalize="none"
-            editable={isOnline && !isMutating}
+          <DateTimeField
+            disabled={!isOnline || isMutating}
             label="Expiry date (optional)"
+            mode="date"
             onChangeText={setExpiryDate}
-            placeholder="YYYY-MM-DD"
             value={expiryDate}
           />
           <Field

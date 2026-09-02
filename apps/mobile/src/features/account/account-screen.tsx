@@ -1,6 +1,32 @@
 import { router } from 'expo-router';
 import * as React from 'react';
 import { ActivityIndicator, Alert, Pressable, Text, View } from 'react-native';
+import {
+  Button as SwiftButton,
+  Form,
+  Host,
+  HStack,
+  Image as SwiftImage,
+  Label,
+  Picker,
+  ProgressView,
+  Section,
+  Spacer,
+  Text as SwiftText,
+  TextField,
+  VStack,
+  useNativeState,
+} from '@expo/ui/swift-ui';
+import {
+  buttonStyle,
+  disabled,
+  foregroundStyle,
+  pickerStyle,
+  refreshable,
+  scrollDismissesKeyboard,
+  tag,
+  tint,
+} from '@expo/ui/swift-ui/modifiers';
 
 import { useIsOnline } from '@/api/query-client';
 import { Button } from '@/components/ui/button';
@@ -38,7 +64,7 @@ export function AccountScreen() {
     tripsError,
     refreshTrips,
   } = useTrips();
-  const { colors } = useTheme();
+  const { colors, theme } = useTheme();
   const isOnline = useIsOnline();
   const [isSigningOut, setIsSigningOut] = React.useState(false);
   const [signOutError, setSignOutError] = React.useState<string | null>(null);
@@ -58,6 +84,23 @@ export function AccountScreen() {
   );
   const [displayName, setDisplayName] = React.useState(parsedDisplayName);
   const [preferences, setPreferences] = React.useState<AccountPreferences>(parsedPreferences);
+  const nativeDisplayName = useNativeState(parsedDisplayName);
+  const displayNameRef = React.useRef(displayName);
+  const preferencesRef = React.useRef(preferences);
+  const preferencesRevisionRef = React.useRef(0);
+  const isPersistingPreferencesRef = React.useRef(false);
+  const preferencesSaveTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isOnlineRef = React.useRef(isOnline);
+  const sessionRef = React.useRef(session);
+  isOnlineRef.current = isOnline;
+  sessionRef.current = session;
+
+  React.useEffect(
+    () => () => {
+      if (preferencesSaveTimerRef.current) clearTimeout(preferencesSaveTimerRef.current);
+    },
+    [],
+  );
 
   if (initializationError)
     return <ErrorState title="Couldn’t load your account" message={initializationError} />;
@@ -75,18 +118,71 @@ export function AccountScreen() {
     }
   }
 
-  async function handleSavePreferences() {
-    if (!isOnline || !session) return;
-    setPreferencesMessage(null);
+  async function persistPreferenceChanges() {
+    const currentSession = sessionRef.current;
+    if (!isOnlineRef.current || !currentSession) {
+      setPreferencesMessage('Reconnect to save your changes.');
+      return;
+    }
+    if (isPersistingPreferencesRef.current) return;
+    const revision = preferencesRevisionRef.current;
+    isPersistingPreferencesRef.current = true;
     setIsSavingPreferences(true);
     const error = await updateUserMetadata(
-      accountMetadataUpdate(session.user.user_metadata, { displayName, preferences }),
+      accountMetadataUpdate(currentSession.user.user_metadata, {
+        displayName: displayNameRef.current,
+        preferences: preferencesRef.current,
+      }),
     );
+    isPersistingPreferencesRef.current = false;
     setIsSavingPreferences(false);
-    setPreferencesMessage(error ? error.message : 'Account preferences saved.');
+    if (preferencesRevisionRef.current > revision) {
+      schedulePreferenceSave();
+      return;
+    }
+    setPreferencesMessage(error ? error.message : 'Changes saved.');
+  }
+
+  function schedulePreferenceSave() {
+    if (preferencesSaveTimerRef.current) clearTimeout(preferencesSaveTimerRef.current);
+    if (!isOnlineRef.current || !sessionRef.current) {
+      setPreferencesMessage('Reconnect to save your changes.');
+      return;
+    }
+    setPreferencesMessage(null);
+    preferencesSaveTimerRef.current = setTimeout(() => {
+      preferencesSaveTimerRef.current = null;
+      void persistPreferenceChanges();
+    }, 600);
+  }
+
+  function markPreferencesChanged() {
+    preferencesRevisionRef.current += 1;
+    schedulePreferenceSave();
+  }
+
+  function handleDisplayNameChange(nextDisplayName: string) {
+    displayNameRef.current = nextDisplayName;
+    setDisplayName(nextDisplayName);
+    markPreferencesChanged();
+  }
+
+  function handleCurrencyChange(currency: AccountPreferences['currency']) {
+    const nextPreferences = { ...preferencesRef.current, currency };
+    preferencesRef.current = nextPreferences;
+    setPreferences(nextPreferences);
+    markPreferencesChanged();
+  }
+
+  function handleAppearanceChange(nextTheme: AccountPreferences['theme']) {
+    const nextPreferences = { ...preferencesRef.current, theme: nextTheme };
+    preferencesRef.current = nextPreferences;
+    setPreferences(nextPreferences);
+    markPreferencesChanged();
   }
 
   async function handleSignOut() {
+    if (preferencesSaveTimerRef.current) clearTimeout(preferencesSaveTimerRef.current);
     setSignOutError(null);
     setIsSigningOut(true);
     const error = await signOut();
@@ -103,6 +199,211 @@ export function AccountScreen() {
   const openTripForm = (mode: 'create' | 'edit') => {
     router.push({ pathname: '/trip-form', params: mode === 'edit' ? { mode } : {} });
   };
+
+  if (process.env.EXPO_OS === 'ios') {
+    return (
+      <Host colorScheme={theme} seedColor={colors.accent} style={{ flex: 1 }}>
+        <Form
+          modifiers={[
+            refreshable(async () => {
+              await refreshTrips();
+            }),
+            scrollDismissesKeyboard('interactively'),
+          ]}
+        >
+          {!isOnline ? (
+            <Section title="Connection">
+              <Label title="You’re offline" systemImage="wifi.slash" />
+              <SwiftText>You can review your account, but changes need a connection.</SwiftText>
+            </Section>
+          ) : null}
+
+          <Section
+            title="Account"
+            footer={<SwiftText>Your email address is used to sign you in to Wayfare.</SwiftText>}
+          >
+            <TextField
+              maxLength={120}
+              onTextChange={handleDisplayNameChange}
+              placeholder="Display name"
+              text={nativeDisplayName}
+            />
+            <Label title={email} systemImage="envelope" />
+          </Section>
+
+          <Section
+            title="Preferences"
+            footer={
+              isSavingPreferences ? (
+                <HStack spacing={8}>
+                  <ProgressView />
+                  <SwiftText>Saving changes…</SwiftText>
+                </HStack>
+              ) : preferencesMessage ? (
+                <SwiftText
+                  modifiers={[
+                    foregroundStyle(
+                      preferencesMessage === 'Changes saved.' ? colors.success : colors.danger,
+                    ),
+                  ]}
+                >
+                  {preferencesMessage}
+                </SwiftText>
+              ) : undefined
+            }
+          >
+            <Picker
+              label="Currency"
+              onSelectionChange={handleCurrencyChange}
+              selection={preferences.currency}
+              systemImage="banknote"
+              modifiers={[pickerStyle('menu')]}
+            >
+              {currencyOptions.map(currency => (
+                <SwiftText key={currency.value} modifiers={[tag(currency.value)]}>
+                  {currency.label}
+                </SwiftText>
+              ))}
+            </Picker>
+            <Picker
+              label="Appearance"
+              onSelectionChange={handleAppearanceChange}
+              selection={preferences.theme}
+              systemImage="circle.lefthalf.filled"
+              modifiers={[pickerStyle('segmented')]}
+            >
+              {appearanceOptions.map(appearance => (
+                <SwiftText key={appearance.value} modifiers={[tag(appearance.value)]}>
+                  {appearance.label.replace('Use device setting', 'Automatic')}
+                </SwiftText>
+              ))}
+            </Picker>
+          </Section>
+
+          <Section
+            title="Your trips"
+            footer={
+              !trips.length && !isLoadingTrips && !tripsError ? (
+                <SwiftText>Trips you create or join will appear here.</SwiftText>
+              ) : undefined
+            }
+          >
+            {isLoadingTrips ? (
+              <HStack spacing={10}>
+                <ProgressView />
+                <SwiftText>Loading your trips…</SwiftText>
+              </HStack>
+            ) : null}
+            {tripsError ? (
+              <VStack alignment="leading" spacing={8}>
+                <SwiftText modifiers={[foregroundStyle(colors.danger)]}>
+                  {messageFromError(tripsError)}
+                </SwiftText>
+                <SwiftButton label="Try again" onPress={() => void refreshTrips()} />
+              </VStack>
+            ) : null}
+            {!isLoadingTrips && !tripsError
+              ? trips.map(trip => {
+                  const isSelected = trip.id === selectedTripId;
+                  const isSelecting = trip.id === selectingTripId;
+                  return (
+                    <SwiftButton
+                      key={trip.id}
+                      onPress={() => void handleTripSelection(trip.id)}
+                      modifiers={[buttonStyle('plain'), disabled(Boolean(selectingTripId))]}
+                    >
+                      <HStack spacing={12}>
+                        <VStack alignment="leading" spacing={2}>
+                          <SwiftText>{trip.name}</SwiftText>
+                          <SwiftText
+                            modifiers={[
+                              foregroundStyle({ type: 'hierarchical', style: 'secondary' }),
+                            ]}
+                          >
+                            {formatDateRange(trip.startDate, trip.endDate)}
+                          </SwiftText>
+                        </VStack>
+                        <Spacer />
+                        {isSelecting ? <ProgressView /> : null}
+                        {isSelected && !isSelecting ? (
+                          <SwiftImage color={colors.accent} systemName="checkmark" />
+                        ) : null}
+                      </HStack>
+                    </SwiftButton>
+                  );
+                })
+              : null}
+            <SwiftButton
+              label="Create trip"
+              systemImage="plus"
+              onPress={() => openTripForm('create')}
+              modifiers={[disabled(!isOnline)]}
+            />
+            {tripSelectionError ? (
+              <SwiftText modifiers={[foregroundStyle(colors.danger)]}>
+                {tripSelectionError}
+              </SwiftText>
+            ) : null}
+          </Section>
+
+          <Section title="Trip settings">
+            {!selectedTrip ? (
+              <SwiftText>Select a trip to manage its settings.</SwiftText>
+            ) : (
+              <>
+                <Label title={selectedTrip.name} systemImage="suitcase" />
+                {ownsSelectedTrip ? (
+                  <>
+                    <SwiftButton
+                      label="Edit trip"
+                      systemImage="pencil"
+                      onPress={() => openTripForm('edit')}
+                      modifiers={[disabled(!isOnline)]}
+                    />
+                    <SwiftButton
+                      label="Manage sharing"
+                      systemImage="person.2"
+                      onPress={() => router.push('/trip-sharing')}
+                      modifiers={[disabled(!isOnline)]}
+                    />
+                    <SwiftButton
+                      label="Delete trip"
+                      role="destructive"
+                      systemImage="trash"
+                      onPress={() => openTripForm('edit')}
+                      modifiers={[disabled(!isOnline), tint(colors.danger)]}
+                    />
+                  </>
+                ) : (
+                  <SwiftText>
+                    Only the trip owner can change trip settings or manage sharing.
+                  </SwiftText>
+                )}
+              </>
+            )}
+          </Section>
+
+          <Section>
+            <SwiftButton
+              label={isSigningOut ? 'Logging out…' : 'Log out'}
+              role="destructive"
+              systemImage="rectangle.portrait.and.arrow.right"
+              onPress={() =>
+                Alert.alert('Log out?', 'Your secure session will be removed from this device.', [
+                  { text: 'Cancel', style: 'cancel' },
+                  { text: 'Log out', style: 'destructive', onPress: () => void handleSignOut() },
+                ])
+              }
+              modifiers={[disabled(isSigningOut), tint(colors.danger)]}
+            />
+            {signOutError ? (
+              <SwiftText modifiers={[foregroundStyle(colors.danger)]}>{signOutError}</SwiftText>
+            ) : null}
+          </Section>
+        </Form>
+      </Host>
+    );
+  }
 
   return (
     <Screen>
@@ -122,7 +423,7 @@ export function AccountScreen() {
             autoCapitalize="words"
             label="Display name"
             maxLength={120}
-            onChangeText={setDisplayName}
+            onChangeText={handleDisplayNameChange}
             value={displayName}
           />
           <View style={{ gap: 7 }}>
@@ -132,7 +433,7 @@ export function AccountScreen() {
             <ChipGroup
               options={[...currencyOptions]}
               value={preferences.currency}
-              onChange={currency => setPreferences(current => ({ ...current, currency }))}
+              onChange={handleCurrencyChange}
             />
           </View>
           <View style={{ gap: 7 }}>
@@ -142,24 +443,15 @@ export function AccountScreen() {
             <ChipGroup
               options={[...appearanceOptions]}
               value={preferences.theme}
-              onChange={theme => setPreferences(current => ({ ...current, theme }))}
+              onChange={handleAppearanceChange}
             />
           </View>
-          <Button
-            disabled={!isOnline || isSavingPreferences}
-            loading={isSavingPreferences}
-            onPress={() => void handleSavePreferences()}
-          >
-            Save preferences
-          </Button>
+          {isSavingPreferences ? <ActivityIndicator color={colors.accent} /> : null}
           {preferencesMessage ? (
             <Text
               selectable
               style={{
-                color:
-                  preferencesMessage === 'Account preferences saved.'
-                    ? colors.success
-                    : colors.danger,
+                color: preferencesMessage === 'Changes saved.' ? colors.success : colors.danger,
               }}
             >
               {preferencesMessage}

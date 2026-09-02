@@ -347,6 +347,7 @@ export function ExpensesScreen() {
           accessibilityLabel="Add expense"
           icon={process.env.EXPO_OS === 'ios' ? 'plus' : AddIcon}
           onPress={() => router.push('/expense-editor')}
+          tintColor={colors.accent}
         />
       </Stack.Toolbar>
     </>

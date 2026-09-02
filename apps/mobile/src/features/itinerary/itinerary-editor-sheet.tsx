@@ -25,6 +25,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { ChipGroup } from '@/components/ui/controls';
+import { DateTimeField } from '@/components/ui/date-time-field';
 import { Field } from '@/components/ui/field';
 import { EmptyState, ErrorState, LoadingState, OfflineNotice } from '@/components/ui/state';
 import {
@@ -337,8 +338,9 @@ function ItineraryEditor({
         </Text>
         {kind === 'schedule' ? (
           <>
-            <Field
-              label="Date (YYYY-MM-DD)"
+            <DateTimeField
+              label="Date"
+              mode="date"
               value={scheduleForm.date}
               onChangeText={date => setScheduleForm(current => ({ ...current, date }))}
             />
@@ -351,13 +353,13 @@ function ItineraryEditor({
               </Button>
             ) : (
               <>
-                <Field
-                  label="Start time (24 hour)"
+                <DateTimeField
+                  label="Start time"
+                  mode="time"
                   value={scheduleForm.startTime}
                   onChangeText={startTime =>
                     setScheduleForm(current => ({ ...current, startTime }))
                   }
-                  placeholder="09:00"
                 />
                 <Button
                   onPress={() => setScheduleForm(current => ({ ...current, startTime: null }))}
@@ -533,13 +535,15 @@ function ItineraryEditor({
                 setStayForm(current => ({ ...current, locationLabel }))
               }
             />
-            <Field
-              label="Check-in (YYYY-MM-DD)"
+            <DateTimeField
+              label="Check-in"
+              mode="date"
               value={stayForm.checkInDate}
               onChangeText={checkInDate => setStayForm(current => ({ ...current, checkInDate }))}
             />
-            <Field
-              label="Check-out (YYYY-MM-DD)"
+            <DateTimeField
+              label="Check-out"
+              mode="date"
               value={stayForm.checkOutDate}
               onChangeText={checkOutDate => setStayForm(current => ({ ...current, checkOutDate }))}
             />
@@ -557,13 +561,13 @@ function ItineraryEditor({
               value={stayForm.priceCurrency}
               onChange={priceCurrency => setStayForm(current => ({ ...current, priceCurrency }))}
             />
-            <Field
+            <DateTimeField
               label="Cancellation time"
+              mode="time"
               value={stayForm.cancellationTime}
               onChangeText={cancellationTime =>
                 setStayForm(current => ({ ...current, cancellationTime }))
               }
-              placeholder="e.g. 18:00 local time"
             />
             <Field
               label="Confirmation number"
@@ -633,14 +637,16 @@ function ItineraryEditor({
               value={segmentForm.area}
               onChangeText={area => setSegmentForm(current => ({ ...current, area }))}
             />
-            <Field
-              label="Start date (YYYY-MM-DD)"
+            <DateTimeField
+              label="Start date"
+              mode="date"
               value={segmentForm.startDate}
               onChangeText={startDate => setSegmentForm(current => ({ ...current, startDate }))}
             />
             {segment ? (
-              <Field
-                label="End date (YYYY-MM-DD)"
+              <DateTimeField
+                label="End date"
+                mode="date"
                 value={segmentForm.endDate}
                 onChangeText={endDate => setSegmentForm(current => ({ ...current, endDate }))}
               />
@@ -705,8 +711,9 @@ function ItineraryEditor({
               onChangeText={setFlightNumber}
               placeholder="LY 315"
             />
-            <Field
-              label="Departure date (YYYY-MM-DD)"
+            <DateTimeField
+              label="Departure date"
+              mode="date"
               value={flightDate}
               onChangeText={setFlightDate}
             />
@@ -787,6 +794,7 @@ function ItineraryEditor({
                 },
               })
             }
+            tintColor={colors.accent}
           />
         </Stack.Toolbar>
       ) : null}
@@ -797,6 +805,7 @@ function ItineraryEditor({
             disabled={!isOnline || pending}
             icon={process.env.EXPO_OS === 'ios' ? undefined : isExisting ? CheckIcon : AddIcon}
             onPress={() => void save()}
+            tintColor={colors.accent}
             variant="done"
           >
             {isExisting ? 'Save' : 'Add'}

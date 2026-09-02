@@ -387,6 +387,7 @@ export function ItineraryScreen() {
                 params: { kind: 'schedule', date: selectedDay.date },
               })
             }
+            tintColor={colors.accent}
           />
         </Stack.Toolbar>
       </>
@@ -646,6 +647,7 @@ export function ItineraryScreen() {
               params: { kind: 'schedule', date: selectedDay.date },
             })
           }
+          tintColor={colors.accent}
         />
       </Stack.Toolbar>
     </>
