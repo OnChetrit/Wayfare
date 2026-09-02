@@ -223,8 +223,6 @@ async function currentSourceDetails(
     .maybeSingle();
   if (scheduleError) throw new Error(`Could not load reminder source: ${scheduleError.message}`);
   if (!scheduleItem) throw new ReminderSourceError('Itinerary item does not belong to this trip.');
-  const body = scheduleItem.notes?.trim();
-  if (!body) throw new ReminderSourceError('This itinerary note is no longer available.');
 
   let savedPlaceTitle: string | undefined;
   if (scheduleItem.saved_place_id) {
@@ -241,7 +239,7 @@ async function currentSourceDetails(
 
   return {
     sourceTitle: sourceText(scheduleItem.title_override, savedPlaceTitle ?? 'Activity', 200),
-    sourceBody: sourceText(body, '', 5_000),
+    sourceBody: sourceText(scheduleItem.notes, '', 5_000),
   };
 }
 

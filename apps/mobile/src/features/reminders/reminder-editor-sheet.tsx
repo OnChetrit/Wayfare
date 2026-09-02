@@ -46,6 +46,7 @@ export function ReminderEditorSheet() {
     sourceBody?: string | string[];
     sourceKind?: string | string[];
     sourceTitle?: string | string[];
+    remindAtLocal?: string | string[];
     status?: string | string[];
   }>();
   const tripQuery = useTripEditor();
@@ -100,6 +101,7 @@ export function ReminderEditorSheet() {
       source={source}
       sourceBody={first(params.sourceBody) ?? ''}
       sourceTitle={first(params.sourceTitle) ?? ''}
+      initialRemindAtLocal={first(params.remindAtLocal)}
       tripId={trip.id}
     />
   );
@@ -110,18 +112,22 @@ function ReminderEditor({
   source,
   sourceBody,
   sourceTitle,
+  initialRemindAtLocal,
   tripId,
 }: {
   reminder: ReturnType<typeof reminderById>;
   source: ReminderSource | null;
   sourceBody: string;
   sourceTitle: string;
+  initialRemindAtLocal?: string;
   tripId: string;
 }) {
   const { colors: themeColors } = useTheme();
   const [title, setTitle] = React.useState(reminder?.title ?? sourceTitle);
   const [body, setBody] = React.useState(reminder?.body ?? sourceBody);
-  const originalTime = reminder ? localReminderDateTime(reminder.remindAt) : defaultReminderTime();
+  const originalTime = reminder
+    ? localReminderDateTime(reminder.remindAt)
+    : (initialRemindAtLocal ?? defaultReminderTime());
   const [remindAtLocal, setRemindAtLocal] = React.useState(originalTime);
   const [message, setMessage] = React.useState<string | null>(null);
   const { isOnline, mutation } = useReminderMutation(tripId, async () => {
@@ -175,10 +181,12 @@ function ReminderEditor({
           Wayfare will ask to send a phone alert at the selected time.
         </Text>
       </View>
-      <Field label="Reminder title" value={title} onChangeText={setTitle} maxLength={200} />
-      <Field label="Reminder note" multiline value={body} onChangeText={setBody} maxLength={5000} />
+      {reminder ? (
+        <Field label="Reminder title" value={title} onChangeText={setTitle} maxLength={200} />
+      ) : null}
+      <Field label="Message" multiline value={body} onChangeText={setBody} maxLength={5000} />
       <Field
-        label="Remind at (your local time, YYYY-MM-DD HH:mm)"
+        label="Reminder time (your local time, YYYY-MM-DD HH:mm)"
         value={remindAtLocal}
         onChangeText={setRemindAtLocal}
         placeholder="2026-10-12 09:00"

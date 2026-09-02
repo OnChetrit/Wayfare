@@ -1,5 +1,8 @@
 import {
   tripEditorTripResponseSchema,
+  createdTripInvitationSchema,
+  tripInvitationSchema,
+  tripMemberSchema,
   locationSegmentSchema,
   reminderSchema,
   tripSummarySchema,
@@ -12,6 +15,11 @@ import {
   type SavedPlace,
   type TripEditorTrip,
   type TripFlight,
+  type CreatedTripInvitation,
+  type TripInvitation,
+  type TripInvitationCreateInput,
+  type TripMember,
+  type TripMemberRoleUpdateInput,
   type TripInput,
   type TripSummary,
 } from '@wayfare/domain';
@@ -163,6 +171,52 @@ export function deleteTrip(tripId: string) {
 export function redeemTripInvitation(token: string) {
   return write<{ tripId: string }>('/api/invitations/redeem', 'POST', { token }).then(
     response => response.tripId,
+  );
+}
+
+export function getTripInvitations(tripId: string, signal?: AbortSignal) {
+  return requestWayfareApi<unknown>(tripPath(tripId, '/invitations'), { signal }).then(response => {
+    const invitations = (response as { invitations?: unknown }).invitations;
+    return tripInvitationSchema.array().parse(invitations) satisfies TripInvitation[];
+  });
+}
+
+export function createTripInvitation(tripId: string, input: TripInvitationCreateInput) {
+  return write<unknown>(tripPath(tripId, '/invitations'), 'POST', input).then(response =>
+    createdTripInvitationSchema.parse((response as { invitation?: unknown }).invitation),
+  ) as Promise<CreatedTripInvitation>;
+}
+
+export function revokeTripInvitation(tripId: string, invitationId: string) {
+  return write<unknown>(
+    tripPath(tripId, `/invitations/${encodeURIComponent(invitationId)}`),
+    'DELETE',
+  ).then(response =>
+    tripInvitationSchema.parse((response as { invitation?: unknown }).invitation),
+  ) as Promise<TripInvitation>;
+}
+
+export function getTripMembers(tripId: string, signal?: AbortSignal) {
+  return requestWayfareApi<unknown>(tripPath(tripId, '/members'), { signal }).then(response => {
+    const members = (response as { members?: unknown }).members;
+    return tripMemberSchema.array().parse(members) satisfies TripMember[];
+  });
+}
+
+export function updateTripMember(tripId: string, userId: string, input: TripMemberRoleUpdateInput) {
+  return write<unknown>(
+    tripPath(tripId, `/members/${encodeURIComponent(userId)}`),
+    'PATCH',
+    input,
+  ).then(response =>
+    tripMemberSchema.parse((response as { member?: unknown }).member),
+  ) as Promise<TripMember>;
+}
+
+export function removeTripMember(tripId: string, userId: string) {
+  return write<{ removed: string }>(
+    tripPath(tripId, `/members/${encodeURIComponent(userId)}`),
+    'DELETE',
   );
 }
 

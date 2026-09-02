@@ -75,6 +75,17 @@ function RootNavigator() {
         }}
       />
       <Stack.Screen
+        name="trip-sharing"
+        options={{
+          contentStyle: { backgroundColor: colors.background },
+          headerShown: true,
+          headerStyle: { backgroundColor: colors.background },
+          headerTintColor: colors.text,
+          headerTitleStyle: { color: colors.text },
+          title: 'Share trip',
+        }}
+      />
+      <Stack.Screen
         name="expense-editor"
         options={{
           contentStyle: { backgroundColor: colors.background },

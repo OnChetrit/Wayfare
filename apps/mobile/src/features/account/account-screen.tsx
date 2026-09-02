@@ -265,14 +265,23 @@ export function AccountScreen() {
                 {selectedTrip.name}
               </Text>
               <View style={{ gap: 8 }}>
-                <Button disabled={!isOnline} onPress={() => openTripForm('edit')}>
-                  Edit trip
-                </Button>
                 {ownsSelectedTrip ? (
-                  <Button disabled={!isOnline} onPress={() => openTripForm('edit')} tone="danger">
-                    Delete trip
-                  </Button>
-                ) : null}
+                  <>
+                    <Button disabled={!isOnline} onPress={() => openTripForm('edit')}>
+                      Edit trip
+                    </Button>
+                    <Button disabled={!isOnline} onPress={() => router.push('/trip-sharing')}>
+                      Manage sharing
+                    </Button>
+                    <Button disabled={!isOnline} onPress={() => openTripForm('edit')} tone="danger">
+                      Delete trip
+                    </Button>
+                  </>
+                ) : (
+                  <Text selectable style={{ color: colors.textMuted, lineHeight: 20 }}>
+                    Only the trip owner can change trip settings or manage sharing.
+                  </Text>
+                )}
               </View>
             </>
           )}

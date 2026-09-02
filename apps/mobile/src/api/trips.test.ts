@@ -5,13 +5,19 @@ import {
   importGoogleMapsList,
   createLocationDivision,
   createSchedule,
+  createTripInvitation,
   createStay,
   moveLocationBoundary,
   createTrip,
   deleteTrip,
   getTripEditor,
+  getTripInvitations,
+  getTripMembers,
   getTrips,
   redeemTripInvitation,
+  removeTripMember,
+  revokeTripInvitation,
+  updateTripMember,
 } from './trips';
 
 import { WayfareApiError } from './error';
@@ -58,6 +64,7 @@ describe('trip API', () => {
         destinationLabel: rawTrip.destination_label,
         defaultTimeZone: 'Europe/Rome',
         defaultCurrency: 'EUR',
+        access: { role: 'VIEWER', canEdit: false, canManageMembers: false },
         days: [],
         places: [],
         schedule: [],
@@ -71,6 +78,75 @@ describe('trip API', () => {
     await expect(getTripEditor(rawTrip.id)).resolves.toMatchObject({
       id: rawTrip.id,
       name: rawTrip.name,
+    });
+  });
+
+  it('uses authenticated API routes for invitation and member management', async () => {
+    const invitationId = '018f7f0e-7c54-7b24-a9d2-4e3683c98f43';
+    const memberId = '018f7f0e-7c54-7b24-a9d2-4e3683c98f44';
+    const invitation = {
+      id: invitationId,
+      tripId: rawTrip.id,
+      role: 'EDITOR',
+      createdAt: '2026-10-10T09:00:00Z',
+      expiresAt: null,
+      revokedAt: null,
+      maxUses: 2,
+      useCount: 0,
+    };
+    const member = {
+      userId: memberId,
+      tripId: rawTrip.id,
+      role: 'VIEWER',
+      joinedAt: '2026-10-10T09:00:00Z',
+      email: 'viewer@example.com',
+      name: 'Viewer',
+    };
+    requestWayfareApi
+      .mockResolvedValueOnce({ invitations: [invitation] })
+      .mockResolvedValueOnce({ members: [member] })
+      .mockResolvedValueOnce({ invitation: { ...invitation, token: 'a'.repeat(48) } })
+      .mockResolvedValueOnce({ invitation: { ...invitation, revokedAt: '2026-10-10T10:00:00Z' } })
+      .mockResolvedValueOnce({ member: { ...member, role: 'EDITOR' } })
+      .mockResolvedValueOnce({ removed: memberId });
+
+    await expect(getTripInvitations(rawTrip.id)).resolves.toEqual([invitation]);
+    await expect(getTripMembers(rawTrip.id)).resolves.toEqual([member]);
+    await expect(
+      createTripInvitation(rawTrip.id, { role: 'EDITOR', expiresAt: null, maxUses: 2 }),
+    ).resolves.toMatchObject({ ...invitation, token: 'a'.repeat(48) });
+    await expect(revokeTripInvitation(rawTrip.id, invitationId)).resolves.toMatchObject({
+      revokedAt: '2026-10-10T10:00:00Z',
+    });
+    await expect(updateTripMember(rawTrip.id, memberId, { role: 'EDITOR' })).resolves.toMatchObject(
+      {
+        role: 'EDITOR',
+      },
+    );
+    await expect(removeTripMember(rawTrip.id, memberId)).resolves.toEqual({ removed: memberId });
+
+    expect(requestWayfareApi).toHaveBeenCalledWith(`/api/trips/${rawTrip.id}/invitations`, {
+      signal: undefined,
+    });
+    expect(requestWayfareApi).toHaveBeenCalledWith(`/api/trips/${rawTrip.id}/members`, {
+      signal: undefined,
+    });
+    expect(requestWayfareApi).toHaveBeenCalledWith(`/api/trips/${rawTrip.id}/invitations`, {
+      method: 'POST',
+      body: JSON.stringify({ role: 'EDITOR', expiresAt: null, maxUses: 2 }),
+      headers: { 'Content-Type': 'application/json' },
+    });
+    expect(requestWayfareApi).toHaveBeenCalledWith(
+      `/api/trips/${rawTrip.id}/invitations/${invitationId}`,
+      { method: 'DELETE' },
+    );
+    expect(requestWayfareApi).toHaveBeenCalledWith(`/api/trips/${rawTrip.id}/members/${memberId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ role: 'EDITOR' }),
+      headers: { 'Content-Type': 'application/json' },
+    });
+    expect(requestWayfareApi).toHaveBeenCalledWith(`/api/trips/${rawTrip.id}/members/${memberId}`, {
+      method: 'DELETE',
     });
   });
 

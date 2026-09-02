@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
   currencyTotals,
+  createdTripInvitationSchema,
   dayRouteSavedPlaceIds,
+  invitationCreateSchema,
+  invitationTokenSchema,
   makeTripDays,
   orderScheduleItemsForDay,
   reminderCompletionTime,
@@ -10,7 +13,9 @@ import {
   scheduleItemSchema,
   sortQueueOperations,
   tripEditorTripResponseSchema,
+  tripAccessSchema,
   tripInputSchema,
+  tripMemberSchema,
   type Expense,
 } from '../src';
 
@@ -362,6 +367,7 @@ describe('shared domain contracts', () => {
           destinationLabel: 'Rome, Italy',
           defaultTimeZone: 'Europe/Rome',
           defaultCurrency: 'EUR',
+          access: { role: 'EDITOR', canEdit: true, canManageMembers: false },
           days: [],
           places: [],
           schedule: [],
@@ -372,6 +378,78 @@ describe('shared domain contracts', () => {
         },
       }).trip.id,
     ).toBe(id);
+  });
+
+  it('uses conservative access while an older trip API is still deployed', () => {
+    const id = '018f7f0e-7c54-7b24-a9d2-4e3683c98f41';
+    expect(
+      tripEditorTripResponseSchema.parse({
+        trip: {
+          id,
+          name: 'Rome',
+          startDate: '2026-10-10',
+          endDate: '2026-10-12',
+          destinationLabel: 'Rome, Italy',
+          defaultTimeZone: 'Europe/Rome',
+          defaultCurrency: 'EUR',
+          days: [],
+          places: [],
+          schedule: [],
+          locationSegments: [],
+          stays: [],
+          flights: [],
+          expenses: [],
+        },
+      }).trip.access,
+    ).toEqual({ role: 'VIEWER', canEdit: false, canManageMembers: false });
+  });
+
+  it('validates member, invitation, and access contracts without leaking invitation tokens in lists', () => {
+    const tripId = '018f7f0e-7c54-7b24-a9d2-4e3683c98f41';
+    const userId = '018f7f0e-7c54-7b24-a9d2-4e3683c98f42';
+    const future = new Date(Date.now() + 60 * 60_000).toISOString();
+
+    expect(
+      invitationCreateSchema.safeParse({ role: 'EDITOR', expiresAt: future, maxUses: 2 }).success,
+    ).toBe(true);
+    expect(invitationCreateSchema.safeParse({ role: 'OWNER', maxUses: 1 }).success).toBe(false);
+    expect(invitationCreateSchema.safeParse({ role: 'VIEWER', maxUses: 0 }).success).toBe(false);
+    expect(
+      invitationCreateSchema.safeParse({
+        role: 'VIEWER',
+        expiresAt: new Date(Date.now() - 60_000).toISOString(),
+      }).success,
+    ).toBe(false);
+    expect(invitationTokenSchema.safeParse('a'.repeat(48)).success).toBe(true);
+    expect(invitationTokenSchema.safeParse('short-token').success).toBe(false);
+    expect(invitationTokenSchema.safeParse('not a valid token'.repeat(4)).success).toBe(false);
+
+    expect(
+      tripAccessSchema.parse({ role: 'VIEWER', canEdit: false, canManageMembers: false }),
+    ).toEqual({ role: 'VIEWER', canEdit: false, canManageMembers: false });
+    expect(
+      tripMemberSchema.parse({
+        userId,
+        tripId,
+        role: 'EDITOR',
+        joinedAt: '2026-10-10T09:00:00Z',
+        email: 'editor@example.com',
+        name: 'Editor',
+      }),
+    ).toMatchObject({ userId, tripId, role: 'EDITOR' });
+    expect(
+      createdTripInvitationSchema.parse({
+        id: tripId,
+        tripId,
+        role: 'VIEWER',
+        createdAt: '2026-10-10T09:00:00Z',
+        expiresAt: null,
+        revokedAt: null,
+        maxUses: null,
+        useCount: 0,
+        token: 'a'.repeat(48),
+      }).token,
+    ).toHaveLength(48);
   });
 
   it('validates reminder sources, future UTC times, and snapshots', () => {
@@ -418,7 +496,7 @@ describe('shared domain contracts', () => {
         savedPlaceId: sourceId,
         scheduleItemId: null,
         sourceTitleSnapshot: 'Luna',
-        sourceBodySnapshot: 'Call before 5 pm',
+        sourceBodySnapshot: '',
         sourceTitle: 'Luna Trattoria',
         sourceAvailable: true,
         title: 'Reserve a table',

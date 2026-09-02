@@ -120,13 +120,13 @@ select lives_ok(
       'SAVED_PLACE',
       '00000000-0000-0000-0000-000000000221',
       'Fixture cafe',
-      'Call before five',
+      '',
       'Editor reminder',
       'Call before five',
       '2030-01-01T10:00:00Z'
     )
   $$,
-  'an editor can create their own personal reminder from a shared source'
+  'an editor can create their own personal reminder from a shared source without a note snapshot'
 );
 select results_eq(
   'select count(*) from public.personal_reminders',

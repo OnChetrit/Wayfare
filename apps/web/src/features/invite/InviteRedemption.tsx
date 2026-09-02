@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
 
 type InviteRedemptionProps = { token: string };
 
@@ -13,22 +12,34 @@ export function InviteRedemption({ token }: InviteRedemptionProps) {
   useEffect(() => {
     let active = true;
     async function redeem() {
-      const supabase = createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) {
-        router.replace(`/login?next=${encodeURIComponent(`/invite/${token}`)}`);
+      try {
+        const response = await fetch('/api/invitations/redeem', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token }),
+        });
+        const payload = (await response.json().catch(() => ({}))) as {
+          error?: unknown;
+          tripId?: string;
+        };
+        if (response.status === 401) {
+          router.replace(`/login?next=${encodeURIComponent(`/invite/${token}`)}`);
+          return;
+        }
+        if (!response.ok || !payload.tripId) {
+          const message =
+            typeof payload.error === 'string'
+              ? payload.error
+              : 'This invitation could not be redeemed.';
+          if (active) setMessage(message);
+          return;
+        }
+        router.refresh();
+        router.replace(`/editor?trip=${encodeURIComponent(payload.tripId)}`);
+      } catch {
+        if (active) setMessage('This invitation could not be redeemed. Please try again.');
         return;
       }
-      const { data: tripId, error } = await supabase.rpc('redeem_trip_invitation', {
-        invitation_token: token,
-      });
-      if (error || !tripId) {
-        if (active) setMessage(error?.message ?? 'This invitation could not be redeemed.');
-        return;
-      }
-      router.replace(`/editor?trip=${encodeURIComponent(tripId)}`);
     }
     void redeem();
     return () => {

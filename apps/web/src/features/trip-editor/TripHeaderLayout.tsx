@@ -115,6 +115,7 @@ export function TripHeaderLayout({ children }: { children: React.ReactNode }) {
           isLoading={!headerData}
           onOpenAccount={() => actionsRef.current?.onOpenAccount()}
           onOpenSettings={() => actionsRef.current?.onOpenSettings?.()}
+          canManageTrip={headerData?.trip?.access.canManageMembers}
           workspaceView={workspaceView}
           onWorkspaceViewChange={setWorkspaceView}
         />
@@ -126,6 +127,7 @@ export function TripHeaderLayout({ children }: { children: React.ReactNode }) {
             mobileNavigationRef.current?.(mode);
           }}
           onOpenSettings={() => actionsRef.current?.onOpenSettings?.()}
+          showSettings={Boolean(headerData?.trip?.access.canManageMembers)}
         />
       </div>
     </TripHeaderLayoutContext.Provider>

@@ -7,6 +7,7 @@ import { expenseFromDatabase } from '@/lib/trips/expenses';
 import { flightDate, flightFromDatabase, flightTime } from '@/lib/trips/flights';
 import type { Expense, TripDay, TripEditorTrip, TripFlight } from './types';
 import type { TripFlightCandidate } from '@/lib/trips/flights';
+import { TripSharingPanel } from './TripSharingPanel';
 
 type SavedTripSettings = Pick<
   TripEditorTrip,
@@ -436,6 +437,8 @@ export function TripSettingsModal({
             </p>
           )}
         </fieldset>
+
+        {trip.access.canManageMembers ? <TripSharingPanel tripId={trip.id} /> : null}
 
         {error && (
           <p className={styles.dialogError} role="alert">

@@ -19,4 +19,21 @@ describe('reminder form', () => {
     );
     expect('data' in result).toBe(true);
   });
+
+  it('requires the notification message', () => {
+    const future = new Date(Date.now() + 60 * 60_000);
+    const result = reminderInputFromForm(
+      {
+        sourceKind: 'SCHEDULE_ITEM',
+        scheduleItemId: '018f7f0e-7c54-7b24-a9d2-4e3683c98f41',
+      },
+      {
+        title: 'Museum visit',
+        body: '   ',
+        remindAtLocal: `${future.getFullYear()}-${String(future.getMonth() + 1).padStart(2, '0')}-${String(future.getDate()).padStart(2, '0')} ${String(future.getHours()).padStart(2, '0')}:${String(future.getMinutes()).padStart(2, '0')}`,
+      },
+    );
+
+    expect(result).toEqual({ error: 'Enter a reminder message.' });
+  });
 });

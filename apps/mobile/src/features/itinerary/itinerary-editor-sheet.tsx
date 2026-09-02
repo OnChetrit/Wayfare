@@ -1,5 +1,6 @@
 import AddIcon from '@expo/material-symbols/add.xml';
 import CheckIcon from '@expo/material-symbols/check.xml';
+import ReminderIcon from '@expo/material-symbols/notifications_active.xml';
 import { Stack, useLocalSearchParams, router } from 'expo-router';
 import * as React from 'react';
 import { Alert, ScrollView, Text, View } from 'react-native';
@@ -31,6 +32,7 @@ import {
   scheduleInputFromForm,
   stayInputFromForm,
 } from '@/features/itinerary/itinerary-editor-form';
+import { reminderSourceForSchedule } from '@/features/itinerary/schedule-reminder';
 import { StayHotelSearch } from '@/features/itinerary/stay-hotel-search';
 import { useTripMutation } from '@/features/itinerary/use-trip-mutation';
 import { TripDetailsSheet, type TripDetailsKind } from '@/features/itinerary/trip-details-sheet';
@@ -154,6 +156,7 @@ function ItineraryEditor({
   const segment = trip.locationSegments.find(item => item.id === itemId);
   const day =
     trip.days.find(item => item.id === itemId) ?? trip.days.find(item => item.date === initialDate);
+  const scheduleReminder = schedule ? reminderSourceForSchedule(schedule, trip.places) : null;
 
   const [scheduleForm, setScheduleForm] = React.useState(() => ({
     date: schedule?.date ?? initialDate ?? trip.days[0]?.date ?? '',
@@ -432,28 +435,6 @@ function ItineraryEditor({
               onChangeText={note => setScheduleForm(current => ({ ...current, note }))}
               placeholder="Reservations, reminders, or directions"
             />
-            {schedule?.note?.trim() ? (
-              <Button
-                disabled={!isOnline}
-                onPress={() =>
-                  router.push({
-                    pathname: '/reminder-editor',
-                    params: {
-                      scheduleItemId: schedule.id,
-                      sourceBody: schedule.note,
-                      sourceKind: 'SCHEDULE_ITEM',
-                      sourceTitle:
-                        schedule.title ??
-                        trip.places.find(place => place.id === schedule.savedPlaceId)?.name ??
-                        'Activity',
-                    },
-                  })
-                }
-                tone="secondary"
-              >
-                Create reminder from note
-              </Button>
-            ) : null}
           </>
         ) : null}
         {kind === 'place' ? (
@@ -789,6 +770,26 @@ function ItineraryEditor({
           </Button>
         ) : null}
       </ScrollView>
+      {schedule && scheduleReminder ? (
+        <Stack.Toolbar placement="left">
+          <Stack.Toolbar.Button
+            accessibilityLabel={`Create a reminder for ${scheduleReminder.sourceTitle}`}
+            disabled={!isOnline}
+            icon={process.env.EXPO_OS === 'ios' ? 'bell.badge' : ReminderIcon}
+            onPress={() =>
+              router.push({
+                pathname: '/reminder-editor',
+                params: {
+                  remindAtLocal: scheduleReminder.remindAtLocal,
+                  scheduleItemId: schedule.id,
+                  sourceKind: 'SCHEDULE_ITEM',
+                  sourceTitle: scheduleReminder.sourceTitle,
+                },
+              })
+            }
+          />
+        </Stack.Toolbar>
+      ) : null}
       {kind !== 'flight' ? (
         <Stack.Toolbar placement="right">
           <Stack.Toolbar.Button

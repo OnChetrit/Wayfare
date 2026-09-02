@@ -7,6 +7,7 @@ export type {
   ScheduleItem,
   Stay,
   TripDay,
+  TripAccess,
   TripEditorTrip,
   TripEditorUser,
   TripFlight,

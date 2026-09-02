@@ -111,6 +111,7 @@
     background: var(--surface-green);
     display: flex;
     flex-direction: column;
+    border: 1px solid var(--line);
 
     display: grid;
     grid-template-areas:

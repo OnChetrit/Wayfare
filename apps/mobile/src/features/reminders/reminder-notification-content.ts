@@ -24,6 +24,10 @@ export function reminderNotificationBody(reminder: Reminder) {
   return reminder.body.trim() || reminder.sourceTitle;
 }
 
+export function reminderNotificationTitle(reminder: Reminder) {
+  return reminder.sourceTitle;
+}
+
 export function isReminderNotificationData(value: unknown): value is ReminderNotificationData {
   if (!value || typeof value !== 'object') return false;
   const data = value as Record<string, unknown>;

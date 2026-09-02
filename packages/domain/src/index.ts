@@ -120,7 +120,7 @@ function sourceKindMatchesReferences(value: {
     : Boolean(value.scheduleItemId) && !value.savedPlaceId;
 }
 
-/** Input accepted when a member turns a current shared note into a personal reminder. */
+/** Input accepted when a member turns a shared place or itinerary activity into a reminder. */
 export const reminderCreateSchema = z
   .object({
     sourceKind: reminderSourceKindSchema,
@@ -161,7 +161,7 @@ export const reminderSchema = z
     savedPlaceId: z.uuid().nullable(),
     scheduleItemId: z.uuid().nullable(),
     sourceTitleSnapshot: z.string().trim().min(1).max(200),
-    sourceBodySnapshot: z.string().trim().min(1).max(5_000),
+    sourceBodySnapshot: z.string().trim().max(5_000),
     sourceTitle: z.string().trim().min(1).max(200),
     sourceAvailable: z.boolean(),
     title: z.string().trim().min(1).max(200),
@@ -346,6 +346,7 @@ export type TripEditorTrip = {
   destinationLabel: string | null;
   defaultTimeZone: string;
   defaultCurrency: string;
+  access: TripAccess;
   days: TripDay[];
   places: SavedPlace[];
   schedule: ScheduleItem[];
@@ -367,8 +368,15 @@ export type TripMember = {
   tripId: string;
   role: TripRole;
   joinedAt: string;
-  email?: string;
-  name?: string;
+  email: string;
+  name: string;
+};
+
+/** UI hints only. The API and database remain authoritative for authorization. */
+export type TripAccess = {
+  role: TripRole;
+  canEdit: boolean;
+  canManageMembers: boolean;
 };
 
 /** Runtime contracts shared by API clients. Keep API-shaped trip data camel-cased. */
@@ -380,6 +388,48 @@ export const tripSummarySchema = z.object({
   endDate: z.iso.date(),
   destinationLabel: z.string().nullable(),
 });
+
+export const tripAccessSchema = z.object({
+  role: tripRoleSchema,
+  canEdit: z.boolean(),
+  canManageMembers: z.boolean(),
+});
+
+export const tripMemberSchema = z.object({
+  userId: z.uuid(),
+  tripId: z.uuid(),
+  role: tripRoleSchema,
+  joinedAt: z.iso.datetime({ offset: true }),
+  email: z.string().email(),
+  name: z.string().trim().min(1).max(200),
+});
+
+export const invitationCreateSchema = z
+  .object({
+    role: invitationRoleSchema,
+    expiresAt: z.iso.datetime({ offset: true }).nullable().optional(),
+    maxUses: z.number().int().positive().nullable().optional(),
+  })
+  .superRefine((value, context) => {
+    if (value.expiresAt && new Date(value.expiresAt).getTime() <= Date.now()) {
+      context.addIssue({
+        code: 'custom',
+        message: 'Invitation expiry must be in the future.',
+        path: ['expiresAt'],
+      });
+    }
+  });
+
+export const tripMemberRoleUpdateSchema = z.object({
+  role: invitationRoleSchema,
+});
+
+export const invitationTokenSchema = z
+  .string()
+  .trim()
+  .min(32)
+  .max(256)
+  .regex(/^[A-Za-z0-9_-]+$/);
 
 export const tripDaySchema = z.object({
   id: z.uuid(),
@@ -522,6 +572,13 @@ export const tripEditorTripSchema = z.object({
   ...tripSummarySchema.omit({ ownerId: true }).shape,
   defaultTimeZone: z.string(),
   defaultCurrency: currencyCodeSchema,
+  // Mobile clients can be deployed before the server route that supplies
+  // capabilities. Missing data stays conservatively read-only during rollout.
+  access: tripAccessSchema.default({
+    role: 'VIEWER',
+    canEdit: false,
+    canManageMembers: false,
+  }),
   days: z.array(tripDaySchema),
   places: z.array(savedPlaceSchema),
   schedule: z.array(scheduleItemSchema),
@@ -533,17 +590,26 @@ export const tripEditorTripSchema = z.object({
 
 export const tripEditorTripResponseSchema = z.object({ trip: tripEditorTripSchema });
 
-export type TripInvitation = {
-  id: string;
-  tripId: string;
-  token: string;
-  role: InvitationRole;
-  createdAt: string;
-  expiresAt?: string;
-  revokedAt?: string;
-  maxUses?: number;
-  useCount: number;
-};
+export const tripInvitationSchema = z.object({
+  id: z.uuid(),
+  tripId: z.uuid(),
+  role: invitationRoleSchema,
+  createdAt: z.iso.datetime({ offset: true }),
+  expiresAt: z.iso.datetime({ offset: true }).nullable(),
+  revokedAt: z.iso.datetime({ offset: true }).nullable(),
+  maxUses: z.number().int().positive().nullable(),
+  useCount: z.number().int().nonnegative(),
+});
+
+/** Returned only by creation, so the credential is never included in lists. */
+export const createdTripInvitationSchema = tripInvitationSchema.extend({
+  token: z.string().regex(/^[A-Za-z0-9_-]{32,256}$/),
+});
+
+export type TripInvitation = z.output<typeof tripInvitationSchema>;
+export type CreatedTripInvitation = z.output<typeof createdTripInvitationSchema>;
+export type TripInvitationCreateInput = z.output<typeof invitationCreateSchema>;
+export type TripMemberRoleUpdateInput = z.output<typeof tripMemberRoleUpdateSchema>;
 
 export type QueueOperation = {
   id: string;

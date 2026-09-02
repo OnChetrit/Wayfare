@@ -7,6 +7,7 @@ import {
   isUpcomingOpenReminder,
   reminderNotificationBody,
   reminderNotificationData,
+  reminderNotificationTitle,
   reminderNotificationUrl,
 } from './reminder-notification-content';
 
@@ -127,7 +128,7 @@ async function scheduleReminderNotification(
       body: reminderNotificationBody(reminder),
       data: reminderNotificationData(reminder),
       sound: 'default',
-      title: reminder.title,
+      title: reminderNotificationTitle(reminder),
     },
     trigger: {
       channelId: reminderChannelId,

@@ -29,6 +29,7 @@ type TripHeaderProps = {
   isLoading?: boolean;
   onOpenAccount?: () => void;
   onOpenSettings?: () => void;
+  canManageTrip?: boolean;
   workspaceView?: WorkspaceView;
   onWorkspaceViewChange?: (view: WorkspaceView) => void;
 };
@@ -58,6 +59,7 @@ export function TripHeader({
   isLoading = false,
   onOpenAccount,
   onOpenSettings,
+  canManageTrip = false,
   workspaceView,
   onWorkspaceViewChange,
 }: TripHeaderProps) {
@@ -274,19 +276,21 @@ export function TripHeader({
           >
             <WalletCards size={18} /> <span className={styles.actionLabel}>Expenses</span>
           </Link>
-          <button
-            type="button"
-            className={`${styles.iconButton} ${styles.mobileMenuExcluded}`}
-            onClick={() => {
-              closeMobileMenu();
-              onOpenSettings?.();
-            }}
-            disabled={isLoading}
-            aria-label="Trip settings"
-            title="Trip settings"
-          >
-            <Settings2 size={18} /> <span className={styles.actionLabel}>Settings</span>
-          </button>
+          {canManageTrip ? (
+            <button
+              type="button"
+              className={`${styles.iconButton} ${styles.mobileMenuExcluded}`}
+              onClick={() => {
+                closeMobileMenu();
+                onOpenSettings?.();
+              }}
+              disabled={isLoading}
+              aria-label="Trip settings"
+              title="Trip settings"
+            >
+              <Settings2 size={18} /> <span className={styles.actionLabel}>Settings</span>
+            </button>
+          ) : null}
           {isLoading || !user ? (
             <span className={styles.avatarSkeleton} aria-label="Loading account" />
           ) : (

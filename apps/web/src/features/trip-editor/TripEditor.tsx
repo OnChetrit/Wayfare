@@ -151,7 +151,7 @@ export function TripEditor({
     trip: currentTrip,
     trips,
     onOpenAccount: () => setAccountOpen(true),
-    onOpenSettings: currentTrip ? () => openTripSettings() : undefined,
+    onOpenSettings: currentTrip?.access.canManageMembers ? () => openTripSettings() : undefined,
     mode,
     onModeChange: changeMode,
   });

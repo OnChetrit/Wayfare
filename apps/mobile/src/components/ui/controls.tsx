@@ -9,16 +9,19 @@ export function Chip<T extends string>({
   option,
   selected,
   onSelect,
+  disabled = false,
 }: {
   option: Option<T>;
   selected: boolean;
   onSelect: (value: T) => void;
+  disabled?: boolean;
 }) {
   const { colors } = useTheme();
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityState={{ selected }}
+      accessibilityState={{ disabled, selected }}
+      disabled={disabled}
       onPress={() => onSelect(option.value)}
       style={({ pressed }) => ({
         backgroundColor: selected ? colors.accent : colors.surfaceMuted,
@@ -26,7 +29,7 @@ export function Chip<T extends string>({
         borderCurve: 'continuous',
         borderRadius: radius.pill,
         borderWidth: 1,
-        opacity: pressed ? 0.75 : 1,
+        opacity: disabled ? 0.5 : pressed ? 0.75 : 1,
         paddingHorizontal: 12,
         paddingVertical: 9,
       })}
@@ -49,10 +52,12 @@ export function ChipGroup<T extends string>({
   options,
   value,
   onChange,
+  disabled = false,
 }: {
   options: Option<T>[];
   value: T;
   onChange: (value: T) => void;
+  disabled?: boolean;
 }) {
   return (
     <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
@@ -62,6 +67,7 @@ export function ChipGroup<T extends string>({
           option={option}
           selected={option.value === value}
           onSelect={onChange}
+          disabled={disabled}
         />
       ))}
     </View>

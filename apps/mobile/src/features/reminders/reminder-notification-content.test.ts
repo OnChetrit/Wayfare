@@ -7,6 +7,7 @@ import {
   isUpcomingOpenReminder,
   reminderNotificationBody,
   reminderNotificationData,
+  reminderNotificationTitle,
 } from './reminder-notification-content';
 
 const reminder: Reminder = {
@@ -46,5 +47,6 @@ describe('reminder notification content', () => {
     expect(isUpcomingOpenReminder(reminder, Date.parse('2030-06-10T09:00:00.000Z'))).toBe(true);
     expect(isUpcomingOpenReminder({ ...reminder, status: 'COMPLETED' }, 0)).toBe(false);
     expect(reminderNotificationBody({ ...reminder, body: '   ' })).toBe('Luna');
+    expect(reminderNotificationTitle(reminder)).toBe('Luna');
   });
 });

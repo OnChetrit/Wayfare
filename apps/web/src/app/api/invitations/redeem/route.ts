@@ -1,12 +1,10 @@
 import { NextResponse } from 'next/server';
-import { z } from 'zod';
+import { invitationTokenSchema } from '@wayfare/domain';
 
 import { isSupabaseConfigured } from '@/lib/supabase/config';
 import { requireRouteUser } from '@/lib/supabase/route-auth';
 
-const invitationTokenSchema = z.object({
-  token: z.string().trim().min(1).max(256),
-});
+const redeemInvitationSchema = invitationTokenSchema.transform(token => ({ token }));
 
 export async function POST(request: Request) {
   let body: unknown;
@@ -16,7 +14,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'A JSON invitation token is required.' }, { status: 400 });
   }
 
-  const result = invitationTokenSchema.safeParse(body);
+  const result = redeemInvitationSchema.safeParse(
+    body && typeof body === 'object' ? (body as { token?: unknown }).token : undefined,
+  );
   if (!result.success) return NextResponse.json({ error: result.error.flatten() }, { status: 400 });
   if (!isSupabaseConfigured())
     return NextResponse.json({ error: 'Supabase is not configured' }, { status: 503 });

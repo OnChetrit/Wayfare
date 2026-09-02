@@ -18,6 +18,7 @@ export function reminderInputFromForm(
   source: ReminderSource,
   form: ReminderFormValues,
 ): { data: ReminderCreateRequest } | { error: string } {
+  if (!form.body.trim()) return { error: 'Enter a reminder message.' };
   const remindAt = reminderUtcFromLocal(form.remindAtLocal);
   if (!remindAt) return { error: 'Use a valid local date and time.' };
   const result = reminderCreateSchema.safeParse({

@@ -5,6 +5,7 @@ import { flightFromDatabase, flightSelect } from '@/lib/trips/flights';
 import { expenseFromDatabase, expenseSelect } from '@/lib/trips/expenses';
 import { categoryMeta } from '@/features/trip-editor/data';
 import { scheduleStartTimeFromUtc } from '@/lib/trips/schedule';
+import { getTripAccess } from '@/lib/trips/members';
 import type {
   PlaceCategory,
   SavedPlace,
@@ -162,6 +163,9 @@ export async function getTripEditorTrip(
   if (tripError) throw new Error(`Could not load trip: ${tripError.message}`);
   if (!tripRow) return null;
 
+  const access = await getTripAccess(supabase, tripId);
+  if (!access) return null;
+
   const [
     { data: dayRows, error: daysError },
     { data: placeRows, error: placesError },
@@ -292,6 +296,7 @@ export async function getTripEditorTrip(
     destinationLabel: tripRow.destination_label,
     defaultTimeZone: tripRow.default_time_zone,
     defaultCurrency: tripRow.default_currency,
+    access,
     days,
     places,
     schedule,
