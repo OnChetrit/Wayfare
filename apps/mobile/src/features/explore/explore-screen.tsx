@@ -3,7 +3,7 @@ import ImportIcon from '@expo/material-symbols/playlist_add.xml';
 import SavedPlacesIcon from '@expo/material-symbols/list.xml';
 import { router, Stack } from 'expo-router';
 import * as React from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
@@ -30,6 +30,45 @@ import { useTheme } from '@/theme/theme-provider';
 
 function haveSamePlaceIds(left: string[], right: string[]) {
   return left.length === right.length && left.every((placeId, index) => placeId === right[index]);
+}
+
+type ExploreDay = {
+  date: string;
+  id: string;
+  label: string;
+  shortDate: string;
+};
+
+function ExploreDayStrip({
+  currentDate,
+  days,
+  onSelectDay,
+}: {
+  currentDate?: string;
+  days: ExploreDay[];
+  onSelectDay: (date: string) => void;
+}) {
+  return (
+    <View style={{ paddingVertical: 8, position: 'absolute', top: 175, width: '100%', zIndex: 2 }}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ gap: 8, paddingHorizontal: 16 }}
+      >
+        {days.map(day => (
+          <Button
+            accessibilityLabel={`Show ${day.label}, ${day.shortDate} on the map`}
+            accessibilityState={{ selected: day.date === currentDate }}
+            key={day.id}
+            onPress={() => onSelectDay(day.date)}
+            tone={day.date === currentDate ? 'primary' : 'secondary'}
+          >
+            {day.shortDate}
+          </Button>
+        ))}
+      </ScrollView>
+    </View>
+  );
 }
 
 export function ExploreScreen() {
@@ -236,65 +275,41 @@ export function ExploreScreen() {
             </Card>
           ) : null}
         </View>
-        {savedPlacesVisible ? (
-          <SavedPlacesDrawer
-            onClose={() => setSavedPlacesVisible(false)}
-            isLocationMutationPending={locationPlaceMutation.isPending}
-            isOnline={isOnline}
-            locationMessage={locationMessage}
-            locationScopeId={locationScopeId}
-            locationSegments={trip.locationSegments}
-            onLocationScopeChange={setLocationScopeId}
-            onSelectPlace={showSavedPlace}
-            onToggleLocationPlace={(place, segmentId, assigned) => {
-              setLocationMessage(null);
-              void locationPlaceMutation
-                .mutateAsync({
-                  placeId: place.id,
-                  segmentId,
-                  assigned,
-                })
-                .catch(error =>
-                  setLocationMessage(messageFromError(error, 'Could not update this shortlist.')),
-                );
+        <SavedPlacesDrawer
+          onClose={() => setSavedPlacesVisible(false)}
+          isLocationMutationPending={locationPlaceMutation.isPending}
+          isOnline={isOnline}
+          locationMessage={locationMessage}
+          locationScopeId={locationScopeId}
+          locationSegments={trip.locationSegments}
+          onLocationScopeChange={setLocationScopeId}
+          onSelectPlace={showSavedPlace}
+          onToggleLocationPlace={(place, segmentId, assigned) => {
+            setLocationMessage(null);
+            void locationPlaceMutation
+              .mutateAsync({
+                placeId: place.id,
+                segmentId,
+                assigned,
+              })
+              .catch(error =>
+                setLocationMessage(messageFromError(error, 'Could not update this shortlist.')),
+              );
+          }}
+          places={trip.places}
+          selectedPlaceId={selectedPlace?.id}
+          visible={savedPlacesVisible}
+          visiblePlaceIds={visibleMapPlaceIds}
+        />
+        {process.env.EXPO_OS !== 'ios' && exploreDays.length ? (
+          <ExploreDayStrip
+            currentDate={currentDate}
+            days={exploreDays}
+            onSelectDay={date => {
+              selectTripDay(date);
+              setSelectedPlace(null);
             }}
-            places={trip.places}
-            selectedPlaceId={selectedPlace?.id}
-            visiblePlaceIds={visibleMapPlaceIds}
-            visible
           />
-        ) : null}
-        {exploreDays.length ? (
-          <View
-            style={{
-              paddingVertical: 8,
-              position: 'absolute',
-              top: 175,
-              width: '100%',
-              zIndex: 2,
-            }}
-          >
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ gap: 8, paddingHorizontal: 16 }}
-            >
-              {exploreDays.map(day => (
-                <Button
-                  accessibilityLabel={`Show ${day.label}, ${day.shortDate} on the map`}
-                  accessibilityState={{ selected: day.date === currentDate }}
-                  key={day.id}
-                  onPress={() => {
-                    selectTripDay(day.date);
-                    setSelectedPlace(null);
-                  }}
-                  tone={day.date === currentDate ? 'primary' : 'secondary'}
-                >
-                  {day.shortDate}
-                </Button>
-              ))}
-            </ScrollView>
-          </View>
         ) : null}
       </View>
       <Stack.SearchBar
@@ -310,6 +325,27 @@ export function ExploreScreen() {
         tintColor={colors.accent}
       />
       <Stack.Toolbar placement="right">
+        {process.env.EXPO_OS === 'ios' && exploreDays.length ? (
+          <Stack.Toolbar.Menu
+            accessibilityLabel="Choose a trip day"
+            icon="calendar"
+            tintColor={colors.accent}
+            title="Trip days"
+          >
+            {exploreDays.map(day => (
+              <Stack.Toolbar.MenuAction
+                isOn={day.date === currentDate}
+                key={day.id}
+                onPress={() => {
+                  selectTripDay(day.date);
+                  setSelectedPlace(null);
+                }}
+              >
+                {`${day.label} · ${day.shortDate}`}
+              </Stack.Toolbar.MenuAction>
+            ))}
+          </Stack.Toolbar.Menu>
+        ) : null}
         <Stack.Toolbar.Button
           accessibilityLabel="Import a Google Maps list"
           icon={process.env.EXPO_OS === 'ios' ? 'square.and.arrow.down' : ImportIcon}

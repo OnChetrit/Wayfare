@@ -1,5 +1,38 @@
 import { FlashList } from '@shopify/flash-list';
 import type { LocationSegment, SavedPlace } from '@wayfare/domain';
+import {
+  BottomSheet,
+  Button as SwiftButton,
+  ContentUnavailableView,
+  Group,
+  Host,
+  HStack,
+  Image as SwiftImage,
+  List,
+  Picker,
+  ProgressView,
+  Section,
+  Spacer,
+  Text as SwiftText,
+  TextField,
+  Toggle,
+  VStack,
+  useNativeState,
+} from '@expo/ui/swift-ui';
+import {
+  buttonStyle,
+  disabled,
+  font,
+  foregroundStyle,
+  lineLimit,
+  listStyle,
+  pickerStyle,
+  presentationDetents,
+  presentationDragIndicator,
+  redacted,
+  scrollDismissesKeyboard,
+  tag,
+} from '@expo/ui/swift-ui/modifiers';
 import * as React from 'react';
 import {
   Modal,
@@ -143,7 +176,303 @@ const SavedPlaceRow = React.memo(function SavedPlaceRow({
   );
 });
 
-export function SavedPlacesDrawer({
+export function SavedPlacesDrawer(props: SavedPlacesDrawerProps) {
+  if (process.env.EXPO_OS === 'ios') return <NativeSavedPlacesSheet {...props} />;
+
+  return <SavedPlacesDrawerFallback key={props.visible ? 'open' : 'closed'} {...props} />;
+}
+
+const allLocationsValue = '__all_locations__';
+
+function NativeSavedPlacesSheet({
+  onClose,
+  onLocationScopeChange,
+  onSelectPlace,
+  onToggleLocationPlace,
+  isLocationMutationPending,
+  isOnline,
+  locationMessage,
+  locationScopeId,
+  locationSegments,
+  places,
+  selectedPlaceId,
+  visible,
+  visiblePlaceIds,
+}: SavedPlacesDrawerProps) {
+  const { colors, theme } = useTheme();
+  const [hasLoadedContent, setHasLoadedContent] = React.useState(false);
+  const [filter, setFilter] = React.useState<SavedPlacesFilter>('ALL');
+  const [mapAreaOnly, setMapAreaOnly] = React.useState(false);
+  const [managingShortlist, setManagingShortlist] = React.useState(false);
+  const [query, setQuery] = React.useState('');
+  const nativeQuery = useNativeState('');
+  const deferredQuery = React.useDeferredValue(query);
+  const visiblePlaceIdSet = React.useMemo(() => new Set(visiblePlaceIds), [visiblePlaceIds]);
+  const activeLocation = locationSegments.find(segment => segment.id === locationScopeId);
+  const filteredPlaces = React.useMemo(() => {
+    const basePlaces = filterSavedPlaces(places, filter, deferredQuery).filter(
+      place => !mapAreaOnly || visiblePlaceIdSet.has(place.id),
+    );
+    return managingShortlist
+      ? basePlaces
+      : filterSavedPlacesForLocation(basePlaces, locationScopeId);
+  }, [
+    deferredQuery,
+    filter,
+    locationScopeId,
+    managingShortlist,
+    mapAreaOnly,
+    places,
+    visiblePlaceIdSet,
+  ]);
+  const hasFilters =
+    filter !== 'ALL' || Boolean(locationScopeId) || mapAreaOnly || query.trim().length > 0;
+
+  function selectLocationScope(locationSegmentId?: string) {
+    setManagingShortlist(false);
+    onLocationScopeChange(locationSegmentId);
+  }
+
+  React.useEffect(() => {
+    if (!visible || hasLoadedContent) return;
+
+    let secondFrame: number | undefined;
+    const firstFrame = requestAnimationFrame(() => {
+      secondFrame = requestAnimationFrame(() => setHasLoadedContent(true));
+    });
+
+    return () => {
+      cancelAnimationFrame(firstFrame);
+      if (secondFrame !== undefined) cancelAnimationFrame(secondFrame);
+    };
+  }, [hasLoadedContent, visible]);
+
+  return (
+    <Host
+      colorScheme={theme}
+      pointerEvents="box-none"
+      seedColor={colors.accent}
+      style={{ bottom: 0, left: 0, position: 'absolute', right: 0, top: 0 }}
+    >
+      <BottomSheet
+        isPresented={visible}
+        onDismiss={onClose}
+        onIsPresentedChange={isPresented => {
+          if (!isPresented) onClose();
+        }}
+      >
+        <Group
+          modifiers={[
+            presentationDetents(['medium', 'large']),
+            presentationDragIndicator('visible'),
+          ]}
+        >
+          <List modifiers={[listStyle('insetGrouped'), scrollDismissesKeyboard('interactively')]}>
+            <Section
+              footer={
+                <SwiftText
+                  modifiers={[foregroundStyle({ type: 'hierarchical', style: 'secondary' })]}
+                >
+                  {filteredPlaces.length === places.length
+                    ? `${places.length} ${places.length === 1 ? 'place' : 'places'} in your library`
+                    : `${filteredPlaces.length} of ${places.length} places`}
+                </SwiftText>
+              }
+              header={
+                <VStack alignment="leading" spacing={2}>
+                  <SwiftText modifiers={[font({ textStyle: 'title2', weight: 'bold' })]}>
+                    Saved places
+                  </SwiftText>
+                  <SwiftText
+                    modifiers={[foregroundStyle({ type: 'hierarchical', style: 'secondary' })]}
+                  >
+                    Search, filter, and organize the places you want to visit.
+                  </SwiftText>
+                </VStack>
+              }
+            >
+              <TextField
+                autoFocus={false}
+                onTextChange={setQuery}
+                placeholder="Search saved places"
+                text={nativeQuery}
+              />
+            </Section>
+
+            <Section title="View options">
+              {locationSegments.length ? (
+                <Picker
+                  label="Location"
+                  onSelectionChange={selection =>
+                    selectLocationScope(selection === allLocationsValue ? undefined : selection)
+                  }
+                  selection={locationScopeId ?? allLocationsValue}
+                  systemImage="mappin.and.ellipse"
+                  modifiers={[pickerStyle('menu')]}
+                >
+                  <SwiftText modifiers={[tag(allLocationsValue)]}>All locations</SwiftText>
+                  {locationSegments.map(segment => (
+                    <SwiftText key={segment.id} modifiers={[tag(segment.id)]}>
+                      {segment.locationName}
+                    </SwiftText>
+                  ))}
+                </Picker>
+              ) : null}
+              <Picker
+                label="Filter"
+                onSelectionChange={setFilter}
+                selection={filter}
+                systemImage="line.3.horizontal.decrease.circle"
+                modifiers={[pickerStyle('menu')]}
+              >
+                {savedPlacesFilterOptions.map(option => (
+                  <SwiftText key={option} modifiers={[tag(option)]}>
+                    {filterLabel(option)}
+                  </SwiftText>
+                ))}
+              </Picker>
+              <Toggle
+                isOn={mapAreaOnly}
+                label="Only show places in this map area"
+                onIsOnChange={setMapAreaOnly}
+                systemImage="map"
+              />
+              {activeLocation ? (
+                <Toggle
+                  isOn={managingShortlist}
+                  label={`Manage ${activeLocation.locationName} shortlist`}
+                  onIsOnChange={setManagingShortlist}
+                  systemImage="checklist"
+                />
+              ) : null}
+            </Section>
+
+            <Section
+              title={
+                activeLocation && managingShortlist
+                  ? `${activeLocation.locationName} shortlist`
+                  : 'Places'
+              }
+              footer={
+                activeLocation && managingShortlist ? (
+                  <SwiftText
+                    modifiers={[foregroundStyle({ type: 'hierarchical', style: 'secondary' })]}
+                  >
+                    Use the switches to add or remove places from this location’s shortlist.
+                  </SwiftText>
+                ) : undefined
+              }
+            >
+              {hasLoadedContent ? (
+                <>
+                  {locationMessage ? (
+                    <SwiftText modifiers={[foregroundStyle(colors.danger)]}>
+                      {locationMessage}
+                    </SwiftText>
+                  ) : null}
+                  {isLocationMutationPending ? <ProgressView /> : null}
+                  {filteredPlaces.length ? (
+                    filteredPlaces.map(place => {
+                      const assigned = activeLocation
+                        ? (place.locationSegmentIds?.includes(activeLocation.id) ?? false)
+                        : false;
+                      return managingShortlist && activeLocation ? (
+                        <Toggle
+                          key={place.id}
+                          isOn={assigned}
+                          onIsOnChange={() =>
+                            onToggleLocationPlace(place, activeLocation.id, assigned)
+                          }
+                          modifiers={[disabled(!isOnline || isLocationMutationPending)]}
+                        >
+                          <SavedPlaceLabel place={place} />
+                        </Toggle>
+                      ) : (
+                        <SwiftButton
+                          key={place.id}
+                          onPress={() => onSelectPlace(place)}
+                          modifiers={[buttonStyle('plain')]}
+                        >
+                          <HStack spacing={10}>
+                            <SwiftText modifiers={[font({ size: 20 })]}>{place.emoji}</SwiftText>
+                            <SavedPlaceLabel place={place} />
+                            <Spacer />
+                            <SwiftImage
+                              color={
+                                place.id === selectedPlaceId ? colors.accent : colors.textMuted
+                              }
+                              systemName={
+                                place.id === selectedPlaceId
+                                  ? 'checkmark.circle.fill'
+                                  : 'chevron.right'
+                              }
+                            />
+                          </HStack>
+                        </SwiftButton>
+                      );
+                    })
+                  ) : (
+                    <ContentUnavailableView
+                      description={
+                        hasFilters
+                          ? 'Try another search or filter.'
+                          : 'Search the map and save places to find them here.'
+                      }
+                      systemImage={hasFilters ? 'magnifyingglass' : 'mappin.and.ellipse'}
+                      title={hasFilters ? 'No matching places' : 'No saved places yet'}
+                    />
+                  )}
+                </>
+              ) : (
+                <SavedPlacesListSkeleton />
+              )}
+            </Section>
+          </List>
+        </Group>
+      </BottomSheet>
+    </Host>
+  );
+}
+
+function SavedPlacesListSkeleton() {
+  return (
+    <>
+      {Array.from({ length: 5 }, (_, index) => (
+        <HStack key={index} spacing={10} modifiers={[redacted('placeholder')]}>
+          <SwiftText modifiers={[font({ size: 20 })]}>⌖</SwiftText>
+          <VStack alignment="leading" spacing={2}>
+            <SwiftText modifiers={[font({ textStyle: 'body', weight: 'semibold' })]}>
+              Saved place name
+            </SwiftText>
+            <SwiftText>Place description</SwiftText>
+          </VStack>
+          <Spacer />
+          <SwiftImage systemName="chevron.right" />
+        </HStack>
+      ))}
+    </>
+  );
+}
+
+function SavedPlaceLabel({ place }: { place: SavedPlace }) {
+  return (
+    <VStack alignment="leading" spacing={2}>
+      <HStack spacing={6}>
+        <SwiftText modifiers={[font({ textStyle: 'body', weight: 'semibold' }), lineLimit(1)]}>
+          {place.name}
+        </SwiftText>
+        {place.isFavorite ? <SwiftImage color="#f2a900" systemName="star.fill" size={13} /> : null}
+      </HStack>
+      <SwiftText
+        modifiers={[foregroundStyle({ type: 'hierarchical', style: 'secondary' }), lineLimit(2)]}
+      >
+        {place.subtitle}
+      </SwiftText>
+    </VStack>
+  );
+}
+
+function SavedPlacesDrawerFallback({
   onClose,
   onLocationScopeChange,
   onSelectPlace,

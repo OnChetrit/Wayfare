@@ -1,4 +1,25 @@
-import { router } from 'expo-router';
+import CheckIcon from '@expo/material-symbols/check.xml';
+import { router, Stack } from 'expo-router';
+import {
+  Form,
+  Host,
+  HStack,
+  Label,
+  ProgressView,
+  Section,
+  Text as SwiftText,
+  TextField,
+  useNativeState,
+} from '@expo/ui/swift-ui';
+import {
+  autocorrectionDisabled,
+  foregroundStyle,
+  keyboardType,
+  onSubmit,
+  scrollDismissesKeyboard,
+  textContentType,
+  textInputAutocapitalization,
+} from '@expo/ui/swift-ui/modifiers';
 import * as React from 'react';
 import { ScrollView, Text } from 'react-native';
 
@@ -9,7 +30,7 @@ import { EmptyState, ErrorState, LoadingState, OfflineNotice } from '@/component
 import { useTripMutation } from '@/features/itinerary/use-trip-mutation';
 import { useTripEditor } from '@/features/trips/use-trip-editor';
 import { messageFromError } from '@/lib/format';
-import { colors, space } from '@/theme/tokens';
+import { colors as tokenColors, space } from '@/theme/tokens';
 import { useTheme } from '@/theme/theme-provider';
 
 import { googleMapsImportNotice } from './place-import';
@@ -41,7 +62,9 @@ export function PlaceImportSheet() {
 }
 
 function PlaceImportForm({ tripId }: { tripId: string }) {
+  const { colors, theme } = useTheme();
   const [url, setUrl] = React.useState('');
+  const nativeUrl = useNativeState('');
   const [message, setMessage] = React.useState<string | null>(null);
   const { isOnline, mutation } = useTripMutation(tripId, (listUrl: string) =>
     importGoogleMapsList(tripId, listUrl),
@@ -63,42 +86,116 @@ function PlaceImportForm({ tripId }: { tripId: string }) {
     }
   }
 
-  return (
-    <ScrollView
-      contentInsetAdjustmentBehavior="automatic"
-      contentContainerStyle={{ gap: space.md, padding: space.md, paddingBottom: 36 }}
-      style={{ backgroundColor: colors.background }}
-    >
-      <OfflineNotice visible={!isOnline} />
-      <Text selectable style={{ color: colors.textMuted, lineHeight: 20 }}>
-        Paste a public or shared Google Maps list. Existing places are skipped, and new places
-        appear in your map and saved-place library.
-      </Text>
-      <Field
-        accessibilityLabel="Google Maps shared list link"
-        autoCapitalize="none"
-        autoCorrect={false}
-        keyboardType="url"
-        label="Google Maps shared list link"
-        onChangeText={setUrl}
-        placeholder="https://maps.app.goo.gl/..."
-        value={url}
-      />
-      <Button
+  const importToolbar = (
+    <Stack.Toolbar placement="right">
+      <Stack.Toolbar.Button
+        accessibilityLabel={mutation.isPending ? 'Importing list' : 'Import list'}
         disabled={!isOnline || mutation.isPending}
-        loading={mutation.isPending}
+        icon={process.env.EXPO_OS === 'ios' ? 'checkmark' : CheckIcon}
         onPress={() => void importList()}
+        tintColor={colors.accent}
+        variant="done"
+      />
+    </Stack.Toolbar>
+  );
+
+  if (process.env.EXPO_OS === 'ios') {
+    return (
+      <>
+        <Host colorScheme={theme} seedColor={colors.accent} style={{ flex: 1 }}>
+          <Form modifiers={[scrollDismissesKeyboard('interactively')]}>
+            {!isOnline ? (
+              <Section title="Connection">
+                <Label title="You’re offline" systemImage="wifi.slash" />
+                <SwiftText>Reconnect before importing a shared Google Maps list.</SwiftText>
+              </Section>
+            ) : null}
+            <Section
+              footer={
+                <SwiftText>
+                  Paste a public or shared list. Existing places are skipped and new ones appear in
+                  your map and saved-place library.
+                </SwiftText>
+              }
+              title="Google Maps list"
+            >
+              <TextField
+                onTextChange={setUrl}
+                placeholder="Paste a Google Maps list link"
+                text={nativeUrl}
+                modifiers={[
+                  keyboardType('url'),
+                  textContentType('URL'),
+                  autocorrectionDisabled(),
+                  textInputAutocapitalization('never'),
+                  onSubmit(() => void importList()),
+                ]}
+              />
+            </Section>
+            {mutation.isPending ? (
+              <Section>
+                <HStack spacing={8}>
+                  <ProgressView />
+                  <SwiftText>Importing your list…</SwiftText>
+                </HStack>
+              </Section>
+            ) : null}
+            {message ? (
+              <Section title={mutation.error ? 'Couldn’t import list' : 'Import complete'}>
+                <SwiftText
+                  modifiers={[foregroundStyle(mutation.error ? colors.danger : colors.success)]}
+                >
+                  {message}
+                </SwiftText>
+              </Section>
+            ) : null}
+          </Form>
+        </Host>
+        {importToolbar}
+      </>
+    );
+  }
+
+  return (
+    <>
+      <ScrollView
+        contentInsetAdjustmentBehavior="automatic"
+        contentContainerStyle={{ gap: space.md, padding: space.md, paddingBottom: 36 }}
+        style={{ backgroundColor: tokenColors.background }}
       >
-        Import list
-      </Button>
-      {message ? (
-        <Text
-          selectable
-          style={{ color: mutation.error ? colors.danger : colors.textMuted, lineHeight: 20 }}
-        >
-          {message}
+        <OfflineNotice visible={!isOnline} />
+        <Text selectable style={{ color: tokenColors.textMuted, lineHeight: 20 }}>
+          Paste a public or shared Google Maps list. Existing places are skipped, and new places
+          appear in your map and saved-place library.
         </Text>
-      ) : null}
-    </ScrollView>
+        <Field
+          accessibilityLabel="Google Maps shared list link"
+          autoCapitalize="none"
+          autoCorrect={false}
+          keyboardType="url"
+          label="Google Maps shared list link"
+          onChangeText={setUrl}
+          placeholder="https://maps.app.goo.gl/..."
+          value={url}
+        />
+        {mutation.isPending ? (
+          <Text selectable style={{ color: tokenColors.textMuted }}>
+            Importing your list…
+          </Text>
+        ) : null}
+        {message ? (
+          <Text
+            selectable
+            style={{
+              color: mutation.error ? tokenColors.danger : tokenColors.textMuted,
+              lineHeight: 20,
+            }}
+          >
+            {message}
+          </Text>
+        ) : null}
+      </ScrollView>
+      {importToolbar}
+    </>
   );
 }
