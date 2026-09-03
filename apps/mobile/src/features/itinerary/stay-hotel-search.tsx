@@ -1,6 +1,20 @@
 import { useQuery } from '@tanstack/react-query';
 import * as React from 'react';
 import { Text, View } from 'react-native';
+import {
+  Button as SwiftButton,
+  Label,
+  Text as SwiftText,
+  TextField,
+  useNativeState,
+  VStack,
+} from '@expo/ui/swift-ui';
+import {
+  buttonStyle,
+  disabled,
+  foregroundStyle,
+  textInputAutocapitalization,
+} from '@expo/ui/swift-ui/modifiers';
 
 import type { SavedPlace } from '@wayfare/domain';
 import { createPlace, searchGooglePlaces, type GooglePlaceSearchResult } from '@/api/trips';
@@ -49,8 +63,9 @@ function hotelSearchResults(
 }
 
 export function StayHotelSearch({ destinationLabel, onSelect, places, tripId }: HotelSearchProps) {
-  useTheme();
+  const { colors: themeColors } = useTheme();
   const [query, setQuery] = React.useState('');
+  const nativeQuery = useNativeState(query);
   const deferredQuery = React.useDeferredValue(query.trim());
   const localHotels = React.useMemo(() => matchingHotels(places, query), [places, query]);
   const googleQuery = useQuery({
@@ -84,6 +99,58 @@ export function StayHotelSearch({ destinationLabel, onSelect, places, tripId }: 
     } catch {
       // The mutation error is rendered below, alongside the search result that triggered it.
     }
+  }
+
+  if (process.env.EXPO_OS === 'ios') {
+    return (
+      <>
+        <TextField
+          onTextChange={setQuery}
+          placeholder={destinationLabel ? `Hotels in ${destinationLabel}` : 'Hotel name'}
+          text={nativeQuery}
+          modifiers={[
+            textInputAutocapitalization('words'),
+            disabled(!isOnline || saveHotelMutation.isPending),
+          ]}
+        />
+        <SwiftText>Search Google Maps or link a saved hotel.</SwiftText>
+        {localHotels.map(hotel => (
+          <SwiftButton
+            key={hotel.id}
+            modifiers={[buttonStyle('plain'), disabled(!isOnline || saveHotelMutation.isPending)]}
+            onPress={() => selectSavedHotel(hotel)}
+          >
+            <VStack alignment="leading" spacing={3}>
+              <Label title={hotel.name} systemImage="bed.double" />
+              <SwiftText>{hotel.subtitle}</SwiftText>
+            </VStack>
+          </SwiftButton>
+        ))}
+        {googleQuery.isFetching ? (
+          <Label title="Searching Google Maps…" systemImage="magnifyingglass" />
+        ) : null}
+        {googleHotels.map(hotel => (
+          <SwiftButton
+            key={hotel.id}
+            modifiers={[buttonStyle('plain'), disabled(!isOnline || saveHotelMutation.isPending)]}
+            onPress={() => void selectGoogleHotel(hotel)}
+          >
+            <VStack alignment="leading" spacing={3}>
+              <Label title={hotel.name} systemImage="plus.circle" />
+              <SwiftText>{hotel.subtitle}</SwiftText>
+            </VStack>
+          </SwiftButton>
+        ))}
+        {deferredQuery.length >= 2 && !googleQuery.isFetching && !googleHotels.length ? (
+          <SwiftText>No new hotel matches from Google Maps.</SwiftText>
+        ) : null}
+        {googleQuery.error || saveHotelMutation.error ? (
+          <SwiftText modifiers={[foregroundStyle(themeColors.danger)]}>
+            {messageFromError(googleQuery.error ?? saveHotelMutation.error)}
+          </SwiftText>
+        ) : null}
+      </>
+    );
   }
 
   return (

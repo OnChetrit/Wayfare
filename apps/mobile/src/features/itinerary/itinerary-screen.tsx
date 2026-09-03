@@ -3,6 +3,7 @@ import {
   Button as SwiftButton,
   Host,
   HStack,
+  Label,
   List,
   Section,
   ScrollView as SwiftScrollView,
@@ -153,7 +154,7 @@ export function ItineraryScreen() {
         <Host colorScheme={theme} seedColor={colors.accent} style={{ flex: 1 }}>
           <List
             modifiers={[
-              listStyle('plain'),
+              listStyle('insetGrouped'),
               refreshable(async () => {
                 await tripQuery.refetch();
               }),
@@ -340,40 +341,97 @@ export function ItineraryScreen() {
             ) : null}
             <Section title="Trip details">
               <SwiftButton
-                label="Visual itinerary"
+                modifiers={[buttonStyle('plain')]}
                 onPress={() => router.push('/itinerary/visual')}
-              />
-              <SwiftButton label="Personal reminders" onPress={() => router.push('/reminders')} />
+              >
+                <HStack spacing={12}>
+                  <Label title="Visual itinerary" systemImage="map" />
+                  <Spacer />
+                  <SwiftText>›</SwiftText>
+                </HStack>
+              </SwiftButton>
               <SwiftButton
-                label="Day note"
+                modifiers={[buttonStyle('plain')]}
+                onPress={() => router.push('/reminders')}
+              >
+                <HStack spacing={12}>
+                  <Label title="Personal reminders" systemImage="bell" />
+                  <Spacer />
+                  <SwiftText>›</SwiftText>
+                </HStack>
+              </SwiftButton>
+              <SwiftButton
+                modifiers={[buttonStyle('plain')]}
                 onPress={() =>
                   router.push({
                     pathname: '/itinerary-editor',
                     params: { kind: 'day', id: selectedDay.id },
                   })
                 }
-              />
+              >
+                <HStack spacing={12}>
+                  <Label title="Day note" systemImage="note.text" />
+                  <Spacer />
+                  <SwiftText>›</SwiftText>
+                </HStack>
+              </SwiftButton>
               <SwiftButton
-                label={`Stays (${trip.stays.length})`}
+                modifiers={[buttonStyle('plain')]}
                 onPress={() =>
                   router.push({ pathname: '/itinerary-editor', params: { kind: 'stays' } })
                 }
-              />
+              >
+                <HStack spacing={12}>
+                  <Label title={`Stays (${trip.stays.length})`} systemImage="bed.double" />
+                  <Spacer />
+                  <SwiftText>›</SwiftText>
+                </HStack>
+              </SwiftButton>
               <SwiftButton
-                label={`Flights (${trip.flights.length})`}
+                modifiers={[buttonStyle('plain')]}
                 onPress={() =>
                   router.push({
                     pathname: '/itinerary-editor',
                     params: { kind: 'flights', date: selectedDay.date },
                   })
                 }
-              />
+              >
+                <HStack spacing={12}>
+                  <Label title={`Flights (${trip.flights.length})`} systemImage="airplane" />
+                  <Spacer />
+                  <SwiftText>›</SwiftText>
+                </HStack>
+              </SwiftButton>
               <SwiftButton
-                label={`Locations (${trip.locationSegments.length})`}
+                modifiers={[buttonStyle('plain')]}
+                onPress={() =>
+                  router.push({ pathname: '/itinerary-editor', params: { kind: 'places' } })
+                }
+              >
+                <HStack spacing={12}>
+                  <Label
+                    title={`Saved places (${trip.places.length})`}
+                    systemImage="mappin.and.ellipse"
+                  />
+                  <Spacer />
+                  <SwiftText>›</SwiftText>
+                </HStack>
+              </SwiftButton>
+              <SwiftButton
+                modifiers={[buttonStyle('plain')]}
                 onPress={() =>
                   router.push({ pathname: '/itinerary-editor', params: { kind: 'locations' } })
                 }
-              />
+              >
+                <HStack spacing={12}>
+                  <Label
+                    title={`Locations (${trip.locationSegments.length})`}
+                    systemImage="globe.europe.africa"
+                  />
+                  <Spacer />
+                  <SwiftText>›</SwiftText>
+                </HStack>
+              </SwiftButton>
             </Section>
           </List>
         </Host>

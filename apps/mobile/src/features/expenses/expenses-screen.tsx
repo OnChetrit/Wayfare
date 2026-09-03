@@ -1,4 +1,26 @@
 import AddIcon from '@expo/material-symbols/add.xml';
+import {
+  Button as SwiftButton,
+  Host,
+  HStack,
+  List,
+  Menu,
+  ProgressView,
+  Section,
+  Spacer,
+  Text as SwiftText,
+  VStack,
+} from '@expo/ui/swift-ui';
+import {
+  buttonStyle,
+  disabled,
+  font,
+  foregroundStyle,
+  listStyle,
+  monospacedDigit,
+  refreshable,
+  tint,
+} from '@expo/ui/swift-ui/modifiers';
 import { Link, router, Stack } from 'expo-router';
 import * as React from 'react';
 import { RefreshControl, Text, View } from 'react-native';
@@ -24,9 +46,8 @@ import {
   type ExpenseSource,
 } from '@/features/expenses/expense-insights';
 import { useTripEditor } from '@/features/trips/use-trip-editor';
-import { formatDate, formatMoney, messageFromError } from '@/lib/format';
+import { formatDate, formatDateRange, formatMoney, messageFromError } from '@/lib/format';
 import { preferredCurrency } from '@/lib/user-preferences';
-import { colors } from '@/theme/tokens';
 import { useTheme } from '@/theme/theme-provider';
 
 const categoryColors: Record<ExpenseCategory, string> = {
@@ -60,7 +81,7 @@ function tripDayCount(startDate: string, endDate: string) {
 }
 
 export function ExpensesScreen() {
-  useTheme();
+  const { colors, theme } = useTheme();
   const tripQuery = useTripEditor();
   const isOnline = useIsOnline();
   const { session } = useAuth();
@@ -106,6 +127,296 @@ export function ExpensesScreen() {
       value: category,
     })),
   ];
+
+  if (process.env.EXPO_OS === 'ios') {
+    const selectedFilterLabel = filter === 'ALL' ? 'All categories' : expenseCategoryLabels[filter];
+
+    return (
+      <>
+        <Host colorScheme={theme} seedColor={colors.accent} style={{ flex: 1 }}>
+          <List
+            modifiers={[
+              listStyle('insetGrouped'),
+              refreshable(async () => {
+                await tripQuery.refetch();
+              }),
+            ]}
+          >
+            {!isOnline ? (
+              <Section title="Connection">
+                <SwiftText>You’re offline. Reconnect to update your expenses.</SwiftText>
+              </Section>
+            ) : null}
+
+            <Section
+              footer={
+                <SwiftText>
+                  {days} {days === 1 ? 'day' : 'days'} · Totals remain separate by currency.
+                </SwiftText>
+              }
+              title={trip.name}
+            >
+              <SwiftText
+                modifiers={[font({ textStyle: 'subheadline' }), foregroundStyle('secondary')]}
+              >
+                {formatDateRange(trip.startDate, trip.endDate)} · {trip.expenses.length} recorded{' '}
+                {trip.expenses.length === 1 ? 'expense' : 'expenses'}
+              </SwiftText>
+              {totals.length ? (
+                totals.map(total => (
+                  <HStack key={total.currency} alignment="firstTextBaseline">
+                    <VStack alignment="leading" spacing={2}>
+                      <SwiftText
+                        modifiers={[
+                          font({ textStyle: 'title2', weight: 'bold' }),
+                          monospacedDigit(),
+                        ]}
+                      >
+                        {formatMoney(total.amount, total.currency)}
+                      </SwiftText>
+                      <SwiftText
+                        modifiers={[
+                          font({ textStyle: 'subheadline' }),
+                          foregroundStyle('secondary'),
+                          monospacedDigit(),
+                        ]}
+                      >
+                        {formatMoney(total.amount / days, total.currency)} per day
+                      </SwiftText>
+                    </VStack>
+                    <Spacer />
+                    <SwiftText modifiers={[foregroundStyle('secondary')]}>
+                      {total.currency}
+                    </SwiftText>
+                  </HStack>
+                ))
+              ) : (
+                <VStack alignment="leading" spacing={3}>
+                  <SwiftText modifiers={[font({ textStyle: 'headline' })]}>
+                    No expenses yet
+                  </SwiftText>
+                  <SwiftText modifiers={[foregroundStyle('secondary')]}>
+                    Add an expense to see your trip total.
+                  </SwiftText>
+                </VStack>
+              )}
+            </Section>
+
+            <Section title="At a glance">
+              {[
+                {
+                  label: 'Flights',
+                  totals: categoryExpenseTotals(trip.expenses, 'FLIGHT'),
+                },
+                {
+                  label: 'Stays',
+                  totals: categoryExpenseTotals(trip.expenses, 'HOTEL'),
+                },
+                {
+                  label: 'Activities',
+                  totals: activityExpenseTotals(trip.expenses),
+                },
+              ].map(summary => (
+                <HStack key={summary.label} alignment="firstTextBaseline">
+                  <SwiftText>{summary.label}</SwiftText>
+                  <Spacer />
+                  <SwiftText modifiers={[font({ weight: 'semibold' }), monospacedDigit()]}>
+                    {formatTotals(summary.totals)}
+                  </SwiftText>
+                </HStack>
+              ))}
+            </Section>
+
+            {dailyTotals.length ? (
+              <Section title="Daily spend">
+                {dailyTotals.map(day => (
+                  <HStack key={day.date} alignment="firstTextBaseline">
+                    <VStack alignment="leading" spacing={2}>
+                      <SwiftText>{formatDate(day.date, { weekday: 'long' })}</SwiftText>
+                      <SwiftText
+                        modifiers={[
+                          font({ textStyle: 'subheadline' }),
+                          foregroundStyle('secondary'),
+                        ]}
+                      >
+                        {formatDate(day.date)}
+                      </SwiftText>
+                    </VStack>
+                    <Spacer />
+                    <SwiftText modifiers={[font({ weight: 'semibold' }), monospacedDigit()]}>
+                      {formatTotals(day.totals)}
+                    </SwiftText>
+                  </HStack>
+                ))}
+              </Section>
+            ) : null}
+
+            {breakdown.length ? (
+              <Section
+                footer={<SwiftText>{breakdownCurrency} spending by category.</SwiftText>}
+                title="Where it goes"
+              >
+                {breakdown.map(item => (
+                  <VStack key={item.category} alignment="leading" spacing={6}>
+                    <HStack alignment="firstTextBaseline" spacing={8}>
+                      <SwiftText modifiers={[foregroundStyle(categoryColors[item.category])]}>
+                        ●
+                      </SwiftText>
+                      <SwiftText>{expenseCategoryLabels[item.category]}</SwiftText>
+                      <Spacer />
+                      <VStack alignment="trailing" spacing={1}>
+                        <SwiftText modifiers={[font({ weight: 'semibold' }), monospacedDigit()]}>
+                          {formatMoney(item.amount, breakdownCurrency)}
+                        </SwiftText>
+                        <SwiftText
+                          modifiers={[
+                            font({ textStyle: 'caption' }),
+                            foregroundStyle('secondary'),
+                            monospacedDigit(),
+                          ]}
+                        >
+                          {Math.round(item.percentage)}%
+                        </SwiftText>
+                      </VStack>
+                    </HStack>
+                    <ProgressView
+                      value={item.percentage / 100}
+                      modifiers={[tint(categoryColors[item.category])]}
+                    />
+                  </VStack>
+                ))}
+              </Section>
+            ) : null}
+
+            {missingSources.length ? (
+              <Section
+                footer={
+                  <SwiftText>
+                    These itinerary items have no linked expense. Tap one to add it with the source
+                    selected.
+                  </SwiftText>
+                }
+                title="Costs to add"
+              >
+                {missingSources.map(source => (
+                  <SwiftButton
+                    key={`${source.kind}:${source.id}`}
+                    modifiers={[buttonStyle('plain'), disabled(!isOnline)]}
+                    onPress={() =>
+                      router.push({
+                        pathname: '/expense-editor',
+                        params: { sourceKind: source.kind, sourceId: source.id },
+                      })
+                    }
+                  >
+                    <HStack alignment="firstTextBaseline">
+                      <VStack alignment="leading" spacing={3}>
+                        <SwiftText>{sourceLabel(source)}</SwiftText>
+                        <SwiftText
+                          modifiers={[
+                            font({ textStyle: 'subheadline' }),
+                            foregroundStyle('secondary'),
+                          ]}
+                        >
+                          {formatDate(source.date)}
+                          {source.amount != null && source.currency
+                            ? ` · ${formatMoney(source.amount, source.currency)}`
+                            : ''}
+                        </SwiftText>
+                      </VStack>
+                      <Spacer />
+                      <SwiftText modifiers={[foregroundStyle('secondary')]}>Add</SwiftText>
+                    </HStack>
+                  </SwiftButton>
+                ))}
+              </Section>
+            ) : null}
+
+            <Section
+              footer={
+                expenses.length ? undefined : (
+                  <SwiftText>
+                    {filter === 'ALL'
+                      ? 'Add a booking, ticket, meal, or anything else you want to track.'
+                      : 'Choose another category or add the first expense in this one.'}
+                  </SwiftText>
+                )
+              }
+              title="Expenses"
+            >
+              <Menu
+                label={selectedFilterLabel}
+                modifiers={[tint(colors.accent)]}
+                systemImage="line.3.horizontal.decrease.circle"
+              >
+                {categoryFilters.map(option => (
+                  <SwiftButton
+                    key={option.value}
+                    label={option.label}
+                    onPress={() => setFilter(option.value)}
+                    systemImage={option.value === filter ? 'checkmark' : undefined}
+                  />
+                ))}
+              </Menu>
+              {expenses.length ? (
+                expenses.map(expense => (
+                  <SwiftButton
+                    key={expense.id}
+                    modifiers={[buttonStyle('plain')]}
+                    onPress={() =>
+                      router.push({
+                        pathname: '/expense-editor',
+                        params: { expenseId: expense.id },
+                      })
+                    }
+                  >
+                    <HStack alignment="firstTextBaseline">
+                      <VStack alignment="leading" spacing={3}>
+                        <SwiftText>{expense.title}</SwiftText>
+                        <SwiftText
+                          modifiers={[
+                            font({ textStyle: 'subheadline' }),
+                            foregroundStyle('secondary'),
+                          ]}
+                        >
+                          {expenseCategoryLabels[expense.category]} ·{' '}
+                          {formatDate(expense.expenseDate)}
+                          {expense.notes ? ` · ${expense.notes}` : ''}
+                        </SwiftText>
+                      </VStack>
+                      <Spacer />
+                      <VStack alignment="trailing" spacing={3}>
+                        <SwiftText modifiers={[font({ weight: 'semibold' }), monospacedDigit()]}>
+                          {formatMoney(expense.amount, expense.currency)}
+                        </SwiftText>
+                        <SwiftText modifiers={[foregroundStyle('secondary')]}>›</SwiftText>
+                      </VStack>
+                    </HStack>
+                  </SwiftButton>
+                ))
+              ) : (
+                <SwiftButton
+                  label="Add expense"
+                  modifiers={[buttonStyle('borderedProminent'), disabled(!isOnline)]}
+                  onPress={() => router.push('/expense-editor')}
+                  systemImage="plus"
+                />
+              )}
+            </Section>
+          </List>
+        </Host>
+        <Stack.Toolbar placement="right">
+          <Stack.Toolbar.Button
+            accessibilityLabel="Add expense"
+            disabled={!isOnline}
+            icon="plus"
+            onPress={() => router.push('/expense-editor')}
+            tintColor={colors.accent}
+          />
+        </Stack.Toolbar>
+      </>
+    );
+  }
 
   return (
     <>

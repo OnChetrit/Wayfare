@@ -1,4 +1,16 @@
-import { Link } from 'expo-router';
+import {
+  Button as SwiftButton,
+  Host,
+  HStack,
+  Label,
+  List,
+  Section,
+  Spacer,
+  Text as SwiftText,
+  VStack,
+} from '@expo/ui/swift-ui';
+import { buttonStyle, listStyle } from '@expo/ui/swift-ui/modifiers';
+import { Link, router } from 'expo-router';
 import { ScrollView, Text } from 'react-native';
 
 import type { TripEditorTrip } from '@wayfare/domain';
@@ -45,7 +57,7 @@ const detailCopy: Record<
 };
 
 export function TripDetailsSheet({ kind, trip, initialDate }: TripDetailsSheetProps) {
-  useTheme();
+  const { colors: themeColors, theme } = useTheme();
   const copy = detailCopy[kind];
   const addHref = {
     pathname: '/itinerary-editor' as const,
@@ -68,6 +80,109 @@ export function TripDetailsSheet({ kind, trip, initialDate }: TripDetailsSheetPr
         : kind === 'flights'
           ? trip.flights.length > 0
           : trip.locationSegments.length > 0;
+
+  if (process.env.EXPO_OS === 'ios') {
+    const navigateToEditor = (editorKind: 'place' | 'segment' | 'stay', id: string) => {
+      router.push({ pathname: '/itinerary-editor', params: { kind: editorKind, id } });
+    };
+
+    return (
+      <Host colorScheme={theme} seedColor={themeColors.accent} style={{ flex: 1 }}>
+        <List modifiers={[listStyle('insetGrouped')]}>
+          <Section
+            footer={
+              <SwiftText>
+                {hasItems
+                  ? `Manage the ${copy.title.toLocaleLowerCase()} for this trip.`
+                  : copy.emptyDetail}
+              </SwiftText>
+            }
+            title={copy.title}
+          >
+            {kind === 'places'
+              ? trip.places.map(place => (
+                  <SwiftButton
+                    key={place.id}
+                    modifiers={[buttonStyle('plain')]}
+                    onPress={() => navigateToEditor('place', place.id)}
+                  >
+                    <HStack spacing={12}>
+                      <Label
+                        title={`${place.emoji} ${place.name}`}
+                        systemImage="mappin.and.ellipse"
+                      />
+                      <Spacer />
+                      <SwiftText>›</SwiftText>
+                    </HStack>
+                  </SwiftButton>
+                ))
+              : null}
+            {kind === 'stays'
+              ? trip.stays.map(stay => (
+                  <SwiftButton
+                    key={stay.id}
+                    modifiers={[buttonStyle('plain')]}
+                    onPress={() => navigateToEditor('stay', stay.id)}
+                  >
+                    <HStack spacing={12}>
+                      <VStack alignment="leading" spacing={3}>
+                        <Label title={stay.name} systemImage="bed.double" />
+                        <SwiftText>
+                          {formatDateRange(stay.checkInDate, stay.checkOutDate)}
+                        </SwiftText>
+                        {stay.locationLabel || stay.address ? (
+                          <SwiftText>{stay.locationLabel ?? stay.address}</SwiftText>
+                        ) : null}
+                        {stay.priceAmount != null && stay.priceCurrency ? (
+                          <SwiftText>{formatMoney(stay.priceAmount, stay.priceCurrency)}</SwiftText>
+                        ) : null}
+                      </VStack>
+                      <Spacer />
+                      <SwiftText>›</SwiftText>
+                    </HStack>
+                  </SwiftButton>
+                ))
+              : null}
+            {kind === 'flights'
+              ? trip.flights.map(flight => (
+                  <VStack key={flight.id} alignment="leading" spacing={3}>
+                    <Label
+                      title={`${flight.flightNumber} · ${flight.airlineName ?? 'Flight'}`}
+                      systemImage="airplane"
+                    />
+                    {flightDetailRows(flight).map(row => (
+                      <SwiftText key={row}>{row}</SwiftText>
+                    ))}
+                  </VStack>
+                ))
+              : null}
+            {kind === 'locations'
+              ? trip.locationSegments.map(segment => (
+                  <SwiftButton
+                    key={segment.id}
+                    modifiers={[buttonStyle('plain')]}
+                    onPress={() => navigateToEditor('segment', segment.id)}
+                  >
+                    <HStack spacing={12}>
+                      <VStack alignment="leading" spacing={3}>
+                        <Label title={segment.locationName} systemImage="map" />
+                        <SwiftText>{formatDateRange(segment.startDate, segment.endDate)}</SwiftText>
+                      </VStack>
+                      <Spacer />
+                      <SwiftText>›</SwiftText>
+                    </HStack>
+                  </SwiftButton>
+                ))
+              : null}
+            {!hasItems ? <Label title={copy.emptyTitle} systemImage="tray" /> : null}
+          </Section>
+          <Section>
+            <SwiftButton label={addLabel} systemImage="plus" onPress={() => router.push(addHref)} />
+          </Section>
+        </List>
+      </Host>
+    );
+  }
 
   return (
     <ScrollView

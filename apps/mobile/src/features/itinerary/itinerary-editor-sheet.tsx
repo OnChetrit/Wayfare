@@ -1,6 +1,36 @@
 import AddIcon from '@expo/material-symbols/add.xml';
 import CheckIcon from '@expo/material-symbols/check.xml';
 import ReminderIcon from '@expo/material-symbols/notifications_active.xml';
+import {
+  Button as SwiftButton,
+  DatePicker,
+  Form,
+  Host,
+  HStack,
+  Label,
+  Picker,
+  Section,
+  SecureField,
+  Spacer,
+  Text as SwiftText,
+  TextField,
+  Toggle,
+  useNativeState,
+  VStack,
+} from '@expo/ui/swift-ui';
+import {
+  accessibilityLabel,
+  buttonStyle,
+  datePickerStyle,
+  disabled,
+  foregroundStyle,
+  keyboardType,
+  lineLimit,
+  pickerStyle,
+  scrollDismissesKeyboard,
+  tag,
+  textInputAutocapitalization,
+} from '@expo/ui/swift-ui/modifiers';
 import { Stack, useLocalSearchParams, router } from 'expo-router';
 import * as React from 'react';
 import { Alert, ScrollView, Text, View } from 'react-native';
@@ -26,6 +56,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { ChipGroup } from '@/components/ui/controls';
 import { DateTimeField } from '@/components/ui/date-time-field';
+import { dateTimeFieldValue, dateTimePickerDate } from '@/components/ui/date-time-field-value';
 import { Field } from '@/components/ui/field';
 import { EmptyState, ErrorState, LoadingState, OfflineNotice } from '@/components/ui/state';
 import {
@@ -146,6 +177,7 @@ function ItineraryEditor({
   initialDate?: string;
   initialSavedPlaceId?: string;
 }) {
+  const { colors: nativeColors, theme } = useTheme();
   const tripQuery = useTripEditor();
   const trip = tripQuery.data!;
   const isExisting = Boolean(itemId);
@@ -208,39 +240,111 @@ function ItineraryEditor({
   const [flightResults, setFlightResults] = React.useState<Parameters<typeof createFlight>[1][]>(
     [],
   );
+  const nativeScheduleDuration = useNativeState(scheduleForm.duration);
+  const nativeScheduleTitle = useNativeState(scheduleForm.title);
+  const nativeScheduleAmount = useNativeState(scheduleForm.amount);
+  const nativeScheduleNote = useNativeState(scheduleForm.note);
+  const nativePlaceName = useNativeState(placeForm.name);
+  const nativePlaceLatitude = useNativeState(placeForm.lat);
+  const nativePlaceLongitude = useNativeState(placeForm.lng);
+  const nativePlaceComment = useNativeState(placeForm.comment);
+  const nativeStayName = useNativeState(stayForm.name);
+  const nativeStayAddress = useNativeState(stayForm.address);
+  const nativeStayLocation = useNativeState(stayForm.locationLabel);
+  const nativeStayPrice = useNativeState(stayForm.priceAmount);
+  const nativeStayCancellation = useNativeState(stayForm.cancellationTime);
+  const nativeStayConfirmation = useNativeState(stayForm.confirmationNumber);
+  const nativeStaySecretCode = useNativeState(stayForm.secretCode);
+  const nativeStayNotes = useNativeState(stayForm.notes);
+  const nativeSegmentName = useNativeState(segmentForm.locationName);
+  const nativeSegmentCountry = useNativeState(segmentForm.country);
+  const nativeSegmentArea = useNativeState(segmentForm.area);
+  const nativeSegmentLatitude = useNativeState(segmentForm.latitude);
+  const nativeSegmentLongitude = useNativeState(segmentForm.longitude);
+  const nativeDayNotes = useNativeState(dayNotes);
+  const nativeFlightNumber = useNativeState(flightNumber);
 
   const { isOnline, mutation: saveSchedule } = useTripMutation(trip.id, async () => {
-    const result = scheduleInputFromForm(scheduleForm);
+    const currentScheduleForm =
+      process.env.EXPO_OS === 'ios'
+        ? {
+            ...scheduleForm,
+            amount: nativeScheduleAmount.get(),
+            duration: nativeScheduleDuration.get(),
+            note: nativeScheduleNote.get(),
+            title: nativeScheduleTitle.get(),
+          }
+        : scheduleForm;
+    const result = scheduleInputFromForm(currentScheduleForm);
     if ('error' in result) throw new Error(result.error);
     if (schedule) return updateSchedule(trip.id, schedule.id, result.data);
     return createSchedule(trip.id, result.data);
   });
   const { mutation: savePlace } = useTripMutation(trip.id, async () => {
+    const currentPlaceForm =
+      process.env.EXPO_OS === 'ios'
+        ? {
+            ...placeForm,
+            comment: nativePlaceComment.get(),
+            lat: nativePlaceLatitude.get(),
+            lng: nativePlaceLongitude.get(),
+            name: nativePlaceName.get(),
+          }
+        : placeForm;
     if (place)
       return updatePlace(trip.id, place.id, {
-        isFavorite: placeForm.favorite,
-        comment: placeForm.comment,
+        isFavorite: currentPlaceForm.favorite,
+        comment: currentPlaceForm.comment,
       });
-    const lat = Number(placeForm.lat);
-    const lng = Number(placeForm.lng);
-    if (!placeForm.name.trim() || !Number.isFinite(lat) || !Number.isFinite(lng))
+    const lat = Number(currentPlaceForm.lat);
+    const lng = Number(currentPlaceForm.lng);
+    if (!currentPlaceForm.name.trim() || !Number.isFinite(lat) || !Number.isFinite(lng))
       throw new Error('Enter a place name and valid map coordinates.');
     return createPlace(trip.id, {
-      name: placeForm.name.trim(),
-      category: placeForm.category,
+      name: currentPlaceForm.name.trim(),
+      category: currentPlaceForm.category,
       lat,
       lng,
     });
   });
   const { mutation: saveStay } = useTripMutation(trip.id, async () => {
-    const result = stayInputFromForm(stayForm);
+    const currentStayForm =
+      process.env.EXPO_OS === 'ios'
+        ? {
+            ...stayForm,
+            address: nativeStayAddress.get(),
+            cancellationTime: nativeStayCancellation.get(),
+            confirmationNumber: nativeStayConfirmation.get(),
+            locationLabel: nativeStayLocation.get(),
+            name: nativeStayName.get(),
+            notes: nativeStayNotes.get(),
+            priceAmount: nativeStayPrice.get(),
+            secretCode: nativeStaySecretCode.get(),
+          }
+        : stayForm;
+    const result = stayInputFromForm(currentStayForm);
     if ('error' in result) throw new Error(result.error);
     return stay ? updateStay(trip.id, stay.id, result.data) : createStay(trip.id, result.data);
   });
   const { mutation: saveSegment } = useTripMutation(trip.id, async () => {
-    if (!segmentForm.locationName.trim()) throw new Error('Enter the location name.');
-    const latitude = segmentForm.latitude.trim() ? Number(segmentForm.latitude) : undefined;
-    const longitude = segmentForm.longitude.trim() ? Number(segmentForm.longitude) : undefined;
+    const currentSegmentForm =
+      process.env.EXPO_OS === 'ios'
+        ? {
+            ...segmentForm,
+            area: nativeSegmentArea.get(),
+            country: nativeSegmentCountry.get(),
+            latitude: nativeSegmentLatitude.get(),
+            locationName: nativeSegmentName.get(),
+            longitude: nativeSegmentLongitude.get(),
+          }
+        : segmentForm;
+    if (!currentSegmentForm.locationName.trim()) throw new Error('Enter the location name.');
+    const latitude = currentSegmentForm.latitude.trim()
+      ? Number(currentSegmentForm.latitude)
+      : undefined;
+    const longitude = currentSegmentForm.longitude.trim()
+      ? Number(currentSegmentForm.longitude)
+      : undefined;
     if (
       (latitude !== undefined && !Number.isFinite(latitude)) ||
       (longitude !== undefined && !Number.isFinite(longitude))
@@ -248,28 +352,30 @@ function ItineraryEditor({
       throw new Error('Enter valid coordinates.');
     if (segment)
       return updateLocationSegment(trip.id, segment.id, {
-        locationName: segmentForm.locationName,
-        country: segmentForm.country || undefined,
-        area: segmentForm.area || undefined,
+        locationName: currentSegmentForm.locationName,
+        country: currentSegmentForm.country || undefined,
+        area: currentSegmentForm.area || undefined,
         latitude,
         longitude,
-        startDate: segmentForm.startDate,
-        endDate: segmentForm.endDate,
+        startDate: currentSegmentForm.startDate,
+        endDate: currentSegmentForm.endDate,
       });
-    if (!segmentForm.sourceSegmentId) throw new Error('Choose a location to split.');
+    if (!currentSegmentForm.sourceSegmentId) throw new Error('Choose a location to split.');
     return splitLocationSegment(trip.id, {
-      sourceSegmentId: segmentForm.sourceSegmentId,
-      splitDate: segmentForm.startDate,
-      locationName: segmentForm.locationName,
+      sourceSegmentId: currentSegmentForm.sourceSegmentId,
+      splitDate: currentSegmentForm.startDate,
+      locationName: currentSegmentForm.locationName,
     });
   });
   const { mutation: saveDay } = useTripMutation(trip.id, () => {
     if (!day) throw new Error('Day not found.');
-    return updateDayNotes(trip.id, day.id, dayNotes.trim() || null);
+    const notes = process.env.EXPO_OS === 'ios' ? nativeDayNotes.get() : dayNotes;
+    return updateDayNotes(trip.id, day.id, notes.trim() || null);
   });
   const { mutation: searchFlightMutation } = useTripMutation(trip.id, async () => {
-    if (!flightNumber.trim()) throw new Error('Enter a flight number.');
-    const response = await searchFlights(trip.id, flightNumber.trim(), flightDate);
+    const number = process.env.EXPO_OS === 'ios' ? nativeFlightNumber.get() : flightNumber;
+    if (!number.trim()) throw new Error('Enter a flight number.');
+    const response = await searchFlights(trip.id, number.trim(), flightDate);
     setFlightResults(response.flights);
     return response;
   });
@@ -318,6 +424,723 @@ function ItineraryEditor({
     } catch (error) {
       setMessage(messageFromError(error));
     }
+  }
+
+  function selectHotelForStay(hotel: { address?: string; id: string; name: string }) {
+    const next = linkHotelToStayForm(stayForm, hotel, trip.destinationLabel);
+    setStayForm(next);
+    void nativeStayAddress.set(next.address);
+    void nativeStayLocation.set(next.locationLabel);
+    void nativeStayName.set(next.name);
+  }
+
+  if (process.env.EXPO_OS === 'ios') {
+    return (
+      <>
+        <Stack.Screen options={{ title: titleForKind(kind) }} />
+        <Host colorScheme={theme} seedColor={nativeColors.accent} style={{ flex: 1 }}>
+          <Form modifiers={[scrollDismissesKeyboard('interactively')]}>
+            {!isOnline ? (
+              <Section title="Connection">
+                <Label title="You’re offline" systemImage="wifi.slash" />
+                <SwiftText>Reconnect to update this itinerary.</SwiftText>
+              </Section>
+            ) : null}
+
+            {message || activeError ? (
+              <Section title="Couldn’t save changes">
+                <SwiftText modifiers={[foregroundStyle(nativeColors.danger)]}>
+                  {message ?? messageFromError(activeError)}
+                </SwiftText>
+              </Section>
+            ) : null}
+
+            {kind === 'schedule' ? (
+              <>
+                <Section title="When">
+                  <DatePicker
+                    displayedComponents={['date']}
+                    onDateChange={nextDate =>
+                      setScheduleForm(current => ({
+                        ...current,
+                        date: dateTimeFieldValue(nextDate, 'date'),
+                      }))
+                    }
+                    selection={dateTimePickerDate(scheduleForm.date, 'date')}
+                    title="Date"
+                    modifiers={[datePickerStyle('compact'), disabled(!isOnline || pending)]}
+                  />
+                  {scheduleForm.startTime === null ? (
+                    <SwiftButton
+                      label="Add a time"
+                      systemImage="clock"
+                      modifiers={[disabled(!isOnline || pending)]}
+                      onPress={() =>
+                        setScheduleForm(current => ({ ...current, startTime: '09:00' }))
+                      }
+                    />
+                  ) : (
+                    <>
+                      <DatePicker
+                        displayedComponents={['hourAndMinute']}
+                        onDateChange={nextTime =>
+                          setScheduleForm(current => ({
+                            ...current,
+                            startTime: dateTimeFieldValue(nextTime, 'time'),
+                          }))
+                        }
+                        selection={dateTimePickerDate(scheduleForm.startTime, 'time')}
+                        title="Start time"
+                        modifiers={[datePickerStyle('compact'), disabled(!isOnline || pending)]}
+                      />
+                      <SwiftButton
+                        label="Clear time"
+                        modifiers={[buttonStyle('borderless'), disabled(!isOnline || pending)]}
+                        onPress={() =>
+                          setScheduleForm(current => ({ ...current, startTime: null }))
+                        }
+                      />
+                    </>
+                  )}
+                  <TextField
+                    onTextChange={duration =>
+                      setScheduleForm(current => ({ ...current, duration }))
+                    }
+                    placeholder="Duration in minutes"
+                    text={nativeScheduleDuration}
+                    modifiers={[
+                      accessibilityLabel('Duration in minutes'),
+                      keyboardType('numeric'),
+                      disabled(!isOnline || pending),
+                    ]}
+                  />
+                </Section>
+                <Section title="Activity">
+                  <TextField
+                    onTextChange={title => setScheduleForm(current => ({ ...current, title }))}
+                    placeholder="Activity title"
+                    text={nativeScheduleTitle}
+                    modifiers={[
+                      accessibilityLabel('Activity title'),
+                      textInputAutocapitalization('sentences'),
+                      disabled(!isOnline || pending),
+                    ]}
+                  />
+                  <Picker
+                    label="Saved place"
+                    onSelectionChange={savedPlaceId =>
+                      setScheduleForm(current => ({ ...current, savedPlaceId }))
+                    }
+                    selection={scheduleForm.savedPlaceId}
+                    systemImage="mappin.and.ellipse"
+                    modifiers={[pickerStyle('navigationLink'), disabled(!isOnline || pending)]}
+                  >
+                    <SwiftText modifiers={[tag('')]}>Custom activity</SwiftText>
+                    {trip.places.map(candidate => (
+                      <SwiftText key={candidate.id} modifiers={[tag(candidate.id)]}>
+                        {candidate.name}
+                      </SwiftText>
+                    ))}
+                  </Picker>
+                  <Picker
+                    label="Category"
+                    onSelectionChange={category =>
+                      setScheduleForm(current => ({ ...current, category }))
+                    }
+                    selection={scheduleForm.category}
+                    systemImage="tag"
+                    modifiers={[pickerStyle('navigationLink'), disabled(!isOnline || pending)]}
+                  >
+                    {placeCategories.map(category => (
+                      <SwiftText key={category.value} modifiers={[tag(category.value)]}>
+                        {category.label}
+                      </SwiftText>
+                    ))}
+                  </Picker>
+                </Section>
+                <Section title="Cost">
+                  <TextField
+                    onTextChange={amount => setScheduleForm(current => ({ ...current, amount }))}
+                    placeholder="Amount (optional)"
+                    text={nativeScheduleAmount}
+                    modifiers={[
+                      accessibilityLabel('Cost'),
+                      keyboardType('decimal-pad'),
+                      disabled(!isOnline || pending),
+                    ]}
+                  />
+                  <Picker
+                    label="Currency"
+                    onSelectionChange={currency =>
+                      setScheduleForm(current => ({ ...current, currency }))
+                    }
+                    selection={scheduleForm.currency}
+                    modifiers={[pickerStyle('navigationLink'), disabled(!isOnline || pending)]}
+                  >
+                    {currencyOptions.map(currency => (
+                      <SwiftText key={currency.value} modifiers={[tag(currency.value)]}>
+                        {currency.label}
+                      </SwiftText>
+                    ))}
+                  </Picker>
+                </Section>
+                <Section title="Notes">
+                  <TextField
+                    axis="vertical"
+                    onTextChange={note => setScheduleForm(current => ({ ...current, note }))}
+                    placeholder="Reservations, reminders, or directions"
+                    text={nativeScheduleNote}
+                    modifiers={[
+                      accessibilityLabel('Notes'),
+                      lineLimit({ min: 3, max: 6 }),
+                      textInputAutocapitalization('sentences'),
+                      disabled(!isOnline || pending),
+                    ]}
+                  />
+                </Section>
+              </>
+            ) : null}
+
+            {kind === 'place' ? (
+              <>
+                <Section title="Place details">
+                  <TextField
+                    autoFocus={!place}
+                    onTextChange={name => setPlaceForm(current => ({ ...current, name }))}
+                    placeholder="Place name"
+                    text={nativePlaceName}
+                    modifiers={[
+                      accessibilityLabel('Place name'),
+                      textInputAutocapitalization('words'),
+                      disabled(Boolean(place) || !isOnline || pending),
+                    ]}
+                  />
+                  {!place ? (
+                    <Picker
+                      label="Category"
+                      onSelectionChange={category =>
+                        setPlaceForm(current => ({ ...current, category }))
+                      }
+                      selection={placeForm.category}
+                      systemImage="tag"
+                      modifiers={[pickerStyle('navigationLink'), disabled(!isOnline || pending)]}
+                    >
+                      {placeCategories.map(category => (
+                        <SwiftText key={category.value} modifiers={[tag(category.value)]}>
+                          {category.label}
+                        </SwiftText>
+                      ))}
+                    </Picker>
+                  ) : null}
+                  {place ? (
+                    <Toggle
+                      isOn={placeForm.favorite}
+                      label="Favourite"
+                      systemImage="heart"
+                      onIsOnChange={favorite => setPlaceForm(current => ({ ...current, favorite }))}
+                      modifiers={[disabled(!isOnline || pending)]}
+                    />
+                  ) : null}
+                </Section>
+                {!place ? (
+                  <Section title="Map coordinates">
+                    <TextField
+                      onTextChange={lat => setPlaceForm(current => ({ ...current, lat }))}
+                      placeholder="Latitude"
+                      text={nativePlaceLatitude}
+                      modifiers={[
+                        accessibilityLabel('Latitude'),
+                        keyboardType('decimal-pad'),
+                        disabled(!isOnline || pending),
+                      ]}
+                    />
+                    <TextField
+                      onTextChange={lng => setPlaceForm(current => ({ ...current, lng }))}
+                      placeholder="Longitude"
+                      text={nativePlaceLongitude}
+                      modifiers={[
+                        accessibilityLabel('Longitude'),
+                        keyboardType('decimal-pad'),
+                        disabled(!isOnline || pending),
+                      ]}
+                    />
+                  </Section>
+                ) : null}
+                <Section title="Notes">
+                  <TextField
+                    axis="vertical"
+                    onTextChange={comment => setPlaceForm(current => ({ ...current, comment }))}
+                    placeholder="Notes"
+                    text={nativePlaceComment}
+                    modifiers={[
+                      accessibilityLabel('Place notes'),
+                      lineLimit({ min: 3, max: 6 }),
+                      textInputAutocapitalization('sentences'),
+                      disabled(!isOnline || pending),
+                    ]}
+                  />
+                </Section>
+              </>
+            ) : null}
+
+            {kind === 'stay' ? (
+              <>
+                <Section
+                  footer={
+                    <SwiftText>
+                      Search Google Maps or link a saved hotel to keep its details attached to this
+                      stay.
+                    </SwiftText>
+                  }
+                  title="Hotel"
+                >
+                  <StayHotelSearch
+                    destinationLabel={trip.destinationLabel}
+                    places={trip.places}
+                    tripId={trip.id}
+                    onSelect={selectHotelForStay}
+                  />
+                  {stayForm.savedPlaceId ? (
+                    <SwiftButton
+                      label="Unlink hotel"
+                      modifiers={[buttonStyle('borderless'), disabled(!isOnline || pending)]}
+                      onPress={() => setStayForm(current => ({ ...current, savedPlaceId: '' }))}
+                    />
+                  ) : null}
+                </Section>
+                <Section title="Stay details">
+                  <TextField
+                    onTextChange={name => setStayForm(current => ({ ...current, name }))}
+                    placeholder="Stay name"
+                    text={nativeStayName}
+                    modifiers={[
+                      accessibilityLabel('Stay name'),
+                      textInputAutocapitalization('words'),
+                      disabled(!isOnline || pending),
+                    ]}
+                  />
+                  <TextField
+                    onTextChange={address => setStayForm(current => ({ ...current, address }))}
+                    placeholder="Address"
+                    text={nativeStayAddress}
+                    modifiers={[
+                      accessibilityLabel('Address'),
+                      textInputAutocapitalization('words'),
+                      disabled(!isOnline || pending),
+                    ]}
+                  />
+                  <TextField
+                    onTextChange={locationLabel =>
+                      setStayForm(current => ({ ...current, locationLabel }))
+                    }
+                    placeholder="City or area"
+                    text={nativeStayLocation}
+                    modifiers={[
+                      accessibilityLabel('City or area'),
+                      textInputAutocapitalization('words'),
+                      disabled(!isOnline || pending),
+                    ]}
+                  />
+                </Section>
+                <Section title="Dates">
+                  <DatePicker
+                    displayedComponents={['date']}
+                    onDateChange={checkInDate =>
+                      setStayForm(current => ({
+                        ...current,
+                        checkInDate: dateTimeFieldValue(checkInDate, 'date'),
+                      }))
+                    }
+                    selection={dateTimePickerDate(stayForm.checkInDate, 'date')}
+                    title="Check-in"
+                    modifiers={[datePickerStyle('compact'), disabled(!isOnline || pending)]}
+                  />
+                  <DatePicker
+                    displayedComponents={['date']}
+                    onDateChange={checkOutDate =>
+                      setStayForm(current => ({
+                        ...current,
+                        checkOutDate: dateTimeFieldValue(checkOutDate, 'date'),
+                      }))
+                    }
+                    selection={dateTimePickerDate(stayForm.checkOutDate, 'date')}
+                    title="Check-out"
+                    modifiers={[datePickerStyle('compact'), disabled(!isOnline || pending)]}
+                  />
+                </Section>
+                <Section title="Booking">
+                  <TextField
+                    onTextChange={priceAmount =>
+                      setStayForm(current => ({ ...current, priceAmount }))
+                    }
+                    placeholder={`Price (${stayForm.priceCurrency})`}
+                    text={nativeStayPrice}
+                    modifiers={[
+                      accessibilityLabel('Price'),
+                      keyboardType('decimal-pad'),
+                      disabled(!isOnline || pending),
+                    ]}
+                  />
+                  <Picker
+                    label="Price currency"
+                    onSelectionChange={priceCurrency =>
+                      setStayForm(current => ({ ...current, priceCurrency }))
+                    }
+                    selection={stayForm.priceCurrency}
+                    modifiers={[pickerStyle('navigationLink'), disabled(!isOnline || pending)]}
+                  >
+                    {currencyOptions.map(currency => (
+                      <SwiftText key={currency.value} modifiers={[tag(currency.value)]}>
+                        {currency.label}
+                      </SwiftText>
+                    ))}
+                  </Picker>
+                  <DatePicker
+                    displayedComponents={['hourAndMinute']}
+                    onDateChange={cancellationTime =>
+                      setStayForm(current => ({
+                        ...current,
+                        cancellationTime: dateTimeFieldValue(cancellationTime, 'time'),
+                      }))
+                    }
+                    selection={dateTimePickerDate(stayForm.cancellationTime || '12:00', 'time')}
+                    title="Cancellation time"
+                    modifiers={[datePickerStyle('compact'), disabled(!isOnline || pending)]}
+                  />
+                  <TextField
+                    onTextChange={confirmationNumber =>
+                      setStayForm(current => ({ ...current, confirmationNumber }))
+                    }
+                    placeholder="Confirmation number"
+                    text={nativeStayConfirmation}
+                    modifiers={[disabled(!isOnline || pending)]}
+                  />
+                  <SecureField
+                    onTextChange={secretCode =>
+                      setStayForm(current => ({ ...current, secretCode }))
+                    }
+                    placeholder="Access or secret code"
+                    text={nativeStaySecretCode}
+                    modifiers={[
+                      accessibilityLabel('Access or secret code'),
+                      disabled(!isOnline || pending),
+                    ]}
+                  />
+                </Section>
+                <Section title="Notes">
+                  <TextField
+                    axis="vertical"
+                    onTextChange={notes => setStayForm(current => ({ ...current, notes }))}
+                    placeholder="Notes"
+                    text={nativeStayNotes}
+                    modifiers={[
+                      accessibilityLabel('Stay notes'),
+                      lineLimit({ min: 3, max: 6 }),
+                      textInputAutocapitalization('sentences'),
+                      disabled(!isOnline || pending),
+                    ]}
+                  />
+                </Section>
+              </>
+            ) : null}
+
+            {kind === 'segment' ? (
+              <>
+                {!segment ? (
+                  <Section
+                    footer={
+                      <SwiftText>Choose the location that this new stop will split.</SwiftText>
+                    }
+                    title="Split a location"
+                  >
+                    <Picker
+                      label="Location"
+                      onSelectionChange={sourceSegmentId =>
+                        setSegmentForm(current => ({ ...current, sourceSegmentId }))
+                      }
+                      selection={segmentForm.sourceSegmentId}
+                      systemImage="map"
+                      modifiers={[pickerStyle('navigationLink'), disabled(!isOnline || pending)]}
+                    >
+                      {trip.locationSegments.map(candidate => (
+                        <SwiftText key={candidate.id} modifiers={[tag(candidate.id)]}>
+                          {candidate.locationName}
+                        </SwiftText>
+                      ))}
+                    </Picker>
+                  </Section>
+                ) : null}
+                <Section title="Location details">
+                  <TextField
+                    onTextChange={locationName =>
+                      setSegmentForm(current => ({ ...current, locationName }))
+                    }
+                    placeholder="Location name"
+                    text={nativeSegmentName}
+                    modifiers={[
+                      accessibilityLabel('Location name'),
+                      textInputAutocapitalization('words'),
+                      disabled(!isOnline || pending),
+                    ]}
+                  />
+                  <TextField
+                    onTextChange={country => setSegmentForm(current => ({ ...current, country }))}
+                    placeholder="Country"
+                    text={nativeSegmentCountry}
+                    modifiers={[
+                      textInputAutocapitalization('words'),
+                      disabled(!isOnline || pending),
+                    ]}
+                  />
+                  <TextField
+                    onTextChange={area => setSegmentForm(current => ({ ...current, area }))}
+                    placeholder="Area"
+                    text={nativeSegmentArea}
+                    modifiers={[
+                      textInputAutocapitalization('words'),
+                      disabled(!isOnline || pending),
+                    ]}
+                  />
+                </Section>
+                <Section title="Dates">
+                  <DatePicker
+                    displayedComponents={['date']}
+                    onDateChange={startDate =>
+                      setSegmentForm(current => ({
+                        ...current,
+                        startDate: dateTimeFieldValue(startDate, 'date'),
+                      }))
+                    }
+                    selection={dateTimePickerDate(segmentForm.startDate, 'date')}
+                    title="Start date"
+                    modifiers={[datePickerStyle('compact'), disabled(!isOnline || pending)]}
+                  />
+                  {segment ? (
+                    <DatePicker
+                      displayedComponents={['date']}
+                      onDateChange={endDate =>
+                        setSegmentForm(current => ({
+                          ...current,
+                          endDate: dateTimeFieldValue(endDate, 'date'),
+                        }))
+                      }
+                      selection={dateTimePickerDate(segmentForm.endDate, 'date')}
+                      title="End date"
+                      modifiers={[datePickerStyle('compact'), disabled(!isOnline || pending)]}
+                    />
+                  ) : null}
+                </Section>
+                <Section title="Map coordinates">
+                  <TextField
+                    onTextChange={latitude => setSegmentForm(current => ({ ...current, latitude }))}
+                    placeholder="Latitude"
+                    text={nativeSegmentLatitude}
+                    modifiers={[
+                      accessibilityLabel('Latitude'),
+                      keyboardType('decimal-pad'),
+                      disabled(!isOnline || pending),
+                    ]}
+                  />
+                  <TextField
+                    onTextChange={longitude =>
+                      setSegmentForm(current => ({ ...current, longitude }))
+                    }
+                    placeholder="Longitude"
+                    text={nativeSegmentLongitude}
+                    modifiers={[
+                      accessibilityLabel('Longitude'),
+                      keyboardType('decimal-pad'),
+                      disabled(!isOnline || pending),
+                    ]}
+                  />
+                </Section>
+                {segment ? (
+                  <Section
+                    footer={<SwiftText>Places can appear in more than one map area.</SwiftText>}
+                    title="Places in this map area"
+                  >
+                    {trip.places.map(candidate => {
+                      const assigned = candidate.locationSegmentIds?.includes(segment.id) ?? false;
+                      return (
+                        <HStack key={candidate.id} spacing={12}>
+                          <Label title={candidate.name} systemImage="mappin" />
+                          <Spacer />
+                          <SwiftButton
+                            label={assigned ? 'Remove' : 'Assign'}
+                            modifiers={[
+                              buttonStyle('bordered'),
+                              disabled(!isOnline || assignmentMutation.isPending),
+                            ]}
+                            onPress={() =>
+                              assignmentMutation.mutate({ savedPlaceId: candidate.id, assigned })
+                            }
+                          />
+                        </HStack>
+                      );
+                    })}
+                  </Section>
+                ) : null}
+              </>
+            ) : null}
+
+            {kind === 'day' ? (
+              <Section
+                title={day ? `Notes for ${formatDate(day.date, { weekday: 'long' })}` : 'Day notes'}
+              >
+                <TextField
+                  axis="vertical"
+                  onTextChange={setDayNotes}
+                  placeholder="Add a note for this day"
+                  text={nativeDayNotes}
+                  modifiers={[
+                    accessibilityLabel('Day notes'),
+                    lineLimit({ min: 4, max: 8 }),
+                    textInputAutocapitalization('sentences'),
+                    disabled(!isOnline || pending),
+                  ]}
+                />
+              </Section>
+            ) : null}
+
+            {kind === 'flight' ? (
+              <>
+                <Section title="Find a flight">
+                  <TextField
+                    autoFocus
+                    onTextChange={setFlightNumber}
+                    placeholder="Flight number"
+                    text={nativeFlightNumber}
+                    modifiers={[
+                      accessibilityLabel('Flight number'),
+                      textInputAutocapitalization('characters'),
+                      disabled(!isOnline || searchFlightMutation.isPending),
+                    ]}
+                  />
+                  <DatePicker
+                    displayedComponents={['date']}
+                    onDateChange={departureDate =>
+                      setFlightDate(dateTimeFieldValue(departureDate, 'date'))
+                    }
+                    selection={dateTimePickerDate(flightDate, 'date')}
+                    title="Departure date"
+                    modifiers={[
+                      datePickerStyle('compact'),
+                      disabled(!isOnline || searchFlightMutation.isPending),
+                    ]}
+                  />
+                  <SwiftButton
+                    label={searchFlightMutation.isPending ? 'Searching…' : 'Search flights'}
+                    systemImage="magnifyingglass"
+                    modifiers={[
+                      buttonStyle('borderedProminent'),
+                      disabled(!isOnline || searchFlightMutation.isPending),
+                    ]}
+                    onPress={() =>
+                      void searchFlightMutation
+                        .mutateAsync(undefined)
+                        .catch(error => setMessage(messageFromError(error)))
+                    }
+                  />
+                </Section>
+                {flightResults.length ? (
+                  <Section title="Matches">
+                    {flightResults.map(flight => (
+                      <VStack
+                        key={`${flight.flightNumber}-${flight.scheduledDepartureUtc}`}
+                        alignment="leading"
+                        spacing={4}
+                      >
+                        <Label
+                          title={`${flight.flightNumber} · ${flight.airlineName ?? 'Flight'}`}
+                          systemImage="airplane"
+                        />
+                        <SwiftText>{flight.scheduledDepartureLocal}</SwiftText>
+                        <SwiftButton
+                          label={addFlightMutation.isPending ? 'Adding…' : 'Add flight'}
+                          modifiers={[
+                            buttonStyle('bordered'),
+                            disabled(!isOnline || addFlightMutation.isPending),
+                          ]}
+                          onPress={() =>
+                            void addFlightMutation
+                              .mutateAsync(flight)
+                              .then(() => router.back())
+                              .catch(error => setMessage(messageFromError(error)))
+                          }
+                        />
+                      </VStack>
+                    ))}
+                  </Section>
+                ) : null}
+              </>
+            ) : null}
+
+            {segment ? (
+              <Section title="Danger zone">
+                <SwiftButton
+                  label={deleteSegmentMutation.isPending ? 'Deleting…' : 'Delete location'}
+                  role="destructive"
+                  systemImage="trash"
+                  modifiers={[disabled(!isOnline || deleteSegmentMutation.isPending)]}
+                  onPress={() =>
+                    Alert.alert(
+                      'Delete this location?',
+                      'Assigned places will no longer be associated with this location.',
+                      [
+                        { text: 'Cancel', style: 'cancel' },
+                        {
+                          text: 'Delete',
+                          style: 'destructive',
+                          onPress: () =>
+                            void deleteSegmentMutation
+                              .mutateAsync(undefined)
+                              .then(() => router.back())
+                              .catch(error => setMessage(messageFromError(error))),
+                        },
+                      ],
+                    )
+                  }
+                />
+              </Section>
+            ) : null}
+          </Form>
+        </Host>
+        {schedule && scheduleReminder ? (
+          <Stack.Toolbar placement="left">
+            <Stack.Toolbar.Button
+              accessibilityLabel={`Create a reminder for ${scheduleReminder.sourceTitle}`}
+              disabled={!isOnline}
+              icon="bell.badge"
+              onPress={() =>
+                router.push({
+                  pathname: '/reminder-editor',
+                  params: {
+                    remindAtLocal: scheduleReminder.remindAtLocal,
+                    scheduleItemId: schedule.id,
+                    sourceKind: 'SCHEDULE_ITEM',
+                    sourceTitle: scheduleReminder.sourceTitle,
+                  },
+                })
+              }
+              tintColor={nativeColors.accent}
+            />
+          </Stack.Toolbar>
+        ) : null}
+        {kind !== 'flight' ? (
+          <Stack.Toolbar placement="right">
+            <Stack.Toolbar.Button
+              accessibilityLabel={isExisting ? 'Save changes' : 'Add to trip'}
+              disabled={!isOnline || pending}
+              onPress={() => void save()}
+              tintColor={nativeColors.accent}
+              variant="done"
+            >
+              {isExisting ? 'Save' : 'Add'}
+            </Stack.Toolbar.Button>
+          </Stack.Toolbar>
+        ) : null}
+      </>
+    );
   }
 
   return (

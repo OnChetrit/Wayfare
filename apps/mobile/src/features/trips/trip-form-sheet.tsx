@@ -2,7 +2,7 @@ import type { TripEditorTrip, TripInput, TripSummary } from '@wayfare/domain';
 import { useQueryClient } from '@tanstack/react-query';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import * as React from 'react';
-import { Alert, ScrollView, Text } from 'react-native';
+import { Alert, ScrollView, Text, View } from 'react-native';
 import {
   Button as SwiftButton,
   ConfirmationDialog,
@@ -10,6 +10,7 @@ import {
   Form,
   Host,
   Label,
+  Picker,
   Section,
   Text as SwiftText,
   TextField,
@@ -19,13 +20,16 @@ import {
   datePickerStyle,
   disabled,
   foregroundStyle,
+  pickerStyle,
   scrollDismissesKeyboard,
+  tag,
   textInputAutocapitalization,
 } from '@expo/ui/swift-ui/modifiers';
 
 import { createTrip, deleteTrip, updateTrip, type TripSettingsInput } from '@/api/trips';
 import { tripKeys } from '@/api/query-keys';
 import { Button } from '@/components/ui/button';
+import { ChipGroup } from '@/components/ui/controls';
 import { DateTimeField } from '@/components/ui/date-time-field';
 import { dateTimeFieldValue, dateTimePickerDate } from '@/components/ui/date-time-field-value';
 import { Field } from '@/components/ui/field';
@@ -42,6 +46,7 @@ import {
 import { useTrips } from '@/features/trips/trip-context';
 import { useTripEditor } from '@/features/trips/use-trip-editor';
 import { messageFromError } from '@/lib/format';
+import { currencyOptions } from '@/lib/account-preferences';
 import { preferredCurrency } from '@/lib/user-preferences';
 import { space } from '@/theme/tokens';
 import { useTheme } from '@/theme/theme-provider';
@@ -121,7 +126,6 @@ function TripForm({
   const [isDeleteConfirmationPresented, setIsDeleteConfirmationPresented] = React.useState(false);
   const nativeName = useNativeState(initialForm.name);
   const nativeDestination = useNativeState(initialForm.destinationLabel);
-  const nativeCurrency = useNativeState(initialForm.defaultCurrency);
   const defaultTimeZone = trip?.defaultTimeZone ?? deviceTimeZone();
   const tripSummary = trips.find(candidate => candidate.id === trip?.id);
   const isOwner = tripSummary?.ownerId === session?.user.id;
@@ -175,7 +179,6 @@ function TripForm({
       process.env.EXPO_OS === 'ios'
         ? {
             ...form,
-            defaultCurrency: nativeCurrency.get(),
             destinationLabel: nativeDestination.get(),
             name: nativeName.get(),
           }
@@ -326,13 +329,19 @@ function TripForm({
             </Section>
 
             <Section title="Default currency">
-              <TextField
-                maxLength={3}
-                onTextChange={defaultCurrency => update('defaultCurrency', defaultCurrency)}
-                placeholder="EUR"
-                text={nativeCurrency}
-                modifiers={[textInputAutocapitalization('characters'), disabled(isFormDisabled)]}
-              />
+              <Picker
+                label="Currency"
+                onSelectionChange={defaultCurrency => update('defaultCurrency', defaultCurrency)}
+                selection={form.defaultCurrency}
+                systemImage="banknote"
+                modifiers={[pickerStyle('menu'), disabled(isFormDisabled)]}
+              >
+                {currencyOptions.map(currency => (
+                  <SwiftText key={currency.value} modifiers={[tag(currency.value)]}>
+                    {currency.label}
+                  </SwiftText>
+                ))}
+              </Picker>
             </Section>
 
             {formError ? (
@@ -424,15 +433,17 @@ function TripForm({
           onChangeText={endDate => update('endDate', endDate)}
           value={form.endDate}
         />
-        <Field
-          accessibilityLabel="Default currency"
-          autoCapitalize="characters"
-          label="Default currency"
-          maxLength={3}
-          onChangeText={defaultCurrency => update('defaultCurrency', defaultCurrency)}
-          placeholder="EUR"
-          value={form.defaultCurrency}
-        />
+        <View style={{ gap: 7 }}>
+          <Text selectable style={{ color: colors.textMuted, fontSize: 13, fontWeight: '700' }}>
+            Default currency
+          </Text>
+          <ChipGroup
+            disabled={isFormDisabled}
+            options={[...currencyOptions]}
+            value={form.defaultCurrency}
+            onChange={defaultCurrency => update('defaultCurrency', defaultCurrency)}
+          />
+        </View>
         {formError ? (
           <Text selectable style={{ color: colors.danger, lineHeight: 20 }}>
             {formError}
