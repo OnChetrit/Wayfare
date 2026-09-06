@@ -4,11 +4,13 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
   name: 'Wayfare',
   slug: 'wayfare',
+  icon: './assets/images/icon.png',
   scheme: 'wayfare',
   version: '0.1.0',
   orientation: 'portrait',
   userInterfaceStyle: 'automatic',
   ios: {
+    icon: './assets/wayfare.icon',
     bundleIdentifier: 'com.onchetrit.wayfare',
     supportsTablet: false,
     infoPlist: {
@@ -16,6 +18,12 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     },
   },
   android: {
+    adaptiveIcon: {
+      backgroundColor: '#F8F9F5',
+      backgroundImage: './assets/images/android-icon-background.png',
+      foregroundImage: './assets/images/android-icon-foreground.png',
+      monochromeImage: './assets/images/android-icon-monochrome.png',
+    },
     package: 'com.onchetrit.wayfare',
     permissions: ['android.permission.SCHEDULE_EXACT_ALARM'],
   },

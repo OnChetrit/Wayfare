@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+export { wayfareLogo } from './brand';
+
 export const placeCategories = [
   'HOTEL',
   'RESTAURANT',

@@ -11,6 +11,8 @@ import {
   Route,
 } from 'lucide-react';
 
+import { WayfareLogoIcon } from '@/components/wayfare-logo-icon';
+
 import { LandingMotion } from './LandingMotion';
 import styles from './LandingPage.module.scss';
 
@@ -192,7 +194,7 @@ export function LandingPage() {
         <footer className={styles.footer} data-reveal>
           <div className={styles.footerBrand}>
             <Link href="/" className={styles.footerLogo}>
-              <Compass size={17} strokeWidth={2.5} aria-hidden="true" /> wayfare
+              <WayfareLogoIcon /> wayfare
             </Link>
             <p>Thoughtful tools for independently minded travelers.</p>
           </div>

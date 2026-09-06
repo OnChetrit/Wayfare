@@ -1,4 +1,7 @@
 import { View } from 'react-native';
+import Svg, { Circle, Path } from 'react-native-svg';
+
+import { wayfareLogo } from '@wayfare/domain';
 
 import { useTheme } from '@/theme/theme-provider';
 
@@ -8,8 +11,8 @@ type WayfareMarkProps = {
 
 export function WayfareMark({ size = 64 }: WayfareMarkProps) {
   const { colors } = useTheme();
-  const inset = size * 0.18;
-  const dotSize = size * 0.18;
+  const compassSize = (size * wayfareLogo.compass.size) / wayfareLogo.mark.size;
+  const cornerRadius = (size * wayfareLogo.mark.cornerRadius) / wayfareLogo.mark.size;
 
   return (
     <View
@@ -17,44 +20,27 @@ export function WayfareMark({ size = 64 }: WayfareMarkProps) {
         alignItems: 'center',
         backgroundColor: colors.accent,
         borderCurve: 'continuous',
-        borderRadius: size * 0.32,
+        borderRadius: cornerRadius,
         height: size,
         justifyContent: 'center',
-        overflow: 'hidden',
+        transform: [{ rotate: `${wayfareLogo.mark.rotationDegrees}deg` }],
         width: size,
       }}
     >
-      <View
-        style={{
-          backgroundColor: colors.accentText,
-          borderRadius: dotSize / 2,
-          height: dotSize,
-          left: inset,
-          position: 'absolute',
-          top: inset,
-          width: dotSize,
-        }}
-      />
-      <View
-        style={{
-          backgroundColor: colors.accentText,
-          borderRadius: dotSize / 2,
-          bottom: inset,
-          height: dotSize,
-          position: 'absolute',
-          right: inset,
-          width: dotSize,
-        }}
-      />
-      <View
-        style={{
-          backgroundColor: colors.accentText,
-          borderRadius: size,
-          height: size * 0.12,
-          transform: [{ rotate: '45deg' }],
-          width: size * 0.7,
-        }}
-      />
+      <Svg
+        fill="none"
+        height={compassSize}
+        stroke={colors.accentText}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2.5}
+        style={{ transform: [{ rotate: `${wayfareLogo.compass.rotationDegrees}deg` }] }}
+        viewBox={wayfareLogo.compass.viewBox}
+        width={compassSize}
+      >
+        <Path d={wayfareLogo.compass.path} />
+        <Circle {...wayfareLogo.compass.circle} />
+      </Svg>
     </View>
   );
 }

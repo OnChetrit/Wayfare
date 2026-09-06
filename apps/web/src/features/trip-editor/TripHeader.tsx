@@ -8,7 +8,6 @@ import { useRef, useState } from 'react';
 import {
   Check,
   ChevronDown,
-  Compass,
   List,
   Map,
   Menu,
@@ -18,6 +17,9 @@ import {
   WalletCards,
   X,
 } from 'lucide-react';
+
+import { WayfareLogoIcon } from '@/components/wayfare-logo-icon';
+
 import styles from './TripHeader.module.scss';
 import type { TripEditorTrip, TripEditorUser, TripSummary, WorkspaceView } from './types';
 import { useClickOutside } from './use-click-outside';
@@ -143,7 +145,7 @@ export function TripHeader({
     <header ref={topbarRef} className={styles.topbar} data-enter>
       <div className={styles.brand}>
         <span className={styles.brandMark}>
-          <Compass size={17} strokeWidth={2.5} />
+          <WayfareLogoIcon />
         </span>
         <span>wayfare</span>
       </div>

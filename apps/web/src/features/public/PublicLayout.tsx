@@ -2,7 +2,10 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { ArrowUpRight, Compass } from 'lucide-react';
+import { ArrowUpRight } from 'lucide-react';
+
+import { WayfareLogoIcon } from '@/components/wayfare-logo-icon';
+
 import styles from './PublicLayout.module.scss';
 
 export function PublicLayout({ children }: { children: React.ReactNode }) {
@@ -20,7 +23,7 @@ export function PublicLayout({ children }: { children: React.ReactNode }) {
       <header className={styles.header}>
         <Link href="/" className={styles.brand} aria-label="Wayfare home">
           <span className={styles.brandMark}>
-            <Compass size={17} strokeWidth={2.6} aria-hidden="true" />
+            <WayfareLogoIcon strokeWidth={2.6} />
           </span>
           <span>wayfare</span>
         </Link>
