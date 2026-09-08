@@ -13,6 +13,8 @@ import styles from './DateStrip.module.scss';
 import { isTimelinePlaceDrag, parseTimelineDragPayload } from './timeline-dnd';
 import type { LocationSegment, SavedPlace, ScheduleItem, TripDay } from './types';
 
+const SCROLL_EDGE_TOLERANCE_PX = 2;
+
 export type DateStripHandle = {
   scrollByDay: (direction: -1 | 1) => void;
 };
@@ -61,10 +63,11 @@ export const DateStrip = forwardRef<DateStripHandle, DateStripProps>(function Da
   const updateScrollState = useCallback(() => {
     const scroller = scrollerRef.current;
     if (!scroller || !onScrollStateChange) return;
+    const maxScrollLeft = Math.max(0, scroller.scrollWidth - scroller.clientWidth);
 
     onScrollStateChange({
-      canScrollPrevious: scroller.scrollLeft > 1,
-      canScrollNext: scroller.scrollLeft + scroller.clientWidth < scroller.scrollWidth - 1,
+      canScrollPrevious: scroller.scrollLeft > SCROLL_EDGE_TOLERANCE_PX,
+      canScrollNext: scroller.scrollLeft < maxScrollLeft - SCROLL_EDGE_TOLERANCE_PX,
     });
   }, [onScrollStateChange]);
 
