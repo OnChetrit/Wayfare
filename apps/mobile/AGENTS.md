@@ -37,8 +37,8 @@
 
   ```bash
   cd apps/mobile
-  npx expo prebuild --clean --platform ios
-  npx expo run:ios --device "iPhone 17 Pro Max"
+  pnpm exec expo prebuild --clean --platform ios
+  pnpm exec expo run:ios --device "iPhone 17 Pro Max"
   ```
 
 - If an error says a native module cannot be found (for example, `ExpoPushTokenManager`), first check whether `ios/Podfile.lock` contains the expected pod. Regenerate with the commands above; do not edit `ios/` directly.
@@ -46,4 +46,4 @@
 ## Verification
 
 - Add unit tests for formatting, validators/contracts, API error parsing, and query-key/invalidation behavior. Add component tests whenever behavior changes in auth redirects, trip selection, editors, confirmations, or map search.
-- Run `npm run lint --workspace=@wayfare/mobile`, `npm run typecheck --workspace=@wayfare/mobile`, `npm run test --workspace=@wayfare/mobile`, and `npm run format:check --workspace=@wayfare/mobile` before handoff.
+- Run `pnpm --filter @wayfare/mobile lint`, `pnpm --filter @wayfare/mobile typecheck`, `pnpm --filter @wayfare/mobile test`, and `pnpm --filter @wayfare/mobile format:check` before handoff.

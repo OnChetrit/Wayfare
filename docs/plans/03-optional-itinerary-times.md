@@ -55,11 +55,11 @@ Acceptance criteria:
 Run before handoff:
 
 ```bash
-npm run lint
-npm run typecheck
-npm test
-npm run format:check
-npm run build
+pnpm run lint
+pnpm run typecheck
+pnpm test
+pnpm run format:check
+pnpm run build
 ```
 
 Apply the new migration to a representative copy of the schema, then manually verify timed and untimed edits in web and on an iPhone.

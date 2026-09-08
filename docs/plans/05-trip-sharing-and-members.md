@@ -53,11 +53,11 @@ Acceptance criteria:
 Run before handoff:
 
 ```bash
-npm run lint
-npm run typecheck
-npm test
-npm run format:check
-npm run build
+pnpm run lint
+pnpm run typecheck
+pnpm test
+pnpm run format:check
+pnpm run build
 ```
 
 Manually validate invitations with owner/editor/viewer/recipient accounts in a browser and on an iPhone, including expired, revoked, and max-use links.

@@ -52,11 +52,11 @@ Acceptance criteria:
 Run before handoff:
 
 ```bash
-npm run lint
-npm run typecheck
-npm test
-npm run format:check
-npm run build
+pnpm run lint
+pnpm run typecheck
+pnpm test
+pnpm run format:check
+pnpm run build
 ```
 
 Manually verify a multi-location trip with a place in two shortlists, an unscheduled place, a coordinate-less custom place, and a viewer account.

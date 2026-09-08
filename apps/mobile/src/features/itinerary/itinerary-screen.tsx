@@ -13,10 +13,14 @@ import {
   VStack,
 } from '@expo/ui/swift-ui';
 import {
+  accessibilityAddTraits,
+  accessibilityLabel,
   buttonStyle,
   disabled,
+  font,
   foregroundStyle,
   listStyle,
+  monospacedDigit,
   refreshable,
   tag,
   tint,
@@ -67,6 +71,30 @@ function stayEventTitle(event: Extract<DayItineraryEntry, { kind: 'stay' }>['eve
   if (event === 'check-in') return 'Check in';
   if (event === 'check-out') return 'Check out';
   return 'Stay';
+}
+
+function dayDateParts(shortDate: string) {
+  const [month = '', day = shortDate] = shortDate.split(' ');
+  return { day, month };
+}
+
+function scheduleEntryDetail(item: {
+  amount?: number;
+  currency?: string;
+  duration: number;
+  note?: string;
+}) {
+  return [
+    formatDuration(item.duration),
+    item.amount != null && item.currency ? formatMoney(item.amount, item.currency) : null,
+    item.note,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+}
+
+function entryCountLabel(count: number) {
+  return count === 1 ? '1 item planned' : `${count} items planned`;
 }
 
 export function ItineraryScreen() {
@@ -181,28 +209,71 @@ export function ItineraryScreen() {
             </Section>
             <Section title="Days">
               <SwiftScrollView axes="horizontal" showsIndicators={false}>
-                <HStack spacing={8}>
-                  {trip.days.map(day => (
-                    <SwiftButton
-                      key={day.id}
-                      label={`${day.label} · ${day.shortDate}`}
-                      modifiers={[
-                        buttonStyle(
-                          day.date === selectedDay.date ? 'borderedProminent' : 'bordered',
-                        ),
-                      ]}
-                      onPress={() => selectTripDay(day.date)}
-                    />
-                  ))}
+                <HStack spacing={10}>
+                  {trip.days.map(day => {
+                    const isSelected = day.date === selectedDay.date;
+                    const { day: dayNumber, month } = dayDateParts(day.shortDate);
+
+                    return (
+                      <SwiftButton
+                        key={day.id}
+                        modifiers={[
+                          buttonStyle(isSelected ? 'borderedProminent' : 'bordered'),
+                          accessibilityLabel(
+                            `View ${day.label}, ${formatDate(day.date, {
+                              weekday: 'long',
+                              month: 'long',
+                            })}`,
+                          ),
+                          ...(isSelected ? [accessibilityAddTraits(['isSelected'])] : []),
+                        ]}
+                        onPress={() => selectTripDay(day.date)}
+                      >
+                        <VStack alignment="center" spacing={1}>
+                          <SwiftText
+                            modifiers={[font({ textStyle: 'caption', weight: 'semibold' })]}
+                          >
+                            {day.weekday}
+                          </SwiftText>
+                          <SwiftText
+                            modifiers={[
+                              font({ textStyle: 'title3', weight: 'bold' }),
+                              monospacedDigit(),
+                            ]}
+                          >
+                            {dayNumber}
+                          </SwiftText>
+                          <SwiftText modifiers={[font({ textStyle: 'caption2' })]}>
+                            {month}
+                          </SwiftText>
+                        </VStack>
+                      </SwiftButton>
+                    );
+                  })}
                 </HStack>
               </SwiftScrollView>
             </Section>
             <Section
-              title={`${selectedDay.label} · ${formatDate(selectedDay.date, {
-                weekday: 'long',
-                month: 'long',
-              })}`}
+              footer={
+                <SwiftText>
+                  {dayEntries.length
+                    ? entryCountLabel(dayEntries.length)
+                    : 'Keep this day open or add an activity when you are ready.'}
+                </SwiftText>
+              }
+              title="Day plan"
             >
+              <VStack alignment="leading" spacing={2}>
+                <SwiftText modifiers={[font({ textStyle: 'title3', weight: 'bold' })]}>
+                  {selectedDay.label} ·{' '}
+                  {formatDate(selectedDay.date, { weekday: 'long', month: 'long' })}
+                </SwiftText>
+                <SwiftText
+                  modifiers={[font({ textStyle: 'subheadline' }), foregroundStyle('secondary')]}
+                >
+                  {entryCountLabel(dayEntries.length)}
+                </SwiftText>
+              </VStack>
               {selectedDay.notes ? <SwiftText>{selectedDay.notes}</SwiftText> : null}
               {dayEntries.length ? (
                 dayEntries.map(entry => {
@@ -221,28 +292,38 @@ export function ItineraryScreen() {
                             })
                           }
                         >
-                          <HStack spacing={12}>
-                            <Label
-                              title={entryTitle(item, trip.places)}
-                              systemImage="circle.fill"
-                              modifiers={[foregroundStyle(tone)]}
-                            />
+                          <HStack alignment="firstTextBaseline" spacing={12}>
+                            <VStack alignment="trailing" spacing={2}>
+                              <SwiftText
+                                modifiers={[
+                                  font({ weight: 'semibold' }),
+                                  foregroundStyle(entry.time ? tone : 'secondary'),
+                                  monospacedDigit(),
+                                ]}
+                              >
+                                {entry.time ?? 'Any time'}
+                              </SwiftText>
+                              <SwiftText
+                                modifiers={[
+                                  font({ textStyle: 'caption2' }),
+                                  foregroundStyle('secondary'),
+                                ]}
+                              >
+                                Activity
+                              </SwiftText>
+                            </VStack>
                             <VStack alignment="leading" spacing={3}>
-                              {entry.time ? (
-                                <SwiftText modifiers={[foregroundStyle(tone)]}>
-                                  {entry.time}
-                                </SwiftText>
-                              ) : null}
-                              <SwiftText>
-                                {formatDuration(item.duration)}
-                                {item.amount != null && item.currency
-                                  ? ` · ${formatMoney(item.amount, item.currency)}`
-                                  : ''}
-                                {item.note ? ` · ${item.note}` : ''}
+                              <Label
+                                title={entryTitle(item, trip.places)}
+                                systemImage="mappin.circle.fill"
+                                modifiers={[foregroundStyle(tone)]}
+                              />
+                              <SwiftText modifiers={[foregroundStyle('secondary')]}>
+                                {scheduleEntryDetail(item)}
                               </SwiftText>
                             </VStack>
                             <Spacer />
-                            <SwiftText>›</SwiftText>
+                            <SwiftText modifiers={[foregroundStyle('secondary')]}>›</SwiftText>
                           </HStack>
                         </SwiftButton>
                         <SwipeActions.Actions edge="leading" allowsFullSwipe={false}>
@@ -295,21 +376,38 @@ export function ItineraryScreen() {
                     const { event, flight } = entry;
                     return (
                       <SwipeActions key={entry.key} modifiers={[tag(entry.key)]}>
-                        <HStack spacing={12}>
-                          <Label
-                            title={`Flight ${event === 'arrival' ? 'arrival' : 'departure'} · ${flight.flightNumber}`}
-                            systemImage="airplane"
-                            modifiers={[foregroundStyle(tone)]}
-                          />
-                          <VStack alignment="leading" spacing={3}>
-                            {entry.time ? (
-                              <SwiftText modifiers={[foregroundStyle(tone)]}>
-                                {entry.time}
-                              </SwiftText>
-                            ) : null}
-                            <SwiftText>{flightRoute(flight)}</SwiftText>
-                            <SwiftText>{flightEventDetail(flight, event)}</SwiftText>
+                        <HStack alignment="firstTextBaseline" spacing={12}>
+                          <VStack alignment="trailing" spacing={2}>
+                            <SwiftText
+                              modifiers={[
+                                font({ weight: 'semibold' }),
+                                foregroundStyle(entry.time ? tone : 'secondary'),
+                                monospacedDigit(),
+                              ]}
+                            >
+                              {entry.time ?? 'All day'}
+                            </SwiftText>
+                            <SwiftText
+                              modifiers={[
+                                font({ textStyle: 'caption2' }),
+                                foregroundStyle('secondary'),
+                              ]}
+                            >
+                              Flight
+                            </SwiftText>
                           </VStack>
+                          <VStack alignment="leading" spacing={3}>
+                            <Label
+                              title={`${event === 'arrival' ? 'Arrive' : 'Depart'} · ${flight.flightNumber}`}
+                              systemImage="airplane"
+                              modifiers={[foregroundStyle(tone)]}
+                            />
+                            <SwiftText>{flightRoute(flight)}</SwiftText>
+                            <SwiftText modifiers={[foregroundStyle('secondary')]}>
+                              {flightEventDetail(flight, event)}
+                            </SwiftText>
+                          </VStack>
+                          <Spacer />
                         </HStack>
                         <SwipeActions.Actions edge="trailing" allowsFullSwipe={false}>
                           <SwiftButton
@@ -343,24 +441,38 @@ export function ItineraryScreen() {
                           })
                         }
                       >
-                        <HStack spacing={12}>
-                          <Label
-                            title={`${stayEventTitle(event)} · ${stay.name}`}
-                            systemImage="bed.double.fill"
-                            modifiers={[foregroundStyle(tone)]}
-                          />
+                        <HStack alignment="firstTextBaseline" spacing={12}>
+                          <VStack alignment="trailing" spacing={2}>
+                            <SwiftText
+                              modifiers={[
+                                font({ weight: 'semibold' }),
+                                foregroundStyle(entry.time ? tone : 'secondary'),
+                                monospacedDigit(),
+                              ]}
+                            >
+                              {entry.time ?? 'All day'}
+                            </SwiftText>
+                            <SwiftText
+                              modifiers={[
+                                font({ textStyle: 'caption2' }),
+                                foregroundStyle('secondary'),
+                              ]}
+                            >
+                              Stay
+                            </SwiftText>
+                          </VStack>
                           <VStack alignment="leading" spacing={3}>
-                            {entry.time ? (
-                              <SwiftText modifiers={[foregroundStyle(tone)]}>
-                                {entry.time}
-                              </SwiftText>
-                            ) : null}
-                            <SwiftText>
+                            <Label
+                              title={`${stayEventTitle(event)} · ${stay.name}`}
+                              systemImage="bed.double.fill"
+                              modifiers={[foregroundStyle(tone)]}
+                            />
+                            <SwiftText modifiers={[foregroundStyle('secondary')]}>
                               {formatDateRange(stay.checkInDate, stay.checkOutDate)}
                             </SwiftText>
                           </VStack>
                           <Spacer />
-                          <SwiftText>›</SwiftText>
+                          <SwiftText modifiers={[foregroundStyle('secondary')]}>›</SwiftText>
                         </HStack>
                       </SwiftButton>
                       <SwipeActions.Actions edge="trailing" allowsFullSwipe={false}>
@@ -512,73 +624,159 @@ export function ItineraryScreen() {
         }
       >
         <OfflineNotice visible={!isOnline} />
-        <View style={{ gap: 4 }}>
-          <Text selectable style={{ color: colors.text, fontSize: 24, fontWeight: '800' }}>
-            {trip.name}
+        <View style={{ gap: 3 }}>
+          <Text
+            selectable
+            style={{ color: colors.textMuted, fontSize: 12, fontWeight: '800', letterSpacing: 0.8 }}
+          >
+            DAY-BY-DAY ITINERARY
           </Text>
-          <Text selectable style={{ color: colors.textMuted }}>
+          <Text selectable style={{ color: colors.textMuted, fontSize: 14 }}>
             {formatDateRange(trip.startDate, trip.endDate)}
           </Text>
         </View>
 
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ gap: 8 }}
-        >
-          {trip.days.map(day => (
-            <Button
-              key={day.id}
-              accessibilityLabel={`View ${day.label}, ${day.shortDate}`}
-              onPress={() => selectTripDay(day.date)}
-              style={{ minHeight: 54, minWidth: 72 }}
-              tone={day.date === selectedDay.date ? 'primary' : 'secondary'}
+        <View style={{ gap: 10 }}>
+          <View
+            style={{ alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' }}
+          >
+            <Text selectable style={{ color: colors.text, fontSize: 17, fontWeight: '800' }}>
+              Days
+            </Text>
+            <Text selectable style={{ color: colors.textMuted, fontSize: 13 }}>
+              {trip.days.length} {trip.days.length === 1 ? 'day' : 'days'}
+            </Text>
+          </View>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ gap: 10, paddingHorizontal: 2 }}
+          >
+            {trip.days.map(day => {
+              const isSelected = day.date === selectedDay.date;
+              const { day: dayNumber, month } = dayDateParts(day.shortDate);
+              const textColor = isSelected ? colors.accentText : colors.text;
+
+              return (
+                <Button
+                  key={day.id}
+                  accessibilityLabel={`View ${day.label}, ${formatDate(day.date, {
+                    weekday: 'long',
+                    month: 'long',
+                  })}`}
+                  accessibilityState={{ selected: isSelected }}
+                  onPress={() => selectTripDay(day.date)}
+                  style={{ minHeight: 82, minWidth: 74, paddingHorizontal: 11, paddingVertical: 8 }}
+                  tone={isSelected ? 'primary' : 'secondary'}
+                >
+                  <View style={{ alignItems: 'center', gap: 1 }}>
+                    <Text selectable style={{ color: textColor, fontSize: 11, fontWeight: '800' }}>
+                      {day.weekday}
+                    </Text>
+                    <Text
+                      selectable
+                      style={{
+                        color: textColor,
+                        fontSize: 24,
+                        fontVariant: ['tabular-nums'],
+                        fontWeight: '800',
+                        lineHeight: 28,
+                      }}
+                    >
+                      {dayNumber}
+                    </Text>
+                    <Text selectable style={{ color: textColor, fontSize: 11, fontWeight: '600' }}>
+                      {month}
+                    </Text>
+                  </View>
+                </Button>
+              );
+            })}
+          </ScrollView>
+        </View>
+
+        <Card style={{ backgroundColor: colors.surfaceMuted, gap: 12 }}>
+          <View style={{ alignItems: 'flex-start', flexDirection: 'row', gap: 12 }}>
+            <View style={{ flex: 1, gap: 3 }}>
+              <Text
+                selectable
+                style={{
+                  color: colors.textMuted,
+                  fontSize: 11,
+                  fontWeight: '800',
+                  letterSpacing: 0.7,
+                }}
+              >
+                CURRENT DAY PLAN
+              </Text>
+              <Text selectable style={{ color: colors.text, fontSize: 22, fontWeight: '800' }}>
+                {selectedDay.label}
+              </Text>
+              <Text selectable style={{ color: colors.textMuted, fontSize: 14 }}>
+                {formatDate(selectedDay.date, { weekday: 'long', month: 'long' })}
+              </Text>
+            </View>
+            <View
+              style={{
+                alignItems: 'center',
+                backgroundColor: colors.surface,
+                borderColor: colors.borderStrong,
+                borderCurve: 'continuous',
+                borderRadius: 12,
+                borderWidth: 1,
+                minWidth: 64,
+                paddingHorizontal: 9,
+                paddingVertical: 8,
+              }}
             >
               <Text
                 selectable
                 style={{
-                  color: day.date === selectedDay.date ? colors.accentText : colors.text,
-                  fontSize: 12,
-                  fontWeight: '700',
+                  color: colors.accent,
+                  fontSize: 17,
+                  fontVariant: ['tabular-nums'],
+                  fontWeight: '800',
                 }}
               >
-                {day.weekday}
+                {dayEntries.length}
               </Text>
-              <Text
-                selectable
-                style={{
-                  color: day.date === selectedDay.date ? colors.accentText : colors.text,
-                  fontSize: 13,
-                }}
-              >
-                {day.shortDate}
+              <Text selectable style={{ color: colors.textMuted, fontSize: 10, fontWeight: '700' }}>
+                {dayEntries.length === 1 ? 'ITEM' : 'ITEMS'}
               </Text>
-            </Button>
-          ))}
-        </ScrollView>
-
-        <View>
-          <View>
-            <Text selectable style={{ color: colors.text, fontSize: 20, fontWeight: '800' }}>
-              {selectedDay.label}
-            </Text>
-            <Text selectable style={{ color: colors.textMuted }}>
-              {formatDate(selectedDay.date, { weekday: 'long', month: 'long' })}
-            </Text>
+            </View>
           </View>
-        </View>
-
-        {selectedDay.notes ? (
-          <Card>
-            <Text selectable style={{ color: colors.textMuted, lineHeight: 20 }}>
-              {selectedDay.notes}
-            </Text>
-          </Card>
-        ) : null}
+          {selectedDay.notes ? (
+            <View
+              style={{
+                borderLeftColor: colors.borderStrong,
+                borderLeftWidth: 3,
+                gap: 3,
+                paddingLeft: 10,
+              }}
+            >
+              <Text selectable style={{ color: colors.textMuted, fontSize: 12, fontWeight: '800' }}>
+                DAY NOTE
+              </Text>
+              <Text selectable style={{ color: colors.text, lineHeight: 20 }}>
+                {selectedDay.notes}
+              </Text>
+            </View>
+          ) : null}
+        </Card>
 
         <View style={{ gap: space.sm }}>
+          <View
+            style={{ alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' }}
+          >
+            <Text selectable style={{ color: colors.text, fontSize: 19, fontWeight: '800' }}>
+              Plan
+            </Text>
+            <Text selectable style={{ color: colors.textMuted, fontSize: 13 }}>
+              {dayEntries.length ? entryCountLabel(dayEntries.length) : 'Open day'}
+            </Text>
+          </View>
           {dayEntries.length ? (
-            dayEntries.map(entry => {
+            dayEntries.map((entry, entryIndex) => {
               const tone = itineraryEntryTone(entry.kind, theme);
               const cardStyle = {
                 backgroundColor:
@@ -586,27 +784,55 @@ export function ItineraryScreen() {
                 borderLeftColor: tone,
                 borderLeftWidth: 4,
               };
+              const timeLabel = entry.time ?? (entry.kind === 'schedule' ? 'Flexible' : 'All day');
 
               if (entry.kind === 'schedule') {
                 const { item, scheduleIndex } = entry;
                 return (
-                  <View key={entry.key} style={{ gap: 6 }}>
-                    {entry.time ? (
+                  <View key={entry.key} style={{ flexDirection: 'row', gap: 10 }}>
+                    <View style={{ alignItems: 'flex-end', paddingTop: 15, width: 58 }}>
                       <Text
                         selectable
                         style={{
-                          color: tone,
-                          fontSize: 14,
+                          color: entry.time ? tone : colors.textMuted,
+                          fontSize: 12,
                           fontVariant: ['tabular-nums'],
                           fontWeight: '800',
                         }}
                       >
-                        {entry.time}
+                        {timeLabel}
                       </Text>
-                    ) : null}
-                    <Card style={cardStyle}>
+                    </View>
+                    <View style={{ alignItems: 'center', width: 14 }}>
+                      <View
+                        style={{
+                          backgroundColor: tone,
+                          borderColor: colors.background,
+                          borderRadius: 8,
+                          borderWidth: 3,
+                          height: 14,
+                          marginTop: 16,
+                          width: 14,
+                          zIndex: 1,
+                        }}
+                      />
+                      {entryIndex < dayEntries.length - 1 ? (
+                        <View
+                          style={{
+                            backgroundColor: colors.border,
+                            flex: 1,
+                            marginTop: -1,
+                            width: 2,
+                          }}
+                        />
+                      ) : null}
+                    </View>
+                    <Card style={[cardStyle, { flex: 1, marginBottom: space.sm }]}>
                       <View style={{ alignItems: 'center', flexDirection: 'row', gap: 12 }}>
                         <View style={{ flex: 1, gap: 3 }}>
+                          <Text selectable style={{ color: tone, fontSize: 12, fontWeight: '800' }}>
+                            ACTIVITY
+                          </Text>
                           <Text
                             selectable
                             style={{ color: colors.text, fontSize: 16, fontWeight: '700' }}
@@ -614,11 +840,7 @@ export function ItineraryScreen() {
                             {entryTitle(item, trip.places)}
                           </Text>
                           <Text selectable style={{ color: colors.textMuted, fontSize: 13 }}>
-                            {formatDuration(item.duration)}
-                            {item.amount != null && item.currency
-                              ? ` · ${formatMoney(item.amount, item.currency)}`
-                              : ''}
-                            {item.note ? ` · ${item.note}` : ''}
+                            {scheduleEntryDetail(item)}
                           </Text>
                         </View>
                         <Link
@@ -670,24 +892,50 @@ export function ItineraryScreen() {
               if (entry.kind === 'flight') {
                 const { event, flight } = entry;
                 return (
-                  <View key={entry.key} style={{ gap: 6 }}>
-                    {entry.time ? (
+                  <View key={entry.key} style={{ flexDirection: 'row', gap: 10 }}>
+                    <View style={{ alignItems: 'flex-end', paddingTop: 15, width: 58 }}>
                       <Text
                         selectable
                         style={{
-                          color: tone,
-                          fontSize: 14,
+                          color: entry.time ? tone : colors.textMuted,
+                          fontSize: 12,
                           fontVariant: ['tabular-nums'],
                           fontWeight: '800',
                         }}
                       >
-                        {entry.time}
+                        {timeLabel}
                       </Text>
-                    ) : null}
-                    <Card style={cardStyle}>
+                    </View>
+                    <View style={{ alignItems: 'center', width: 14 }}>
+                      <View
+                        style={{
+                          backgroundColor: tone,
+                          borderColor: colors.background,
+                          borderRadius: 8,
+                          borderWidth: 3,
+                          height: 14,
+                          marginTop: 16,
+                          width: 14,
+                          zIndex: 1,
+                        }}
+                      />
+                      {entryIndex < dayEntries.length - 1 ? (
+                        <View
+                          style={{
+                            backgroundColor: colors.border,
+                            flex: 1,
+                            marginTop: -1,
+                            width: 2,
+                          }}
+                        />
+                      ) : null}
+                    </View>
+                    <Card style={[cardStyle, { flex: 1, marginBottom: space.sm }]}>
+                      <Text selectable style={{ color: tone, fontSize: 12, fontWeight: '800' }}>
+                        FLIGHT
+                      </Text>
                       <Text selectable style={{ color: tone, fontSize: 16, fontWeight: '700' }}>
-                        Flight {event === 'arrival' ? 'arrival' : 'departure'} ·{' '}
-                        {flight.flightNumber}
+                        {event === 'arrival' ? 'Arrive' : 'Depart'} · {flight.flightNumber}
                       </Text>
                       <Text selectable style={{ color: colors.textMuted }}>
                         {flightRoute(flight)}
@@ -711,21 +959,43 @@ export function ItineraryScreen() {
 
               const { event, stay } = entry;
               return (
-                <View key={entry.key} style={{ gap: 6 }}>
-                  {entry.time ? (
+                <View key={entry.key} style={{ flexDirection: 'row', gap: 10 }}>
+                  <View style={{ alignItems: 'flex-end', paddingTop: 15, width: 58 }}>
                     <Text
                       selectable
                       style={{
-                        color: tone,
-                        fontSize: 14,
+                        color: entry.time ? tone : colors.textMuted,
+                        fontSize: 12,
                         fontVariant: ['tabular-nums'],
                         fontWeight: '800',
                       }}
                     >
-                      {entry.time}
+                      {timeLabel}
                     </Text>
-                  ) : null}
-                  <Card style={cardStyle}>
+                  </View>
+                  <View style={{ alignItems: 'center', width: 14 }}>
+                    <View
+                      style={{
+                        backgroundColor: tone,
+                        borderColor: colors.background,
+                        borderRadius: 8,
+                        borderWidth: 3,
+                        height: 14,
+                        marginTop: 16,
+                        width: 14,
+                        zIndex: 1,
+                      }}
+                    />
+                    {entryIndex < dayEntries.length - 1 ? (
+                      <View
+                        style={{ backgroundColor: colors.border, flex: 1, marginTop: -1, width: 2 }}
+                      />
+                    ) : null}
+                  </View>
+                  <Card style={[cardStyle, { flex: 1, marginBottom: space.sm }]}>
+                    <Text selectable style={{ color: tone, fontSize: 12, fontWeight: '800' }}>
+                      STAY
+                    </Text>
                     <Text selectable style={{ color: tone, fontSize: 16, fontWeight: '700' }}>
                       {stayEventTitle(event)} · {stay.name}
                     </Text>

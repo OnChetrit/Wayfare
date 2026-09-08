@@ -51,11 +51,11 @@ Acceptance criteria:
 Run before handoff:
 
 ```bash
-npm run lint
-npm run typecheck
-npm test
-npm run format:check
-npm run build
+pnpm run lint
+pnpm run typecheck
+pnpm test
+pnpm run format:check
+pnpm run build
 ```
 
 Manually verify desktop, narrow web, Expo Go, and an iPhone development build with a day containing activities, a stay, and a flight with two resolved airports.

@@ -55,13 +55,13 @@ Acceptance criteria:
 Run before handoff:
 
 ```bash
-npm run lint
-npm run typecheck
-npm test
-npm run format:check
-npm run build
-npm run config:check --workspace=@wayfare/mobile
-npm run doctor --workspace=@wayfare/mobile
+pnpm run lint
+pnpm run typecheck
+pnpm test
+pnpm run format:check
+pnpm run build
+pnpm --filter @wayfare/mobile config:check
+pnpm --filter @wayfare/mobile run doctor
 ```
 
 Apply the migration in a non-production environment, invoke the protected delivery route with a test secret, then verify a real Expo development build receives and opens a reminder notification on iPhone.
