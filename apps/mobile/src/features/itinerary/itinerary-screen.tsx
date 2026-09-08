@@ -15,6 +15,7 @@ import {
 import {
   buttonStyle,
   disabled,
+  foregroundStyle,
   listStyle,
   refreshable,
   tag,
@@ -30,11 +31,8 @@ import { Button, IconButton } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { ErrorState, EmptyState, LoadingState, OfflineNotice } from '@/components/ui/state';
 import { Screen } from '@/components/ui/screen';
-import {
-  flightEventDetail,
-  flightEventsForDate,
-  flightRoute,
-} from '@/features/itinerary/flight-details';
+import { dayItineraryEntries, type DayItineraryEntry } from '@/features/itinerary/day-itinerary';
+import { flightEventDetail, flightRoute } from '@/features/itinerary/flight-details';
 import { useTripMutation } from '@/features/itinerary/use-trip-mutation';
 import { useTripEditor } from '@/features/trips/use-trip-editor';
 import { useTrips } from '@/features/trips/trip-context';
@@ -53,6 +51,22 @@ function entryTitle(
   places: { id: string; name: string }[],
 ) {
   return places.find(place => place.id === item.savedPlaceId)?.name ?? item.title ?? 'Activity';
+}
+
+function itineraryEntryTone(kind: DayItineraryEntry['kind'], theme: 'light' | 'dark') {
+  if (kind === 'schedule') return theme === 'light' ? '#17795d' : '#4ab58b';
+  if (kind === 'flight') return theme === 'light' ? '#39799b' : '#7bb9dc';
+  return theme === 'light' ? '#81549d' : '#c39ae0';
+}
+
+function itineraryEntrySurface(tone: string, theme: 'light' | 'dark') {
+  return `${tone}${theme === 'light' ? '0D' : '1A'}`;
+}
+
+function stayEventTitle(event: Extract<DayItineraryEntry, { kind: 'stay' }>['event']) {
+  if (event === 'check-in') return 'Check in';
+  if (event === 'check-out') return 'Check out';
+  return 'Stay';
 }
 
 export function ItineraryScreen() {
@@ -115,10 +129,7 @@ export function ItineraryScreen() {
 
   const selectedDay = trip.days.find(day => day.date === currentDate) ?? trip.days[0];
   const timeline = orderScheduleItemsForDay(trip.schedule, selectedDay.date);
-  const stays = trip.stays.filter(
-    stay => stay.checkInDate <= selectedDay.date && stay.checkOutDate >= selectedDay.date,
-  );
-  const flightEvents = flightEventsForDate(trip.flights, selectedDay.date);
+  const dayEntries = dayItineraryEntries(trip.schedule, trip.flights, trip.stays, selectedDay.date);
 
   function confirmDelete(label: string, onConfirm: () => void) {
     Alert.alert(`Delete ${label}?`, 'This cannot be undone.', [
@@ -193,74 +204,182 @@ export function ItineraryScreen() {
               })}`}
             >
               {selectedDay.notes ? <SwiftText>{selectedDay.notes}</SwiftText> : null}
-              {timeline.length ? (
-                timeline.map((item, index) => (
-                  <SwipeActions key={item.id} modifiers={[tag(item.id)]}>
-                    <SwiftButton
-                      modifiers={[buttonStyle('plain')]}
-                      onPress={() =>
-                        router.push({
-                          pathname: '/itinerary-editor',
-                          params: { kind: 'schedule', id: item.id, date: item.date },
-                        })
-                      }
-                    >
-                      <HStack spacing={12}>
-                        <VStack alignment="leading" spacing={3}>
-                          <SwiftText>
-                            {item.startTime ? `${item.startTime} · ` : ''}
-                            {entryTitle(item, trip.places)}
-                          </SwiftText>
-                          <SwiftText>
-                            {formatDuration(item.duration)}
-                            {item.amount != null && item.currency
-                              ? ` · ${formatMoney(item.amount, item.currency)}`
-                              : ''}
-                            {item.note ? ` · ${item.note}` : ''}
-                          </SwiftText>
-                        </VStack>
-                        <Spacer />
-                        <SwiftText>›</SwiftText>
-                      </HStack>
-                    </SwiftButton>
-                    <SwipeActions.Actions edge="leading" allowsFullSwipe={false}>
+              {dayEntries.length ? (
+                dayEntries.map(entry => {
+                  const tone = itineraryEntryTone(entry.kind, theme);
+
+                  if (entry.kind === 'schedule') {
+                    const { item, scheduleIndex } = entry;
+                    return (
+                      <SwipeActions key={entry.key} modifiers={[tag(entry.key)]}>
+                        <SwiftButton
+                          modifiers={[buttonStyle('plain')]}
+                          onPress={() =>
+                            router.push({
+                              pathname: '/itinerary-editor',
+                              params: { kind: 'schedule', id: item.id, date: item.date },
+                            })
+                          }
+                        >
+                          <HStack spacing={12}>
+                            <Label
+                              title={entryTitle(item, trip.places)}
+                              systemImage="circle.fill"
+                              modifiers={[foregroundStyle(tone)]}
+                            />
+                            <VStack alignment="leading" spacing={3}>
+                              {entry.time ? (
+                                <SwiftText modifiers={[foregroundStyle(tone)]}>
+                                  {entry.time}
+                                </SwiftText>
+                              ) : null}
+                              <SwiftText>
+                                {formatDuration(item.duration)}
+                                {item.amount != null && item.currency
+                                  ? ` · ${formatMoney(item.amount, item.currency)}`
+                                  : ''}
+                                {item.note ? ` · ${item.note}` : ''}
+                              </SwiftText>
+                            </VStack>
+                            <Spacer />
+                            <SwiftText>›</SwiftText>
+                          </HStack>
+                        </SwiftButton>
+                        <SwipeActions.Actions edge="leading" allowsFullSwipe={false}>
+                          <SwiftButton
+                            label="Earlier"
+                            systemImage="arrow.up"
+                            modifiers={[
+                              disabled(
+                                !isOnline || scheduleIndex === 0 || reorderMutation.isPending,
+                              ),
+                              tint(colors.accent),
+                            ]}
+                            onPress={() => moveItem(scheduleIndex, -1)}
+                          />
+                          <SwiftButton
+                            label="Later"
+                            systemImage="arrow.down"
+                            modifiers={[
+                              disabled(
+                                !isOnline ||
+                                  scheduleIndex === timeline.length - 1 ||
+                                  reorderMutation.isPending,
+                              ),
+                              tint(colors.accent),
+                            ]}
+                            onPress={() => moveItem(scheduleIndex, 1)}
+                          />
+                        </SwipeActions.Actions>
+                        <SwipeActions.Actions edge="trailing" allowsFullSwipe={false}>
+                          <SwiftButton
+                            label="Delete"
+                            systemImage="trash"
+                            modifiers={[
+                              disabled(!isOnline || deleteScheduleMutation.isPending),
+                              tint(colors.danger),
+                            ]}
+                            onPress={() =>
+                              confirmDelete('this item', () =>
+                                deleteScheduleMutation.mutate(item.id),
+                              )
+                            }
+                            role="destructive"
+                          />
+                        </SwipeActions.Actions>
+                      </SwipeActions>
+                    );
+                  }
+
+                  if (entry.kind === 'flight') {
+                    const { event, flight } = entry;
+                    return (
+                      <SwipeActions key={entry.key} modifiers={[tag(entry.key)]}>
+                        <HStack spacing={12}>
+                          <Label
+                            title={`Flight ${event === 'arrival' ? 'arrival' : 'departure'} · ${flight.flightNumber}`}
+                            systemImage="airplane"
+                            modifiers={[foregroundStyle(tone)]}
+                          />
+                          <VStack alignment="leading" spacing={3}>
+                            {entry.time ? (
+                              <SwiftText modifiers={[foregroundStyle(tone)]}>
+                                {entry.time}
+                              </SwiftText>
+                            ) : null}
+                            <SwiftText>{flightRoute(flight)}</SwiftText>
+                            <SwiftText>{flightEventDetail(flight, event)}</SwiftText>
+                          </VStack>
+                        </HStack>
+                        <SwipeActions.Actions edge="trailing" allowsFullSwipe={false}>
+                          <SwiftButton
+                            label="Delete"
+                            systemImage="trash"
+                            modifiers={[
+                              disabled(!isOnline || deleteFlightMutation.isPending),
+                              tint(colors.danger),
+                            ]}
+                            onPress={() =>
+                              confirmDelete('this flight', () =>
+                                deleteFlightMutation.mutate(flight.id),
+                              )
+                            }
+                            role="destructive"
+                          />
+                        </SwipeActions.Actions>
+                      </SwipeActions>
+                    );
+                  }
+
+                  const { event, stay } = entry;
+                  return (
+                    <SwipeActions key={entry.key} modifiers={[tag(entry.key)]}>
                       <SwiftButton
-                        label="Earlier"
-                        systemImage="arrow.up"
-                        modifiers={[
-                          disabled(!isOnline || index === 0 || reorderMutation.isPending),
-                          tint(colors.accent),
-                        ]}
-                        onPress={() => moveItem(index, -1)}
-                      />
-                      <SwiftButton
-                        label="Later"
-                        systemImage="arrow.down"
-                        modifiers={[
-                          disabled(
-                            !isOnline || index === timeline.length - 1 || reorderMutation.isPending,
-                          ),
-                          tint(colors.accent),
-                        ]}
-                        onPress={() => moveItem(index, 1)}
-                      />
-                    </SwipeActions.Actions>
-                    <SwipeActions.Actions edge="trailing" allowsFullSwipe={false}>
-                      <SwiftButton
-                        label="Delete"
-                        systemImage="trash"
-                        modifiers={[
-                          disabled(!isOnline || deleteScheduleMutation.isPending),
-                          tint(colors.danger),
-                        ]}
+                        modifiers={[buttonStyle('plain')]}
                         onPress={() =>
-                          confirmDelete('this item', () => deleteScheduleMutation.mutate(item.id))
+                          router.push({
+                            pathname: '/itinerary-editor',
+                            params: { kind: 'stay', id: stay.id },
+                          })
                         }
-                        role="destructive"
-                      />
-                    </SwipeActions.Actions>
-                  </SwipeActions>
-                ))
+                      >
+                        <HStack spacing={12}>
+                          <Label
+                            title={`${stayEventTitle(event)} · ${stay.name}`}
+                            systemImage="bed.double.fill"
+                            modifiers={[foregroundStyle(tone)]}
+                          />
+                          <VStack alignment="leading" spacing={3}>
+                            {entry.time ? (
+                              <SwiftText modifiers={[foregroundStyle(tone)]}>
+                                {entry.time}
+                              </SwiftText>
+                            ) : null}
+                            <SwiftText>
+                              {formatDateRange(stay.checkInDate, stay.checkOutDate)}
+                            </SwiftText>
+                          </VStack>
+                          <Spacer />
+                          <SwiftText>›</SwiftText>
+                        </HStack>
+                      </SwiftButton>
+                      <SwipeActions.Actions edge="trailing" allowsFullSwipe={false}>
+                        <SwiftButton
+                          label="Delete"
+                          systemImage="trash"
+                          modifiers={[
+                            disabled(!isOnline || deleteStayMutation.isPending),
+                            tint(colors.danger),
+                          ]}
+                          onPress={() =>
+                            confirmDelete('this stay', () => deleteStayMutation.mutate(stay.id))
+                          }
+                          role="destructive"
+                        />
+                      </SwipeActions.Actions>
+                    </SwipeActions>
+                  );
+                })
               ) : (
                 <VStack alignment="leading" spacing={4}>
                   <SwiftText>Nothing planned yet</SwiftText>
@@ -268,77 +387,6 @@ export function ItineraryScreen() {
                 </VStack>
               )}
             </Section>
-            {stays.length ? (
-              <Section title="Stays">
-                {stays.map(stay => (
-                  <SwipeActions key={stay.id} modifiers={[tag(stay.id)]}>
-                    <SwiftButton
-                      modifiers={[buttonStyle('plain')]}
-                      onPress={() =>
-                        router.push({
-                          pathname: '/itinerary-editor',
-                          params: { kind: 'stay', id: stay.id },
-                        })
-                      }
-                    >
-                      <VStack alignment="leading" spacing={3}>
-                        <SwiftText>Stay · {stay.name}</SwiftText>
-                        <SwiftText>
-                          {stay.checkInDate} – {stay.checkOutDate}
-                        </SwiftText>
-                      </VStack>
-                    </SwiftButton>
-                    <SwipeActions.Actions edge="trailing" allowsFullSwipe={false}>
-                      <SwiftButton
-                        label="Delete"
-                        systemImage="trash"
-                        modifiers={[
-                          disabled(!isOnline || deleteStayMutation.isPending),
-                          tint(colors.danger),
-                        ]}
-                        onPress={() =>
-                          confirmDelete('this stay', () => deleteStayMutation.mutate(stay.id))
-                        }
-                        role="destructive"
-                      />
-                    </SwipeActions.Actions>
-                  </SwipeActions>
-                ))}
-              </Section>
-            ) : null}
-            {flightEvents.length ? (
-              <Section title="Flights">
-                {flightEvents.map(({ flight, kind }) => (
-                  <SwipeActions
-                    key={`${flight.id}-${kind}`}
-                    modifiers={[tag(`${flight.id}-${kind}`)]}
-                  >
-                    <VStack alignment="leading" spacing={3}>
-                      <SwiftText>
-                        Flight {kind === 'arrival' ? 'arrival' : 'departure'} ·{' '}
-                        {flight.flightNumber}
-                      </SwiftText>
-                      <SwiftText>{flightRoute(flight)}</SwiftText>
-                      <SwiftText>{flightEventDetail(flight, kind)}</SwiftText>
-                    </VStack>
-                    <SwipeActions.Actions edge="trailing" allowsFullSwipe={false}>
-                      <SwiftButton
-                        label="Delete"
-                        systemImage="trash"
-                        modifiers={[
-                          disabled(!isOnline || deleteFlightMutation.isPending),
-                          tint(colors.danger),
-                        ]}
-                        onPress={() =>
-                          confirmDelete('this flight', () => deleteFlightMutation.mutate(flight.id))
-                        }
-                        role="destructive"
-                      />
-                    </SwipeActions.Actions>
-                  </SwipeActions>
-                ))}
-              </Section>
-            ) : null}
             <Section title="Trip details">
               <SwiftButton
                 modifiers={[buttonStyle('plain')]}
@@ -529,135 +577,191 @@ export function ItineraryScreen() {
         ) : null}
 
         <View style={{ gap: space.sm }}>
-          {timeline.length ? (
-            timeline.map((item, index) => (
-              <View key={item.id} style={{ gap: 6 }}>
-                {item.startTime ? (
-                  <Text
-                    selectable
-                    style={{
-                      color: colors.textMuted,
-                      fontSize: 14,
-                      fontVariant: ['tabular-nums'],
-                      fontWeight: '800',
-                    }}
-                  >
-                    {item.startTime}
-                  </Text>
-                ) : null}
-                <Card>
-                  <View style={{ alignItems: 'center', flexDirection: 'row', gap: 12 }}>
-                    <View style={{ flex: 1, gap: 3 }}>
+          {dayEntries.length ? (
+            dayEntries.map(entry => {
+              const tone = itineraryEntryTone(entry.kind, theme);
+              const cardStyle = {
+                backgroundColor:
+                  entry.kind === 'schedule' ? undefined : itineraryEntrySurface(tone, theme),
+                borderLeftColor: tone,
+                borderLeftWidth: 4,
+              };
+
+              if (entry.kind === 'schedule') {
+                const { item, scheduleIndex } = entry;
+                return (
+                  <View key={entry.key} style={{ gap: 6 }}>
+                    {entry.time ? (
                       <Text
                         selectable
-                        style={{ color: colors.text, fontSize: 16, fontWeight: '700' }}
+                        style={{
+                          color: tone,
+                          fontSize: 14,
+                          fontVariant: ['tabular-nums'],
+                          fontWeight: '800',
+                        }}
                       >
-                        {entryTitle(item, trip.places)}
+                        {entry.time}
                       </Text>
-                      <Text selectable style={{ color: colors.textMuted, fontSize: 13 }}>
-                        {formatDuration(item.duration)}
-                        {item.amount != null && item.currency
-                          ? ` · ${formatMoney(item.amount, item.currency)}`
-                          : ''}
-                        {item.note ? ` · ${item.note}` : ''}
+                    ) : null}
+                    <Card style={cardStyle}>
+                      <View style={{ alignItems: 'center', flexDirection: 'row', gap: 12 }}>
+                        <View style={{ flex: 1, gap: 3 }}>
+                          <Text
+                            selectable
+                            style={{ color: colors.text, fontSize: 16, fontWeight: '700' }}
+                          >
+                            {entryTitle(item, trip.places)}
+                          </Text>
+                          <Text selectable style={{ color: colors.textMuted, fontSize: 13 }}>
+                            {formatDuration(item.duration)}
+                            {item.amount != null && item.currency
+                              ? ` · ${formatMoney(item.amount, item.currency)}`
+                              : ''}
+                            {item.note ? ` · ${item.note}` : ''}
+                          </Text>
+                        </View>
+                        <Link
+                          href={{
+                            pathname: '/itinerary-editor',
+                            params: { kind: 'schedule', id: item.id, date: item.date },
+                          }}
+                          asChild
+                        >
+                          <IconButton label={`Edit ${entryTitle(item, trip.places)}`}>
+                            Edit
+                          </IconButton>
+                        </Link>
+                      </View>
+                      <View style={{ flexDirection: 'row', gap: 8 }}>
+                        <IconButton
+                          disabled={!isOnline || scheduleIndex === 0 || reorderMutation.isPending}
+                          label="Move item earlier"
+                          onPress={() => moveItem(scheduleIndex, -1)}
+                        >
+                          ↑
+                        </IconButton>
+                        <IconButton
+                          disabled={
+                            !isOnline ||
+                            scheduleIndex === timeline.length - 1 ||
+                            reorderMutation.isPending
+                          }
+                          label="Move item later"
+                          onPress={() => moveItem(scheduleIndex, 1)}
+                        >
+                          ↓
+                        </IconButton>
+                        <Button
+                          disabled={!isOnline || deleteScheduleMutation.isPending}
+                          onPress={() =>
+                            confirmDelete('this item', () => deleteScheduleMutation.mutate(item.id))
+                          }
+                          tone="danger"
+                        >
+                          Delete
+                        </Button>
+                      </View>
+                    </Card>
+                  </View>
+                );
+              }
+
+              if (entry.kind === 'flight') {
+                const { event, flight } = entry;
+                return (
+                  <View key={entry.key} style={{ gap: 6 }}>
+                    {entry.time ? (
+                      <Text
+                        selectable
+                        style={{
+                          color: tone,
+                          fontSize: 14,
+                          fontVariant: ['tabular-nums'],
+                          fontWeight: '800',
+                        }}
+                      >
+                        {entry.time}
                       </Text>
-                    </View>
-                    <Link
-                      href={{
-                        pathname: '/itinerary-editor',
-                        params: { kind: 'schedule', id: item.id, date: item.date },
+                    ) : null}
+                    <Card style={cardStyle}>
+                      <Text selectable style={{ color: tone, fontSize: 16, fontWeight: '700' }}>
+                        Flight {event === 'arrival' ? 'arrival' : 'departure'} ·{' '}
+                        {flight.flightNumber}
+                      </Text>
+                      <Text selectable style={{ color: colors.textMuted }}>
+                        {flightRoute(flight)}
+                      </Text>
+                      <Text selectable style={{ color: colors.textMuted }}>
+                        {flightEventDetail(flight, event)}
+                      </Text>
+                      <Button
+                        disabled={!isOnline || deleteFlightMutation.isPending}
+                        onPress={() =>
+                          confirmDelete('this flight', () => deleteFlightMutation.mutate(flight.id))
+                        }
+                        tone="danger"
+                      >
+                        Delete
+                      </Button>
+                    </Card>
+                  </View>
+                );
+              }
+
+              const { event, stay } = entry;
+              return (
+                <View key={entry.key} style={{ gap: 6 }}>
+                  {entry.time ? (
+                    <Text
+                      selectable
+                      style={{
+                        color: tone,
+                        fontSize: 14,
+                        fontVariant: ['tabular-nums'],
+                        fontWeight: '800',
                       }}
-                      asChild
                     >
-                      <IconButton label={`Edit ${entryTitle(item, trip.places)}`}>Edit</IconButton>
-                    </Link>
-                  </View>
-                  <View style={{ flexDirection: 'row', gap: 8 }}>
-                    <IconButton
-                      disabled={!isOnline || index === 0 || reorderMutation.isPending}
-                      label="Move item earlier"
-                      onPress={() => moveItem(index, -1)}
-                    >
-                      ↑
-                    </IconButton>
-                    <IconButton
-                      disabled={
-                        !isOnline || index === timeline.length - 1 || reorderMutation.isPending
-                      }
-                      label="Move item later"
-                      onPress={() => moveItem(index, 1)}
-                    >
-                      ↓
-                    </IconButton>
-                    <Button
-                      disabled={!isOnline || deleteScheduleMutation.isPending}
-                      onPress={() =>
-                        confirmDelete('this item', () => deleteScheduleMutation.mutate(item.id))
-                      }
-                      tone="danger"
-                    >
-                      Delete
-                    </Button>
-                  </View>
-                </Card>
-              </View>
-            ))
+                      {entry.time}
+                    </Text>
+                  ) : null}
+                  <Card style={cardStyle}>
+                    <Text selectable style={{ color: tone, fontSize: 16, fontWeight: '700' }}>
+                      {stayEventTitle(event)} · {stay.name}
+                    </Text>
+                    <Text selectable style={{ color: colors.textMuted }}>
+                      {formatDateRange(stay.checkInDate, stay.checkOutDate)}
+                    </Text>
+                    <View style={{ flexDirection: 'row', gap: 8 }}>
+                      <Link
+                        href={{
+                          pathname: '/itinerary-editor',
+                          params: { kind: 'stay', id: stay.id },
+                        }}
+                        asChild
+                      >
+                        <Button tone="secondary">Edit</Button>
+                      </Link>
+                      <Button
+                        disabled={!isOnline || deleteStayMutation.isPending}
+                        onPress={() =>
+                          confirmDelete('this stay', () => deleteStayMutation.mutate(stay.id))
+                        }
+                        tone="danger"
+                      >
+                        Delete
+                      </Button>
+                    </View>
+                  </Card>
+                </View>
+              );
+            })
           ) : (
             <EmptyState
               title="Nothing planned yet"
               detail="Add a saved place or a custom activity to build this day."
             />
           )}
-
-          {stays.map(stay => (
-            <Card key={stay.id}>
-              <Text selectable style={{ color: colors.text, fontSize: 16, fontWeight: '700' }}>
-                Stay · {stay.name}
-              </Text>
-              <Text selectable style={{ color: colors.textMuted }}>
-                {stay.checkInDate} – {stay.checkOutDate}
-              </Text>
-              <View style={{ flexDirection: 'row', gap: 8 }}>
-                <Link
-                  href={{ pathname: '/itinerary-editor', params: { kind: 'stay', id: stay.id } }}
-                  asChild
-                >
-                  <Button tone="secondary">Edit</Button>
-                </Link>
-                <Button
-                  disabled={!isOnline || deleteStayMutation.isPending}
-                  onPress={() =>
-                    confirmDelete('this stay', () => deleteStayMutation.mutate(stay.id))
-                  }
-                  tone="danger"
-                >
-                  Delete
-                </Button>
-              </View>
-            </Card>
-          ))}
-          {flightEvents.map(({ flight, kind }) => (
-            <Card key={`${flight.id}-${kind}`}>
-              <Text selectable style={{ color: colors.text, fontSize: 16, fontWeight: '700' }}>
-                Flight {kind === 'arrival' ? 'arrival' : 'departure'} · {flight.flightNumber}
-              </Text>
-              <Text selectable style={{ color: colors.textMuted }}>
-                {flightRoute(flight)}
-              </Text>
-              <Text selectable style={{ color: colors.textMuted }}>
-                {flightEventDetail(flight, kind)}
-              </Text>
-              <Button
-                disabled={!isOnline || deleteFlightMutation.isPending}
-                onPress={() =>
-                  confirmDelete('this flight', () => deleteFlightMutation.mutate(flight.id))
-                }
-                tone="danger"
-              >
-                Delete
-              </Button>
-            </Card>
-          ))}
         </View>
 
         <View style={{ gap: 10 }}>

@@ -4,6 +4,7 @@ import type { TripFlight } from '@wayfare/domain';
 import {
   flightDetailRows,
   flightEventDetail,
+  flightEventTime,
   flightEventsForDate,
   flightRoute,
 } from './flight-details';
@@ -40,6 +41,7 @@ describe('flight details', () => {
 
   it('keeps route, terminal, gate, and baggage context available to itinerary views', () => {
     expect(flightRoute(flight)).toBe('TLV → FCO');
+    expect(flightEventTime(flight, 'departure')).toBe('08:10');
     expect(flightEventDetail(flight, 'arrival')).toContain('Baggage 7');
     expect(flightDetailRows(flight)).toEqual(
       expect.arrayContaining([

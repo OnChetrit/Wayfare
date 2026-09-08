@@ -33,12 +33,18 @@ export function flightEventsForDate(flights: TripFlight[], date: string): Flight
   ]);
 }
 
+export function flightEventTime(flight: TripFlight, kind: FlightEventKind) {
+  const dateTime =
+    kind === 'arrival' ? flight.scheduledArrivalLocal : flight.scheduledDepartureLocal;
+  return dateTime?.match(/[T ](\d{2}:\d{2})/)?.[1] ?? null;
+}
+
 export function flightEventDetail(flight: TripFlight, kind: FlightEventKind) {
   const isArrival = kind === 'arrival';
   return compact([
     flightAirline(flight),
     flight.status,
-    isArrival ? flight.scheduledArrivalLocal : flight.scheduledDepartureLocal,
+    flightEventTime(flight, kind) ?? undefined,
     (isArrival ? flight.arrivalTerminal : flight.departureTerminal)
       ? `Terminal ${isArrival ? flight.arrivalTerminal : flight.departureTerminal}`
       : undefined,
