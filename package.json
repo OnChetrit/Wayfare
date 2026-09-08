@@ -2,6 +2,7 @@
   "name": "wayfare",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "pnpm@12.3.4",
   "workspaces": [
     "apps/*",
     "packages/*"
@@ -12,23 +13,17 @@
     "react-native-reanimated": "4.5.1",
     "react-native-worklets": "0.10.1"
   },
-  "overrides": {
-    "react": "19.2.3",
-    "react-native": "0.86.2",
-    "react-native-reanimated": "4.5.1",
-    "react-native-worklets": "0.10.1"
-  },
   "scripts": {
-    "dev": "npm run dev --workspace=@wayfare/web",
-    "dev:web": "npm run dev --workspace=@wayfare/web",
-    "dev:mobile": "npm run start --workspace=@wayfare/mobile",
-    "web": "npm run dev --workspace=@wayfare/web",
-    "mobile": "npm run start --workspace=@wayfare/mobile",
-    "mobile:ios": "npm run ios --workspace=@wayfare/mobile",
-    "build": "npm run build --workspace=@wayfare/web",
-    "lint": "npm run lint --workspaces --if-present",
-    "typecheck": "npm run typecheck --workspaces --if-present",
-    "test": "npm run test --workspace=@wayfare/domain && npm run test --workspace=@wayfare/map-preferences && npm run test --workspace=@wayfare/web && npm run test --workspace=@wayfare/mobile",
+    "dev": "pnpm --filter @wayfare/web dev",
+    "dev:web": "pnpm --filter @wayfare/web dev",
+    "dev:mobile": "pnpm --filter @wayfare/mobile start",
+    "web": "pnpm --filter @wayfare/web dev",
+    "mobile": "pnpm --filter @wayfare/mobile start",
+    "mobile:ios": "pnpm --filter @wayfare/mobile ios",
+    "build": "pnpm --filter @wayfare/web build",
+    "lint": "pnpm -r --if-present run lint",
+    "typecheck": "pnpm -r --if-present run typecheck",
+    "test": "pnpm --filter @wayfare/domain test && pnpm --filter @wayfare/map-preferences test && pnpm --filter @wayfare/web test && pnpm --filter @wayfare/mobile test",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },

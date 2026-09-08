@@ -53,11 +53,11 @@ Acceptance criteria:
 Run before handoff:
 
 ```bash
-npm run lint
-npm run typecheck
-npm test
-npm run format:check
-npm run build
+pnpm run lint
+pnpm run typecheck
+pnpm test
+pnpm run format:check
+pnpm run build
 ```
 
 Manually test two accounts and two devices: clean refresh, concurrent same-item edit, editor-with-dirty-form, sign-out, reconnect, and owner removal of a viewer.

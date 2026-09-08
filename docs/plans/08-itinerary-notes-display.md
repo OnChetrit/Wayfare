@@ -51,11 +51,11 @@ Acceptance criteria:
 Run before handoff:
 
 ```bash
-npm run lint
-npm run typecheck
-npm test
-npm run format:check
-npm run build
+pnpm run lint
+pnpm run typecheck
+pnpm test
+pnpm run format:check
+pnpm run build
 ```
 
 Manually verify a short note, a long multiline note, an empty note, a screen-reader/keyboard path on web, and iPhone text selection.

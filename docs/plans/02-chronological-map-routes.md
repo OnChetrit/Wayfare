@@ -55,11 +55,11 @@ Acceptance criteria:
 Run before handoff:
 
 ```bash
-npm run typecheck
-npm test
-npm run lint
-npm run format:check
-npm run build
+pnpm run typecheck
+pnpm test
+pnpm run lint
+pnpm run format:check
+pnpm run build
 ```
 
 Manually create same-time, untimed, and coordinate-less activities, reorder them, then compare the web and native route maps.
