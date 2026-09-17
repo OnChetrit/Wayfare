@@ -342,6 +342,7 @@ export type TripEditorUser = {
 
 export type TripEditorTrip = {
   id: string;
+  revision: number;
   name: string;
   startDate: string;
   endDate: string;
@@ -360,8 +361,27 @@ export type TripEditorTrip = {
 
 export type TripSummary = Pick<
   TripEditorTrip,
-  'id' | 'name' | 'startDate' | 'endDate' | 'destinationLabel'
+  'id' | 'name' | 'startDate' | 'endDate' | 'destinationLabel' | 'revision'
 > & { ownerId: string };
+
+export const tripRevisionSchema = z.number().int().nonnegative();
+export const tripChangedEventSchema = z.object({
+  type: z.literal('trip.changed'),
+  tripId: z.uuid(),
+  revision: tripRevisionSchema,
+  entity: z.enum([
+    'trip',
+    'days',
+    'places',
+    'schedule',
+    'stays',
+    'flights',
+    'locations',
+    'expenses',
+    'invitations',
+    'membership',
+  ]),
+});
 
 export type TripInput = z.output<typeof tripInputSchema>;
 
@@ -385,6 +405,7 @@ export type TripAccess = {
 export const tripSummarySchema = z.object({
   id: z.uuid(),
   ownerId: z.uuid(),
+  revision: z.number().int().nonnegative().default(0),
   name: z.string(),
   startDate: z.iso.date(),
   endDate: z.iso.date(),
@@ -572,6 +593,7 @@ export const tripEditorTripSchema = z.object({
   // Do not require it in the detail response: deployed clients and servers may
   // legitimately be on different releases during a mobile rollout.
   ...tripSummarySchema.omit({ ownerId: true }).shape,
+  revision: tripRevisionSchema.default(0),
   defaultTimeZone: z.string(),
   defaultCurrency: currencyCodeSchema,
   // Mobile clients can be deployed before the server route that supplies

@@ -4,5 +4,6 @@ out
 .env
 .env.local
 .expo
+.vercel
 .DS_Store
 *.tsbuildinfo

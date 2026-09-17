@@ -79,3 +79,13 @@ export async function requestWayfareApi<T>(path: string, init: RequestInit = {})
 
   return payload as T;
 }
+
+export type RevisionRequest = { revision?: number };
+
+export function withTripRevision(init: RequestInit, revision?: number): RequestInit {
+  if (revision === undefined) return init;
+  return {
+    ...init,
+    headers: { ...init.headers, 'If-Match': String(revision) },
+  };
+}

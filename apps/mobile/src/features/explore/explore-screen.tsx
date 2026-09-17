@@ -23,7 +23,10 @@ import { useTripEditor } from '@/features/trips/use-trip-editor';
 import { useTrips } from '@/features/trips/trip-context';
 import { toMapPlace } from '@/features/explore/saved-place-map';
 import { SavedPlacesDrawer } from '@/features/explore/saved-places-drawer';
-import { tripDaysForExplore } from '@/features/explore/explore-trip-days';
+import {
+  sectionExploreDaysByLocation,
+  tripDaysForExplore,
+} from '@/features/explore/explore-trip-days';
 import { useDayPlanMap } from '@/features/itinerary/use-day-plan-map';
 import { messageFromError } from '@/lib/format';
 import { useTheme } from '@/theme/theme-provider';
@@ -85,6 +88,10 @@ export function ExploreScreen() {
   const [visibleMapPlaceIds, setVisibleMapPlaceIds] = React.useState<string[]>([]);
   const trip = tripQuery.data;
   const exploreDays = React.useMemo(() => tripDaysForExplore(trip), [trip]);
+  const exploreDaySections = sectionExploreDaysByLocation(
+    exploreDays,
+    trip?.locationSegments ?? [],
+  );
   const currentDate =
     selectedTripDayDate && exploreDays.some(day => day.date === selectedTripDayDate)
       ? selectedTripDayDate
@@ -332,17 +339,21 @@ export function ExploreScreen() {
             tintColor={colors.accent}
             title="Trip days"
           >
-            {exploreDays.map(day => (
-              <Stack.Toolbar.MenuAction
-                isOn={day.date === currentDate}
-                key={day.id}
-                onPress={() => {
-                  selectTripDay(day.date);
-                  setSelectedPlace(null);
-                }}
-              >
-                {`${day.label} · ${day.shortDate}`}
-              </Stack.Toolbar.MenuAction>
+            {exploreDaySections.map(section => (
+              <Stack.Toolbar.Menu inline key={section.id} title={section.locationName}>
+                {section.days.map(day => (
+                  <Stack.Toolbar.MenuAction
+                    isOn={day.date === currentDate}
+                    key={day.id}
+                    onPress={() => {
+                      selectTripDay(day.date);
+                      setSelectedPlace(null);
+                    }}
+                  >
+                    {`${day.label} · ${day.shortDate}`}
+                  </Stack.Toolbar.MenuAction>
+                ))}
+              </Stack.Toolbar.Menu>
             ))}
           </Stack.Toolbar.Menu>
         ) : null}

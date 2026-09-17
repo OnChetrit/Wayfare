@@ -50,6 +50,7 @@ describe('trip API', () => {
         startDate: rawTrip.start_date,
         endDate: rawTrip.end_date,
         destinationLabel: rawTrip.destination_label,
+        revision: 0,
       },
     ]);
   });

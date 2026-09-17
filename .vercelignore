@@ -1,0 +1,13 @@
+node_modules
+.next
+apps/*/node_modules
+apps/*/.next
+.env
+.env.*
+.expo
+apps/*/.expo
+apps/mobile
+.agents
+.git
+.vscode
+.vercel

@@ -7,6 +7,7 @@ import { WayfareQueryProvider } from '@/api/query-client';
 import { AuthProvider, useAuth } from '@/features/auth/auth-context';
 import { useReminderNotificationNavigation } from '@/features/reminders/reminder-notifications';
 import { TripProvider } from '@/features/trips/trip-context';
+import { useTripRealtime } from '@/features/trips/use-trip-realtime';
 import { WayfareThemeProvider, useTheme } from '@/theme/theme-provider';
 
 void SplashScreen.preventAutoHideAsync();
@@ -27,6 +28,7 @@ export default function RootLayout() {
 
 function RootNavigator() {
   useReminderNotificationNavigation();
+  useTripRealtime();
   const { isReady } = useAuth();
   const { colors } = useTheme();
   const [showLaunchScreen, setShowLaunchScreen] = React.useState(true);

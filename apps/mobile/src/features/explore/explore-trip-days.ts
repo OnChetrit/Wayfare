@@ -1,9 +1,15 @@
-import { makeTripDays, type TripDay } from '@wayfare/domain';
+import { makeTripDays, type LocationSegment, type TripDay } from '@wayfare/domain';
 
 type TripDates = {
   days: TripDay[];
   endDate: string;
   startDate: string;
+};
+
+export type ExploreDaySection = {
+  days: TripDay[];
+  id: string;
+  locationName: string;
 };
 
 function derivedTripDay(dateValue: string): TripDay {
@@ -36,4 +42,36 @@ export function tripDaysForExplore(trip: TripDates | undefined): TripDay[] {
   if (trip.days.length) return trip.days;
 
   return makeTripDays(trip.startDate, trip.endDate).map(derivedTripDay);
+}
+
+/**
+ * Keeps the day picker chronological while adding a heading for each location
+ * segment. A trip can have unassigned gaps, so those days remain selectable.
+ */
+export function sectionExploreDaysByLocation(
+  days: TripDay[],
+  locationSegments: LocationSegment[],
+): ExploreDaySection[] {
+  const orderedSegments = [...locationSegments].sort((left, right) =>
+    left.startDate.localeCompare(right.startDate),
+  );
+  const sections: ExploreDaySection[] = [];
+
+  for (const day of days) {
+    const segment = orderedSegments.find(
+      candidate => candidate.startDate <= day.date && day.date < candidate.endDate,
+    );
+    const id = segment?.id ?? 'unassigned';
+    const locationName = segment?.locationName ?? 'Unassigned';
+    const previous = sections.at(-1);
+
+    if (previous?.id === id) {
+      previous.days.push(day);
+      continue;
+    }
+
+    sections.push({ days: [day], id, locationName });
+  }
+
+  return sections;
 }

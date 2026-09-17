@@ -34,6 +34,7 @@ type RawTripSummary = {
   start_date: string;
   end_date: string;
   destination_label: string | null;
+  revision?: number;
 };
 
 type RawLocationSegment = {
@@ -126,6 +127,7 @@ function mapTripSummary(raw: RawTripSummary): TripSummary {
     startDate: raw.start_date,
     endDate: raw.end_date,
     destinationLabel: raw.destination_label,
+    revision: raw.revision ?? 0,
   });
 }
 

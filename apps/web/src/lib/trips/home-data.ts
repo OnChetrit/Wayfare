@@ -156,7 +156,7 @@ export async function getTripEditorTrip(
   const { data: tripRow, error: tripError } = await supabase
     .from('trips')
     .select(
-      'id, name, start_date, end_date, destination_label, default_time_zone, default_currency',
+      'id, name, start_date, end_date, destination_label, default_time_zone, default_currency, revision',
     )
     .eq('id', tripId)
     .maybeSingle();
@@ -290,6 +290,7 @@ export async function getTripEditorTrip(
 
   return {
     id: tripRow.id,
+    revision: Number(tripRow.revision ?? 0),
     name: tripRow.name,
     startDate: tripRow.start_date,
     endDate: tripRow.end_date,
@@ -350,13 +351,14 @@ export async function getHomeData(selectedTripId?: string): Promise<{
   const { data: trips } = await supabase
     .from('trips')
     .select(
-      'id, owner_id, name, start_date, end_date, destination_label, default_time_zone, default_currency',
+      'id, owner_id, name, start_date, end_date, destination_label, default_time_zone, default_currency, revision',
     )
     .order('start_date', { ascending: true })
     .order('name', { ascending: true });
 
   const tripSummaries: TripSummary[] = (trips ?? []).map(row => ({
     id: row.id,
+    revision: Number(row.revision ?? 0),
     ownerId: row.owner_id,
     name: row.name,
     startDate: row.start_date,
