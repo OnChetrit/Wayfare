@@ -46,4 +46,4 @@
 ## Verification
 
 - Add unit tests for formatting, validators/contracts, API error parsing, and query-key/invalidation behavior. Add component tests whenever behavior changes in auth redirects, trip selection, editors, confirmations, or map search.
-- Run `pnpm --filter @wayfare/mobile lint`, `pnpm --filter @wayfare/mobile typecheck`, `pnpm --filter @wayfare/mobile test`, and `pnpm --filter @wayfare/mobile format:check` before handoff.
+- Run `pnpm --filter @wayfare/mobile run lint`, `pnpm --filter @wayfare/mobile run typecheck`, `pnpm --filter @wayfare/mobile run test`, and `pnpm --filter @wayfare/mobile run format:check` before handoff. For release readiness, use `pnpm release:check:mobile` from the repository root.

@@ -1,0 +1,5 @@
+-- Intentionally empty.
+--
+-- Add deterministic, non-sensitive local development data here when a feature
+-- genuinely needs it. Schema changes belong in migrations, and production user
+-- data must never be copied into this file.

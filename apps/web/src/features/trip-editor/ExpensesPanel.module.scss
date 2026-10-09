@@ -219,6 +219,12 @@
   letter-spacing: -0.06em;
 }
 
+.listHint {
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+}
+
 .listHeader select,
 .form select,
 .form input,
@@ -251,6 +257,28 @@
 
 .expenseRow:last-child {
   border-bottom: 0;
+}
+
+.rowSelect {
+  display: grid;
+  flex: 0 0 18px;
+  place-items: center;
+}
+
+.rowSelect input {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--green-button);
+}
+
+.expenseCopyButton {
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  flex: 1;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
 }
 
 .expenseIcon {
@@ -292,6 +320,30 @@
   color: var(--ink);
   font-size: 13px;
   white-space: nowrap;
+}
+
+.expenseStatus {
+  display: inline-flex;
+  min-height: 24px;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 7px;
+  border-radius: 999px;
+  color: var(--muted);
+  background: var(--paper);
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.expenseStatus[data-status='PAID'] {
+  color: var(--green-dark);
+  background: var(--mint);
+}
+
+.expenseStatus[data-status='NEEDS_REVIEW'] {
+  color: var(--warning);
+  background: var(--warning-surface);
 }
 
 .rowActions {
@@ -397,27 +449,28 @@
   font-size: 12px;
 }
 
-.formBackdrop {
-  position: fixed;
-  z-index: 30;
-  inset: 0;
-  display: grid;
-  padding: 20px;
-  place-items: center;
-  background: #17241e55;
-}
-
 .form {
-  display: grid;
-  width: min(460px, 100%);
-  max-height: min(720px, calc(100dvh - 40px));
+  width: min(460px, calc(100% - 32px));
+  max-height: min(720px, calc(100dvh - 32px));
+  margin: auto;
   overflow: auto;
-  gap: 14px;
-  padding: 22px;
+  padding: 0;
   border: 1px solid var(--line);
   border-radius: 14px;
+  color: var(--ink);
   background: var(--surface);
   box-shadow: var(--shadow-soft);
+
+  &::backdrop {
+    background: var(--backdrop);
+    backdrop-filter: blur(3px);
+  }
+}
+
+.formContent {
+  display: grid;
+  gap: 14px;
+  padding: 22px;
 }
 
 .formHeader {
@@ -455,6 +508,53 @@
 
 .form textarea {
   resize: vertical;
+}
+
+.coverageFieldset {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+}
+
+.coverageFieldset legend {
+  padding: 0 5px;
+  color: var(--ink);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.coverageSearch {
+  width: 100%;
+}
+
+.coverageGroup {
+  display: grid;
+  gap: 6px;
+}
+
+.coverageGroup > strong {
+  color: var(--muted);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.coverageOption {
+  display: flex !important;
+  min-height: 34px;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  padding: 7px 9px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--surface);
+}
+
+.coverageOption input {
+  width: 15px;
+  accent-color: var(--green-button);
 }
 
 .formColumns {
@@ -553,7 +653,11 @@
   }
 
   .expenseCopy {
-    max-width: calc(100% - 48px);
+    max-width: none;
+  }
+
+  .expenseStatus {
+    margin-left: 44px;
   }
 
   .expenseAmount {

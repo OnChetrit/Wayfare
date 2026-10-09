@@ -1,9 +1,11 @@
 'use client';
-
+import { TripItemTools, TripItemContext } from './TripItemTools';
+import { useContext, useEffect, useRef, useState } from 'react';
 import {
   AlertCircle,
   BedDouble,
   BusFront,
+  Check,
   MoreHorizontal,
   Pencil,
   Plane,
@@ -15,50 +17,31 @@ import {
   WalletCards,
   X,
 } from 'lucide-react';
-import { useMemo, useState } from 'react';
-import styles from './ExpensesPanel.module.scss';
+import {
+  currencyTotals,
+  formatMoney,
+  moneyMinorUnits,
+  paymentStatusLabels,
+  paymentTotals,
+  splitMoneyEqually,
+  validateAllocation,
+  type Expense,
+  type ExpenseCategory,
+  type PaymentStatus,
+  type ExpenseItem,
+  type SavedPlace,
+  type ScheduleItem,
+  type Stay,
+  type TripDay,
+  type TripFlight,
+} from '@wayfare/domain';
+import { CurrencyPicker } from '@/components/CurrencyPicker';
 import {
   expenseCategories,
   expenseCategoryLabels,
   expenseFromDatabase,
 } from '@/lib/trips/expenses';
-import { currencyLabels, supportedCurrencies } from '@/lib/trips/currencies';
-import type {
-  Expense,
-  ExpenseCategory,
-  SavedPlace,
-  ScheduleItem,
-  Stay,
-  TripDay,
-  TripFlight,
-} from './types';
-
-type ExpenseSource = {
-  key: string;
-  label: string;
-  date: string;
-  category: ExpenseCategory;
-  amount?: number;
-  currency?: string;
-  stayId?: string;
-  flightId?: string;
-  scheduleItemId?: string;
-};
-
-type ExpensesPanelProps = {
-  tripId: string;
-  tripStartDate: string;
-  tripEndDate: string;
-  defaultCurrency: string;
-  expenses: Expense[];
-  stays: Stay[];
-  flights: TripFlight[];
-  schedule: ScheduleItem[];
-  places: SavedPlace[];
-  days: TripDay[];
-  onExpensesChange: (expenses: Expense[]) => void;
-  onLinkedStayPriceChange: (stayId: string, amount: number, currency: string) => void;
-};
+import styles from './ExpensesPanel.module.scss';
 
 const categoryIcons: Record<ExpenseCategory, typeof Plane> = {
   FLIGHT: Plane,
@@ -70,284 +53,255 @@ const categoryIcons: Record<ExpenseCategory, typeof Plane> = {
   OTHER: MoreHorizontal,
 };
 
-function formatMoney(value: number, currency: string) {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency,
-    maximumFractionDigits: 2,
-  }).format(value);
-}
-
-function groupedExpenseTotals(expenses: Expense[]) {
-  const totals = new Map<string, number>();
-  expenses.forEach(expense =>
-    totals.set(expense.currency, (totals.get(expense.currency) ?? 0) + expense.amount),
-  );
-  return [...totals.entries()].sort(([left], [right]) => left.localeCompare(right));
-}
-
-function formatCategoryMoney(expenses: Expense[], category: ExpenseCategory) {
-  const totals = new Map<string, number>();
-  expenses
-    .filter(expense => expense.category === category)
-    .forEach(expense =>
-      totals.set(expense.currency, (totals.get(expense.currency) ?? 0) + expense.amount),
-    );
-  return (
-    [...totals.entries()]
-      .sort(([left], [right]) => left.localeCompare(right))
-      .map(([entryCurrency, value]) => formatMoney(value, entryCurrency))
-      .join(' · ') || '—'
-  );
-}
-
-function formatActivityMoney(expenses: Expense[]) {
-  const grouped = ['RESTAURANT', 'TICKETS', 'SHOPPING', 'TRANSPORT', 'OTHER']
-    .flatMap(category => expenses.filter(expense => expense.category === category))
-    .reduce<Record<string, number>>((grouped, expense) => {
-      grouped[expense.currency] = (grouped[expense.currency] ?? 0) + expense.amount;
-      return grouped;
-    }, {});
-  return (
-    Object.entries(grouped)
-      .map(([entryCurrency, value]) => formatMoney(value, entryCurrency))
-      .join(' · ') || '—'
-  );
-}
-
 function formatDate(value: string) {
   return new Intl.DateTimeFormat('en-US', {
-    month: 'short',
     day: 'numeric',
+    month: 'short',
     timeZone: 'UTC',
   }).format(new Date(`${value}T12:00:00Z`));
 }
 
-function activityExpenseCategory(item: ScheduleItem): ExpenseCategory {
-  if (item.category === 'RESTAURANT' || item.category === 'CAFE' || item.category === 'BAR') {
-    return 'RESTAURANT';
+function categoryMoney(expenses: Expense[], category: ExpenseCategory) {
+  const totals = new Map<string, number>();
+  for (const expense of expenses) {
+    if (expense.category !== category) continue;
+    totals.set(expense.currency, (totals.get(expense.currency) ?? 0) + expense.amount);
   }
-  if (item.category === 'SHOPPING') return 'SHOPPING';
-  if (item.category === 'TRANSPORT') return 'TRANSPORT';
-  if (item.category === 'ATTRACTION') return 'TICKETS';
-  return 'OTHER';
-}
-
-function errorMessage(value: unknown) {
-  if (!value || typeof value !== 'object') return 'Could not save this expense.';
-  const payload = value as { error?: { message?: string } | string };
-  if (typeof payload.error === 'string') return payload.error;
-  if (payload.error && typeof payload.error.message === 'string') return payload.error.message;
-  return 'Could not save this expense.';
-}
-
-export function ExpensesPanel({
-  tripId,
-  tripStartDate,
-  tripEndDate,
-  defaultCurrency,
-  expenses,
-  stays,
-  flights,
-  schedule,
-  places,
-  days,
-  onExpensesChange,
-  onLinkedStayPriceChange,
-}: ExpensesPanelProps) {
-  const [filter, setFilter] = useState<'ALL' | ExpenseCategory>('ALL');
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [formOpen, setFormOpen] = useState(false);
-  const [title, setTitle] = useState('');
-  const [category, setCategory] = useState<ExpenseCategory>('OTHER');
-  const [amount, setAmount] = useState('');
-  const [expenseCurrency, setExpenseCurrency] = useState(defaultCurrency);
-  const [expenseDate, setExpenseDate] = useState(tripStartDate);
-  const [notes, setNotes] = useState('');
-  const [sourceKey, setSourceKey] = useState('');
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
-  const editingExpense = editingId ? expenses.find(expense => expense.id === editingId) : undefined;
-  const editingLinkedSource = isSourceLocked(editingExpense);
-
-  const sources = useMemo<ExpenseSource[]>(() => {
-    const staySources = stays.map(stay => ({
-      key: `stay:${stay.id}`,
-      label: `Hotel · ${stay.name}`,
-      date: stay.checkInDate,
-      category: 'HOTEL' as const,
-      amount: stay.priceAmount,
-      currency: stay.priceCurrency,
-      stayId: stay.id,
-    }));
-    const flightSources = flights.map(flight => ({
-      key: `flight:${flight.id}`,
-      label: `Flight · ${flight.flightNumber} ${flight.departureAirportIata ?? ''} → ${flight.arrivalAirportIata ?? ''}`,
-      date: flight.departureDate,
-      category: 'FLIGHT' as const,
-      flightId: flight.id,
-    }));
-    const activitySources = schedule.map(item => {
-      const place = places.find(candidate => candidate.id === item.savedPlaceId);
-      return {
-        key: `schedule:${item.id}`,
-        label: `Activity · ${place?.name ?? item.title ?? 'Untitled activity'}`,
-        date: item.date,
-        category: activityExpenseCategory(item),
-        scheduleItemId: item.id,
-      };
-    });
-    return [...staySources, ...flightSources, ...activitySources].sort((a, b) =>
-      a.date.localeCompare(b.date),
-    );
-  }, [flights, places, schedule, stays]);
-
-  const tripDays = Math.max(
-    1,
-    Math.round(
-      (Date.parse(`${tripEndDate}T12:00:00Z`) - Date.parse(`${tripStartDate}T12:00:00Z`)) /
-        86400000,
-    ) + 1,
+  return (
+    [...totals]
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([currency, amount]) => formatMoney(amount, currency))
+      .join(' · ') || '—'
   );
-  const totalByCurrency = groupedExpenseTotals(expenses);
-  const visibleExpenses = expenses
-    .filter(expense => filter === 'ALL' || expense.category === filter)
-    .sort((a, b) => b.expenseDate.localeCompare(a.expenseDate));
-  const linkedStays = new Set(expenses.map(expense => expense.stayId).filter(Boolean));
-  const linkedFlights = new Set(expenses.map(expense => expense.flightId).filter(Boolean));
-  const linkedActivities = new Set(expenses.map(expense => expense.scheduleItemId).filter(Boolean));
-  const missingCount =
-    stays.filter(stay => !linkedStays.has(stay.id)).length +
-    flights.filter(flight => !linkedFlights.has(flight.id)).length +
-    schedule.filter(item => !linkedActivities.has(item.id)).length;
+}
 
-  function resetForm() {
-    setEditingId(null);
-    setTitle('');
-    setCategory('OTHER');
-    setAmount('');
-    setExpenseCurrency(defaultCurrency);
-    setExpenseDate(tripStartDate);
-    setNotes('');
-    setSourceKey('');
+type Props = {
+  tripId: string;
+  tripStartDate: string;
+  tripEndDate: string;
+  defaultCurrency: string;
+  expenses: Expense[];
+  stays: Stay[];
+  flights: TripFlight[];
+  schedule: ScheduleItem[];
+  places: SavedPlace[];
+  days: TripDay[];
+  onExpensesChange: (expenses: Expense[]) => void;
+  onLinkedStayPriceChange: (id: string, amount: number, currency: string) => void;
+};
+export function ExpensesPanel(props: Props) {
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const canEdit = useContext(TripItemContext)?.access.canEdit ?? false;
+  const { tripId, expenses, defaultCurrency, onExpensesChange } = props;
+  const [editing, setEditing] = useState<Expense | null | undefined>();
+  const [title, setTitle] = useState('');
+  const [amount, setAmount] = useState('');
+  const [currency, setCurrency] = useState(defaultCurrency);
+  const [category, setCategory] = useState<ExpenseCategory>('OTHER');
+  const [date, setDate] = useState(props.tripStartDate);
+  const [status, setStatus] = useState<PaymentStatus>('UNPAID');
+  const [paymentDate, setPaymentDate] = useState('');
+  const [notes, setNotes] = useState('');
+  const [coverage, setCoverage] = useState<ExpenseItem[]>([]);
+  const [query, setQuery] = useState('');
+  const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [combineIds, setCombineIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    if (editing !== undefined && !dialog.open) dialog.showModal();
+    if (editing === undefined && dialog.open) dialog.close();
+  }, [editing]);
+
+  const sources: ExpenseItem[] = [
+    ...props.flights.map(item => ({
+      kind: 'FLIGHT' as const,
+      itemId: item.id,
+      title: item.flightNumber,
+      date: item.departureDate,
+      category: 'FLIGHT',
+    })),
+    ...props.stays.map(item => ({
+      kind: 'HOTEL' as const,
+      itemId: item.id,
+      title: item.name,
+      date: item.checkInDate,
+      category: 'HOTEL',
+    })),
+    ...props.schedule.map(item => ({
+      kind: 'ACTIVITY' as const,
+      itemId: item.id,
+      title:
+        item.title ??
+        props.places.find(place => place.id === item.savedPlaceId)?.name ??
+        'Activity',
+      date: item.date,
+      category: 'OTHER',
+    })),
+  ];
+  function open(expense: Expense | null) {
+    setEditing(expense);
+    setTitle(expense?.title ?? '');
+    setAmount(expense ? String(expense.amount) : '');
+    setCurrency(expense?.currency ?? defaultCurrency);
+    setCategory(expense?.category ?? 'OTHER');
+    setDate(expense?.expenseDate ?? props.tripStartDate);
+    setStatus(expense?.paymentStatus ?? (expense ? 'NEEDS_REVIEW' : 'UNPAID'));
+    setPaymentDate(expense?.paymentDate ?? '');
+    setNotes(expense?.notes ?? '');
     setError('');
-  }
-
-  function openNew() {
-    resetForm();
-    setFormOpen(true);
-  }
-
-  function openEdit(expense: Expense) {
-    setEditingId(expense.id);
-    setTitle(expense.title);
-    setCategory(expense.category);
-    setAmount(String(expense.amount));
-    setExpenseCurrency(expense.currency);
-    setExpenseDate(expense.expenseDate);
-    setNotes(expense.notes ?? '');
-    setSourceKey(
-      expense.stayId
-        ? `stay:${expense.stayId}`
-        : expense.flightId
-          ? `flight:${expense.flightId}`
-          : expense.scheduleItemId
-            ? `schedule:${expense.scheduleItemId}`
-            : '',
+    setQuery('');
+    setCoverage(
+      expense?.coverage ??
+        sources.filter(
+          item =>
+            item.itemId === expense?.stayId ||
+            item.itemId === expense?.flightId ||
+            item.itemId === expense?.scheduleItemId,
+        ),
     );
-    setError('');
-    setFormOpen(true);
   }
-
-  function isSourceLocked(expense: Expense | undefined) {
-    return Boolean(expense?.stayId || expense?.flightId);
-  }
-
-  function chooseSource(value: string) {
-    setSourceKey(value);
-    const source = sources.find(item => item.key === value);
-    if (!source) return;
-    setCategory(source.category);
-    setExpenseDate(source.date);
-    if (source.amount != null) setAmount(String(source.amount));
-    if (source.currency) setExpenseCurrency(source.currency);
-    if (!title.trim()) setTitle(source.label.split(' · ').slice(1).join(' · '));
-  }
-
-  async function saveExpense(event: React.FormEvent<HTMLFormElement>) {
+  async function save(event: React.FormEvent) {
     event.preventDefault();
-    const numericAmount = Number(amount);
-    if (!title.trim() || !Number.isFinite(numericAmount) || numericAmount < 0 || !expenseDate) {
-      setError('Add a title, a valid amount, and a date.');
-      return;
-    }
-    const source = sources.find(item => item.key === sourceKey);
-    const payload = {
-      amount: numericAmount,
-      currency: expenseCurrency,
-      notes: notes.trim() || null,
-      ...(editingLinkedSource
-        ? {}
-        : {
-            title: title.trim(),
-            category,
-            expenseDate,
-            stayId: source?.stayId ?? null,
-            flightId: source?.flightId ?? null,
-            scheduleItemId: source?.scheduleItemId ?? null,
-          }),
-    };
-    setSaving(true);
     setError('');
     try {
+      moneyMinorUnits(amount, currency);
+      validateAllocation(amount, currency, coverage);
+      const confirmPaid = editing?.paymentStatus === 'PAID' && status === 'PAID';
+      if (
+        confirmPaid &&
+        !window.confirm(
+          `Save changes to ${title}? Confirm the revised ${formatMoney(amount, currency)} payment remains paid.`,
+        )
+      )
+        return;
+      const moveFrom: Record<string, number> = {};
+      for (const item of coverage) {
+        const other = expenses.find(
+          expense =>
+            expense.id !== editing?.id &&
+            expense.coverage?.some(
+              link => link.itemId && link.itemId === item.itemId && link.kind === item.kind,
+            ),
+        );
+        if (other) {
+          if (
+            !window.confirm(
+              `Move ${item.title} from ${other.title} (${formatMoney(other.amount, other.currency)}) to this expense? The previous total, notes, and receipts will be preserved.`,
+            )
+          )
+            return;
+          moveFrom[other.id] = other.version!;
+        }
+      }
+      setSaving(true);
       const response = await fetch(
-        editingId ? `/api/trips/${tripId}/expenses/${editingId}` : `/api/trips/${tripId}/expenses`,
+        `/api/trips/${tripId}/expenses${editing ? `/${editing.id}` : ''}`,
         {
-          method: editingId ? 'PATCH' : 'POST',
+          method: editing ? 'PATCH' : 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
+          body: JSON.stringify({
+            title,
+            category,
+            amount: Number(amount),
+            currency,
+            expenseDate: date,
+            paymentStatus: status,
+            paymentDate: paymentDate || null,
+            notes,
+            coverage: coverage.filter(item => item.itemId),
+            expectedVersion: editing?.version,
+            confirmPaid,
+            moveFrom,
+          }),
         },
       );
-      const body = (await response.json().catch(() => ({}))) as {
-        expense?: Parameters<typeof expenseFromDatabase>[0];
-      };
-      if (!response.ok || !body.expense) throw new Error(errorMessage(body));
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error);
       const saved = expenseFromDatabase(body.expense);
       onExpensesChange(
-        editingId
-          ? expenses.map(expense => (expense.id === editingId ? saved : expense))
+        editing
+          ? expenses.map(item => (item.id === editing.id ? saved : item))
           : [...expenses, saved],
       );
-      if (saved.stayId) onLinkedStayPriceChange(saved.stayId, saved.amount, saved.currency);
-      setFormOpen(false);
-      resetForm();
-    } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : 'Could not save this expense.');
+      setEditing(undefined);
+    } catch (failure) {
+      setError((failure as Error).message);
     } finally {
       setSaving(false);
     }
   }
-
-  async function deleteExpense(expense: Expense) {
-    if (!window.confirm(`Delete ${expense.title}?`)) return;
+  async function remove(expense: Expense) {
+    if (
+      !window.confirm(
+        `Delete ${expense.title}? Itinerary items remain, and their payment indicators will be removed.`,
+      )
+    )
+      return;
     const response = await fetch(`/api/trips/${tripId}/expenses/${expense.id}`, {
       method: 'DELETE',
     });
     if (!response.ok) {
-      setError('Could not delete this expense.');
+      setError('Could not delete this payment.');
       return;
     }
     onExpensesChange(expenses.filter(item => item.id !== expense.id));
   }
+  async function combine() {
+    const selected = expenses.filter(item => combineIds.includes(item.id));
+    if (selected.length < 2) return;
+    if (new Set(selected.map(item => item.currency)).size !== 1) {
+      setError('Only payments in the same currency can be combined.');
+      return;
+    }
+    const total = currencyTotals(selected)[selected[0].currency];
+    const choice = window.prompt(
+      `Combine ${selected.map(item => item.title).join(', ')} into ${formatMoney(total, selected[0].currency)}? All items, documents, and notes will be retained. Enter PAID or UNPAID for the combined status.`,
+      selected.every(item => item.paymentStatus === 'PAID') ? 'PAID' : 'UNPAID',
+    );
+    if (choice !== 'PAID' && choice !== 'UNPAID') return;
+    const response = await fetch(`/api/trips/${tripId}/expenses/combine`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        expenses: selected.map(item => ({ id: item.id, version: item.version })),
+        paymentStatus: choice,
+      }),
+    });
+    const body = await response.json();
+    if (!response.ok) {
+      setError(body.error);
+      return;
+    }
+    onExpensesChange([
+      ...expenses.filter(item => !combineIds.includes(item.id)),
+      expenseFromDatabase(body.expense),
+    ]);
+    setCombineIds([]);
+  }
+  const totals = paymentTotals(expenses);
+  const uncoveredCount = sources.filter(
+    source =>
+      !expenses.some(expense =>
+        expense.coverage?.some(item => item.kind === source.kind && item.itemId === source.itemId),
+      ),
+  ).length;
 
   return (
     <section className={styles.panel} data-enter>
       <div className={styles.header}>
         <div>
           <h1>What will this trip cost?</h1>
-          <p>Keep hotels, flights, and every memorable stop in one place.</p>
+          <p>Track estimates and payments without changing reservation details.</p>
         </div>
-        <button type="button" className={styles.addButton} onClick={openNew}>
+        <button
+          type="button"
+          className={styles.addButton}
+          disabled={!canEdit}
+          onClick={() => open(null)}
+        >
           <Plus size={15} /> Add expense
         </button>
       </div>
@@ -355,17 +309,23 @@ export function ExpensesPanel({
       <div className={styles.summaryGrid}>
         <div className={`${styles.summaryCard} ${styles.summaryCardTotal}`}>
           <div className={styles.totalHeading}>
-            <span>Total trip cost</span>
+            <span>Payment totals</span>
             <small>
               {expenses.length} {expenses.length === 1 ? 'expense' : 'expenses'}
             </small>
           </div>
-          {totalByCurrency.length ? (
+          {Object.entries(totals).length ? (
             <div className={styles.totalAmounts}>
-              {totalByCurrency.map(([currency, value]) => (
-                <div className={styles.totalAmount} key={currency}>
-                  <strong>{formatMoney(value, currency)}</strong>
-                  <span>{formatMoney(value / tripDays, currency)} per day</span>
+              {Object.entries(totals).map(([currencyCode, statusTotals]) => (
+                <div className={styles.totalAmount} key={currencyCode}>
+                  <strong>{currencyCode}</strong>
+                  <span>
+                    Paid {formatMoney(statusTotals.PAID, currencyCode)} · Unpaid{' '}
+                    {formatMoney(statusTotals.UNPAID, currencyCode)}
+                  </span>
+                  {Number(statusTotals.NEEDS_REVIEW) > 0 ? (
+                    <span>Needs review {formatMoney(statusTotals.NEEDS_REVIEW, currencyCode)}</span>
+                  ) : null}
                 </div>
               ))}
             </div>
@@ -373,87 +333,108 @@ export function ExpensesPanel({
             <strong className={styles.totalEmpty}>—</strong>
           )}
           <small className={styles.totalFooter}>
-            {tripDays} {tripDays === 1 ? 'day' : 'days'} · Totals are grouped by currency
+            Original currencies stay separate. Changing the trip default does not convert totals.
           </small>
         </div>
-        <SummaryCard category="FLIGHT" value={formatCategoryMoney(expenses, 'FLIGHT')} />
-        <SummaryCard category="HOTEL" value={formatCategoryMoney(expenses, 'HOTEL')} />
-        <div className={styles.summaryCard}>
-          <span>Activities</span>
-          <strong>{formatActivityMoney(expenses)}</strong>
-          <small>Food, tickets, shopping & more</small>
-        </div>
+        <SummaryCard category="FLIGHT" value={categoryMoney(expenses, 'FLIGHT')} />
+        <SummaryCard category="HOTEL" value={categoryMoney(expenses, 'HOTEL')} />
+        <SummaryCard category="TICKETS" value={categoryMoney(expenses, 'TICKETS')} />
       </div>
 
-      {missingCount > 0 && (
+      {uncoveredCount > 0 ? (
         <div className={styles.missingNotice} role="status">
           <AlertCircle size={17} />
           <span>
-            {missingCount} itinerary {missingCount === 1 ? 'item has' : 'items have'} no expense
+            {uncoveredCount} itinerary {uncoveredCount === 1 ? 'item has' : 'items have'} no payment
             recorded yet.
           </span>
         </div>
-      )}
+      ) : null}
+      {error ? (
+        <p className={styles.error} role="alert">
+          {error}
+        </p>
+      ) : null}
 
       <div className={styles.contentGrid}>
         <div className={styles.expenseListCard}>
           <div className={styles.listHeader}>
             <div>
               <h2>All expenses</h2>
+              <p className={styles.listHint}>Select rows to combine payments in one currency.</p>
             </div>
-            <select
-              value={filter}
-              onChange={event => setFilter(event.target.value as 'ALL' | ExpenseCategory)}
-              aria-label="Filter expenses by category"
-            >
-              <option value="ALL">All categories</option>
-              {expenseCategories.map(item => (
-                <option key={item} value={item}>
-                  {expenseCategoryLabels[item]}
-                </option>
-              ))}
-            </select>
+            {combineIds.length > 1 ? (
+              <button
+                type="button"
+                className={styles.addButton}
+                disabled={!canEdit}
+                onClick={() => void combine()}
+              >
+                Combine {combineIds.length}
+              </button>
+            ) : null}
           </div>
-          {visibleExpenses.length ? (
+          {expenses.length ? (
             <div className={styles.expenseRows}>
-              {visibleExpenses.map(expense => {
+              {expenses.map(expense => {
                 const Icon = categoryIcons[expense.category];
-                const sourceLocked = isSourceLocked(expense);
+                const status = expense.paymentStatus ?? 'NEEDS_REVIEW';
                 return (
-                  <div className={styles.expenseRow} key={expense.id}>
+                  <article className={styles.expenseRow} key={expense.id}>
+                    <label className={styles.rowSelect}>
+                      <input
+                        type="checkbox"
+                        aria-label={`Select ${expense.title} to combine`}
+                        checked={combineIds.includes(expense.id)}
+                        onChange={event =>
+                          setCombineIds(current =>
+                            event.target.checked
+                              ? [...current, expense.id]
+                              : current.filter(id => id !== expense.id),
+                          )
+                        }
+                      />
+                    </label>
                     <span className={styles.expenseIcon}>
                       <Icon size={16} />
                     </span>
-                    <div className={styles.expenseCopy}>
-                      <strong>{expense.title}</strong>
-                      <span>
-                        {expenseCategoryLabels[expense.category]} ·{' '}
-                        {formatDate(expense.expenseDate)}
-                        {expense.notes ? ` · ${expense.notes}` : ''}
+                    <button
+                      type="button"
+                      className={styles.expenseCopyButton}
+                      onClick={() => open(expense)}
+                    >
+                      <span className={styles.expenseCopy}>
+                        <strong>{expense.title}</strong>
+                        <span>
+                          {expenseCategoryLabels[expense.category]} ·{' '}
+                          {formatDate(expense.expenseDate)}
+                          {expense.coverage?.length
+                            ? ` · ${expense.coverage.length} covered ${expense.coverage.length === 1 ? 'item' : 'items'}`
+                            : ''}
+                        </span>
                       </span>
+                    </button>
+                    <div className={styles.expenseStatus} data-status={status}>
+                      {status === 'PAID' ? <Check size={13} /> : null}
+                      {paymentStatusLabels[status]}
                     </div>
                     <strong className={styles.expenseAmount}>
                       {formatMoney(expense.amount, expense.currency)}
                     </strong>
                     <div className={styles.rowActions}>
-                      <button
-                        type="button"
-                        onClick={() => openEdit(expense)}
-                        aria-label="Edit expense"
-                      >
+                      <button type="button" onClick={() => open(expense)} aria-label="Edit expense">
                         <Pencil size={14} />
                       </button>
-                      {!sourceLocked && (
-                        <button
-                          type="button"
-                          onClick={() => void deleteExpense(expense)}
-                          aria-label="Delete expense"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      )}
+                      <button
+                        type="button"
+                        disabled={!canEdit}
+                        onClick={() => void remove(expense)}
+                        aria-label="Delete expense"
+                      >
+                        <Trash2 size={14} />
+                      </button>
                     </div>
-                  </div>
+                  </article>
                 );
               })}
             </div>
@@ -461,8 +442,8 @@ export function ExpensesPanel({
             <div className={styles.emptyState}>
               <WalletCards size={22} />
               <strong>No expenses yet</strong>
-              <p>Add the first hotel, flight, meal, ticket, or shopping cost.</p>
-              <button type="button" onClick={openNew}>
+              <p>Add a payment and optionally connect it to itinerary items.</p>
+              <button type="button" disabled={!canEdit} onClick={() => open(null)}>
                 <Plus size={14} /> Add an expense
               </button>
             </div>
@@ -472,18 +453,23 @@ export function ExpensesPanel({
         <aside className={styles.categoryCard}>
           <h2>Where it goes</h2>
           <div className={styles.categoryRows}>
-            {expenseCategories.map(item => {
-              const Icon = categoryIcons[item];
-              const hasValue = expenses.some(expense => expense.category === item);
+            {expenseCategories.map(expenseCategory => {
+              const Icon = categoryIcons[expenseCategory];
               return (
-                <div className={styles.categoryRow} key={item}>
+                <div className={styles.categoryRow} key={expenseCategory}>
                   <div className={styles.categoryLabel}>
                     <Icon size={14} />
-                    <span>{expenseCategoryLabels[item]}</span>
-                    <strong>{formatCategoryMoney(expenses, item)}</strong>
+                    <span>{expenseCategoryLabels[expenseCategory]}</span>
+                    <strong>{categoryMoney(expenses, expenseCategory)}</strong>
                   </div>
                   <div className={styles.barTrack}>
-                    <span style={{ width: hasValue ? '100%' : '0%' }} />
+                    <span
+                      style={{
+                        width: expenses.some(expense => expense.category === expenseCategory)
+                          ? '100%'
+                          : '0%',
+                      }}
+                    />
                   </div>
                 </div>
               );
@@ -492,126 +478,190 @@ export function ExpensesPanel({
         </aside>
       </div>
 
-      {formOpen && (
-        <div className={styles.formBackdrop} role="presentation">
-          <form className={styles.form} onSubmit={saveExpense}>
-            <div className={styles.formHeader}>
-              <div>
-                <h2>{editingId ? 'Update expense' : 'Add an expense'}</h2>
-              </div>
-              <button type="button" onClick={() => setFormOpen(false)} aria-label="Close">
-                <X size={17} />
-              </button>
-            </div>
+      <dialog
+        ref={dialogRef}
+        className={styles.form}
+        aria-labelledby="expense-form-heading"
+        onClick={event => {
+          if (event.target === event.currentTarget) setEditing(undefined);
+        }}
+        onCancel={event => {
+          event.preventDefault();
+          setEditing(undefined);
+        }}
+        onClose={() => setEditing(undefined)}
+      >
+        <form className={styles.formContent} onSubmit={save}>
+          <div className={styles.formHeader}>
+            <h2 id="expense-form-heading">{editing ? 'Payment details' : 'Add an expense'}</h2>
+            <button type="button" onClick={() => setEditing(undefined)} aria-label="Close">
+              <X size={17} />
+            </button>
+          </div>
+          {editing && <TripItemTools kind="EXPENSE" itemId={editing.id} />}
+          <label>
+            Expense name
+            <input required value={title} onChange={event => setTitle(event.target.value)} />
+          </label>
+          <div className={styles.formColumns}>
             <label>
-              Expense name
+              Amount
               <input
-                value={title}
-                onChange={event => setTitle(event.target.value)}
-                autoFocus
-                placeholder="Dinner at La Pepica"
-                disabled={editingLinkedSource}
+                required
+                inputMode="decimal"
+                value={amount}
+                onChange={event => setAmount(event.target.value)}
               />
             </label>
             <label>
-              Link to itinerary{' '}
-              <span>{editingLinkedSource ? '(managed by itinerary)' : '(optional)'}</span>
+              Currency
+              <CurrencyPicker
+                value={currency}
+                onChange={setCurrency}
+                preferred={[defaultCurrency, ...expenses.map(item => item.currency)]}
+              />
+            </label>
+            <label>
+              Category
               <select
-                value={sourceKey}
-                onChange={event => chooseSource(event.target.value)}
-                disabled={editingLinkedSource}
+                value={category}
+                onChange={event => setCategory(event.target.value as ExpenseCategory)}
               >
-                <option value="">Manual expense</option>
-                {days.map(day => (
-                  <optgroup key={day.id} label={`${day.label}, ${day.shortDate}`}>
-                    {sources
-                      .filter(source => !source.stayId && !source.flightId)
-                      .filter(source => source.date === day.date)
-                      .map(source => (
-                        <option key={source.key} value={source.key}>
-                          {source.label}
-                        </option>
-                      ))}
-                  </optgroup>
+                {expenseCategories.map(item => (
+                  <option key={item} value={item}>
+                    {expenseCategoryLabels[item]}
+                  </option>
                 ))}
               </select>
             </label>
-            <div className={styles.formColumns}>
-              <label>
-                Category
-                <select
-                  value={category}
-                  onChange={event => setCategory(event.target.value as ExpenseCategory)}
-                  disabled={editingLinkedSource}
-                >
-                  {expenseCategories.map(item => (
-                    <option key={item} value={item}>
-                      {expenseCategoryLabels[item]}
-                    </option>
+            <label>
+              Payment status
+              <select
+                value={status}
+                onChange={event => setStatus(event.target.value as PaymentStatus)}
+              >
+                {status === 'NEEDS_REVIEW' ? (
+                  <option value="NEEDS_REVIEW">Needs review</option>
+                ) : null}
+                <option value="UNPAID">Unpaid</option>
+                <option value="PAID">Paid</option>
+              </select>
+            </label>
+          </div>
+          <label>
+            Expense date
+            <input
+              type="date"
+              required
+              value={date}
+              onChange={event => setDate(event.target.value)}
+            />
+          </label>
+          <label>
+            Payment date (optional)
+            <input
+              type="date"
+              value={paymentDate}
+              onChange={event => setPaymentDate(event.target.value)}
+            />
+          </label>
+          <fieldset className={styles.coverageFieldset}>
+            <legend>Covered reservations</legend>
+            <input
+              className={styles.coverageSearch}
+              aria-label="Search reservations"
+              placeholder="Search flights, hotels, and activities"
+              value={query}
+              onChange={event => setQuery(event.target.value)}
+            />
+            {(['FLIGHT', 'HOTEL', 'ACTIVITY'] as const).map(kind => (
+              <div className={styles.coverageGroup} key={kind}>
+                <strong>
+                  {kind === 'FLIGHT' ? 'Flights' : kind === 'HOTEL' ? 'Hotels' : 'Activities'}
+                </strong>
+                {sources
+                  .filter(
+                    item =>
+                      item.kind === kind &&
+                      `${item.title} ${item.date}`.toLowerCase().includes(query.toLowerCase()),
+                  )
+                  .map(item => (
+                    <label className={styles.coverageOption} key={item.itemId}>
+                      <input
+                        type="checkbox"
+                        checked={coverage.some(link => link.itemId === item.itemId)}
+                        onChange={event =>
+                          setCoverage(current =>
+                            event.target.checked
+                              ? [...current, item]
+                              : current.filter(link => link.itemId !== item.itemId),
+                          )
+                        }
+                      />
+                      {item.title} · {item.date}
+                    </label>
                   ))}
-                </select>
-              </label>
-              <label>
-                Amount
+              </div>
+            ))}
+            {coverage.map((item, index) => (
+              <label key={`${item.itemId}:${index}`}>
+                {item.title} share (optional)
                 <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={amount}
-                  onChange={event => setAmount(event.target.value)}
-                  placeholder="0.00"
+                  inputMode="decimal"
+                  value={item.allocatedAmount ?? ''}
+                  onChange={event =>
+                    setCoverage(current =>
+                      current.map((link, position) =>
+                        position === index
+                          ? { ...link, allocatedAmount: event.target.value || null }
+                          : link,
+                      ),
+                    )
+                  }
                 />
               </label>
-              <label>
-                Currency
-                <select
-                  value={expenseCurrency}
-                  onChange={event => setExpenseCurrency(event.target.value)}
-                >
-                  {supportedCurrencies.map(option => (
-                    <option key={option} value={option}>
-                      {option} — {currencyLabels[option]}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-            <label>
-              Date
-              <input
-                type="date"
-                min={tripStartDate}
-                max={tripEndDate}
-                value={expenseDate}
-                onChange={event => setExpenseDate(event.target.value)}
-                disabled={editingLinkedSource}
-              />
-            </label>
-            <label>
-              Notes <span>(optional)</span>
-              <textarea
-                rows={2}
-                value={notes}
-                onChange={event => setNotes(event.target.value)}
-                placeholder="Who paid, booking details, or anything else"
-              />
-            </label>
-            {error && <p className={styles.error}>{error}</p>}
-            <div className={styles.formActions}>
-              <button
-                type="button"
-                className={styles.cancelButton}
-                onClick={() => setFormOpen(false)}
-              >
-                Cancel
-              </button>
-              <button type="submit" className={styles.saveButton} disabled={saving}>
-                {saving ? 'Saving…' : editingId ? 'Save changes' : 'Add expense'}
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
+            ))}
+            <button
+              type="button"
+              className={styles.cancelButton}
+              disabled={!coverage.length}
+              onClick={() => {
+                try {
+                  const shares = splitMoneyEqually(amount, currency, coverage.length);
+                  setCoverage(current =>
+                    current.map((item, index) => ({ ...item, allocatedAmount: shares[index] })),
+                  );
+                } catch (failure) {
+                  setError((failure as Error).message);
+                }
+              }}
+            >
+              Split equally
+            </button>
+          </fieldset>
+          <label>
+            Notes
+            <textarea value={notes} onChange={event => setNotes(event.target.value)} />
+          </label>
+          {error && (
+            <p className={styles.error} role="alert">
+              {error}
+            </p>
+          )}
+          <div className={styles.formActions}>
+            <button
+              type="button"
+              className={styles.cancelButton}
+              onClick={() => setEditing(undefined)}
+            >
+              Cancel
+            </button>
+            <button className={styles.saveButton} disabled={saving || !canEdit} type="submit">
+              {saving ? 'Saving…' : 'Save changes'}
+            </button>
+          </div>
+        </form>
+      </dialog>
     </section>
   );
 }

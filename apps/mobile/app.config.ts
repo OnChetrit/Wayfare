@@ -28,6 +28,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     permissions: ['android.permission.SCHEDULE_EXACT_ALARM'],
   },
   plugins: [
+    'expo-sharing',
+    'expo-image',
     'expo-router',
     'expo-secure-store',
     'expo-web-browser',

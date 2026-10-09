@@ -177,7 +177,12 @@ const SavedPlaceRow = React.memo(function SavedPlaceRow({
 });
 
 export function SavedPlacesDrawer(props: SavedPlacesDrawerProps) {
-  if (process.env.EXPO_OS === 'ios') return <NativeSavedPlacesSheet {...props} />;
+  // An inactive SwiftUI Host still creates a full-screen native view. Keeping
+  // it mounted above react-native-maps prevents the map from receiving pan and
+  // pinch gestures even when the bottom sheet is not presented.
+  if (process.env.EXPO_OS === 'ios') {
+    return props.visible ? <NativeSavedPlacesSheet {...props} /> : null;
+  }
 
   return <SavedPlacesDrawerFallback key={props.visible ? 'open' : 'closed'} {...props} />;
 }

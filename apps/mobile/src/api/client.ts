@@ -1,3 +1,9 @@
+import { Alert } from 'react-native';
+import {
+  reservationConfirmation,
+  reservationAcknowledgements,
+  reservationChangeSummary,
+} from '@wayfare/domain';
 import { clearLocalSession, supabase } from '@/lib/supabase';
 import { apiErrorMessage, WayfareApiError } from '@/api/error';
 
@@ -69,6 +75,34 @@ export async function requestWayfareApi<T>(path: string, init: RequestInit = {})
     );
   }
 
+  if (!response.ok && !new Headers(init.headers).has('x-reservation-confirmations')) {
+    const parsed = reservationConfirmation(payload);
+    if (parsed.success) {
+      const change = parsed.data;
+      const accepted = await new Promise<boolean>(resolve =>
+        Alert.alert(
+          `${change.title} · Reservation locked`,
+          reservationChangeSummary(change),
+          [
+            { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
+            {
+              text: init.method === 'DELETE' ? 'Delete reservation' : 'Save changes',
+              onPress: () => resolve(true),
+            },
+          ],
+          { cancelable: false },
+        ),
+      );
+      if (!accepted) throw new WayfareApiError('Change cancelled. Your draft has been kept.');
+      return requestWayfareApi<T>(path, {
+        ...init,
+        headers: {
+          ...init.headers,
+          'x-reservation-confirmations': JSON.stringify(reservationAcknowledgements(change)),
+        },
+      });
+    }
+  }
   if (!response.ok) {
     throw new WayfareApiError(
       apiErrorMessage(payload, 'Could not complete that request.'),

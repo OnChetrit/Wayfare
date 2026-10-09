@@ -14,14 +14,6 @@ import type { SavePlace } from './date-bar-types';
 import type { LocationSegment, SavedPlace, ScheduleItem, Stay, TripDay } from './types';
 import { parseTimelineDragPayload } from './timeline-dnd';
 
-function formatSelectionDate(date: string) {
-  return new Intl.DateTimeFormat('en-US', {
-    month: 'short',
-    day: 'numeric',
-    timeZone: 'UTC',
-  }).format(new Date(`${date}T12:00:00Z`));
-}
-
 type ExpandedTimelineProps = {
   days: TripDay[];
   selectedDate: string;
@@ -161,12 +153,6 @@ function ExpandedTimelineComponent({
     schedule.forEach(item => counts.set(item.date, (counts.get(item.date) ?? 0) + 1));
     return counts;
   }, [schedule]);
-  const selectionLabel = visibleRange
-    ? visibleRange.start === visibleRange.end
-      ? `${formatSelectionDate(visibleRange.start)} selected`
-      : `${formatSelectionDate(visibleRange.start)} – ${formatSelectionDate(visibleRange.end)} selected`
-    : '';
-
   return (
     <div
       className={`${styles.dateScroller} ${locationEditor || stayEditor ? styles.dateScrollerEditing : ''}`}

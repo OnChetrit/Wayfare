@@ -1,5 +1,6 @@
 'use client';
 
+import { CurrencyPicker } from '@/components/CurrencyPicker';
 import { FormEvent, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { LogOut, Save, X } from 'lucide-react';
@@ -108,15 +109,10 @@ export function UserModal({ open, user, onClose, onThemeChange }: UserModalProps
           <legend>Preferences</legend>
           <label>
             Currency
-            <select
+            <CurrencyPicker
               value={preferences.currency}
-              onChange={event => updatePreference('currency', event.target.value)}
-            >
-              <option value="EUR">EUR — Euro</option>
-              <option value="USD">USD — US Dollar</option>
-              <option value="ILS">ILS — Shekel</option>
-              <option value="GBP">GBP — Pound</option>
-            </select>
+              onChange={value => updatePreference('currency', value)}
+            />
           </label>
           <label>
             Appearance

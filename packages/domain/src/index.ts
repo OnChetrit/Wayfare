@@ -1,4 +1,17 @@
 import { z } from 'zod';
+import { currencyInputSchema, moneyMinorUnits, moneyFromMinorUnits } from './money';
+import {
+  paymentStatusSchema,
+  expenseItemSchema,
+  coverageInputSchema,
+  type PaymentStatus,
+  type ExpenseItem,
+} from './payments';
+export * from './money';
+export * from './payments';
+export * from './reservations';
+export * from './documents';
+import { reservationMetadataSchema } from './reservations';
 
 export { wayfareLogo } from './brand';
 
@@ -54,7 +67,7 @@ export const tripInputSchema = z
     endDate: z.iso.date(),
     destinationLabel: z.string().trim().min(1).max(120).optional(),
     defaultTimeZone: z.string().trim().min(1).max(120).default('Europe/Madrid'),
-    defaultCurrency: currencyCodeSchema.default('EUR'),
+    defaultCurrency: currencyInputSchema.default('EUR'),
   })
   .refine(value => value.startDate <= value.endDate, {
     message: 'End date must be on or after start date',
@@ -83,14 +96,17 @@ export const activityInputSchema = z.object({
   sortOrder: z.number().int().nonnegative(),
   notes: z.string().trim().max(2000).optional(),
   amount: z.number().finite().nonnegative().nullable().optional(),
-  currency: currencyCodeSchema.nullable().optional(),
+  currency: currencyInputSchema.nullable().optional(),
 });
 
 export const expenseInputSchema = z.object({
   title: z.string().trim().min(1).max(200),
   category: expenseCategorySchema,
   amount: z.number().finite().nonnegative(),
-  currency: currencyCodeSchema,
+  currency: currencyInputSchema,
+  paymentStatus: paymentStatusSchema.default('UNPAID'),
+  paymentDate: z.iso.date().nullable().optional(),
+  coverage: z.array(coverageInputSchema).optional(),
   expenseDate: z.iso.date(),
   notes: z.string().trim().max(2000).optional(),
   stayId: z.uuid().nullable().optional(),
@@ -229,6 +245,8 @@ export type SavedPlace = {
 };
 
 export type ScheduleItem = {
+  reservationLocked?: boolean;
+  mutationVersion?: number;
   id: string;
   savedPlaceId: string | null;
   date: string;
@@ -256,6 +274,8 @@ export type LocationSegment = {
 };
 
 export type Stay = {
+  reservationLocked?: boolean;
+  mutationVersion?: number;
   id: string;
   tripId: string;
   name: string;
@@ -276,6 +296,8 @@ export type Stay = {
 };
 
 export type TripFlight = {
+  reservationLocked?: boolean;
+  mutationVersion?: number;
   id: string;
   tripId: string;
   flightNumber: string;
@@ -312,6 +334,10 @@ export type TripFlight = {
 };
 
 export type Expense = {
+  paymentStatus?: PaymentStatus;
+  paymentDate?: string;
+  coverage?: ExpenseItem[];
+  version?: number;
   id: string;
   tripId: string;
   title: string;
@@ -378,6 +404,7 @@ export const tripChangedEventSchema = z.object({
     'flights',
     'locations',
     'expenses',
+    'documents',
     'invitations',
     'membership',
   ]),
@@ -490,6 +517,7 @@ export const savedPlaceSchema = z.object({
 });
 
 export const scheduleItemSchema = z.object({
+  ...reservationMetadataSchema.shape,
   id: z.uuid(),
   savedPlaceId: z.uuid().nullable(),
   date: z.iso.date(),
@@ -519,6 +547,7 @@ export const locationSegmentSchema = z.object({
 });
 
 export const staySchema = z.object({
+  ...reservationMetadataSchema.shape,
   id: z.uuid(),
   tripId: z.uuid(),
   name: z.string(),
@@ -539,6 +568,7 @@ export const staySchema = z.object({
 });
 
 export const tripFlightSchema = z.object({
+  ...reservationMetadataSchema.shape,
   id: z.uuid(),
   tripId: z.uuid(),
   flightNumber: z.string(),
@@ -575,6 +605,10 @@ export const tripFlightSchema = z.object({
 });
 
 export const expenseSchema = z.object({
+  paymentStatus: paymentStatusSchema.default('NEEDS_REVIEW'),
+  paymentDate: z.iso.date().optional(),
+  coverage: z.array(expenseItemSchema).optional(),
+  version: z.number().int().optional(),
   id: z.uuid(),
   tripId: z.uuid(),
   title: z.string(),
@@ -645,10 +679,17 @@ export type QueueOperation = {
 };
 
 export function currencyTotals(expenses: Expense[]) {
-  return expenses.reduce<Record<string, number>>((totals, expense) => {
-    totals[expense.currency] = (totals[expense.currency] ?? 0) + expense.amount;
-    return totals;
-  }, {});
+  const totals: Record<string, bigint> = {};
+  for (const expense of expenses) {
+    totals[expense.currency] =
+      (totals[expense.currency] ?? 0n) + moneyMinorUnits(expense.amount, expense.currency);
+  }
+  return Object.fromEntries(
+    Object.entries(totals).map(([currency, total]) => [
+      currency,
+      Number(moneyFromMinorUnits(total, currency)),
+    ]),
+  );
 }
 
 export function sortQueueOperations(operations: QueueOperation[]) {
@@ -722,3 +763,5 @@ export function makeTripDays(startDate: string, endDate: string) {
   }
   return days;
 }
+
+export * from './day-routes';

@@ -219,10 +219,10 @@
 
 .daySectionHorizontal .scheduleActivityCard {
   grid-template-areas:
-    'drag icon .'
-    '. details details'
-    'place . remove';
-  grid-template-columns: 16px 32px minmax(0, 1fr);
+    'drag icon remove lock'
+    '. details details details'
+    'place place place place';
+  grid-template-columns: 16px 32px minmax(0, 1fr) 22px;
 }
 
 .daySectionHorizontal .dragHandle {
@@ -261,13 +261,23 @@
 }
 
 .daySectionHorizontal .placeMarker {
+  align-self: center;
+}
+
+.daySectionHorizontal .activityIndicators {
   grid-area: place;
   align-self: end;
+  justify-content: flex-start;
 }
 
 .daySectionHorizontal .activityRemove {
   grid-area: remove;
-  align-self: end;
+  align-self: start;
+}
+
+.daySectionHorizontal .activityLock {
+  grid-area: lock;
+  justify-self: end;
 }
 
 .daySectionHorizontal .flightCard {
@@ -470,7 +480,7 @@
 }
 
 .scheduleActivityCard {
-  grid-template-columns: 17px 32px minmax(0, 1fr) 20px 20px;
+  grid-template-columns: 17px 32px minmax(0, 1fr) 20px 22px 22px;
 }
 
 .activityCard:hover,
@@ -478,6 +488,11 @@
   border-color: var(--line-strong);
   box-shadow: var(--shadow-soft);
   transform: translateY(-1px);
+}
+
+.activityCardLocked {
+  border-color: color-mix(in srgb, var(--warning) 42%, var(--line));
+  background: color-mix(in srgb, var(--warning-surface) 48%, var(--surface-strong));
 }
 
 .activityCard:active {
@@ -543,6 +558,14 @@
   color: var(--green);
 }
 
+.activityIndicators {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  color: var(--warning);
+}
+
 .activityRemove {
   width: 22px;
   height: 22px;
@@ -552,6 +575,56 @@
   border-radius: 6px;
   color: var(--soft-muted);
   background: transparent;
+}
+
+.activityLock {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 6px;
+  color: var(--muted);
+  background: var(--surface-subtle);
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(0.92);
+  transition: 160ms ease;
+}
+
+.activityLockActive {
+  color: var(--warning);
+  background: var(--warning-surface);
+  opacity: 1;
+  pointer-events: auto;
+  transform: scale(1);
+}
+
+.activityLockActive:disabled {
+  opacity: 0.45;
+}
+
+.activityCard:hover .activityLock,
+.activityCard:focus-within .activityLock {
+  opacity: 1;
+  pointer-events: auto;
+  transform: scale(1);
+}
+
+.activityLock:hover:not(:disabled),
+.activityLock:focus-visible {
+  color: var(--green);
+  background: var(--mint);
+}
+
+.activityLock:disabled {
+  cursor: not-allowed;
+}
+
+.activityCard:hover .activityLock:disabled,
+.activityCard:focus-within .activityLock:disabled {
+  opacity: 0.45;
 }
 
 .activityRemove:hover,
@@ -754,5 +827,27 @@
 
   .activityTime {
     font-size: 12px;
+  }
+
+  .activityLock {
+    opacity: 1;
+    pointer-events: auto;
+    transform: scale(1);
+  }
+
+  .activityLock:disabled {
+    opacity: 0.45;
+  }
+}
+
+@media (hover: none) {
+  .activityLock {
+    opacity: 1;
+    pointer-events: auto;
+    transform: scale(1);
+  }
+
+  .activityLock:disabled {
+    opacity: 0.45;
   }
 }

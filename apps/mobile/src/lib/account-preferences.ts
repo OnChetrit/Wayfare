@@ -1,15 +1,13 @@
-import type { UserPreferences } from '@wayfare/domain';
+import { activeCurrencies, type UserPreferences } from '@wayfare/domain';
 
 import { preferredCurrency } from './user-preferences';
 
 export type AccountPreferences = Pick<UserPreferences, 'currency' | 'theme'>;
 
-export const currencyOptions = [
-  { label: 'EUR — Euro', value: 'EUR' },
-  { label: 'USD — US Dollar', value: 'USD' },
-  { label: 'ILS — Shekel', value: 'ILS' },
-  { label: 'GBP — Pound', value: 'GBP' },
-] as const;
+export const currencyOptions = activeCurrencies.map(currency => ({
+  label: `${currency.code} — ${currency.name}`,
+  value: currency.code,
+}));
 
 function metadataRecord(metadata: unknown) {
   return metadata && typeof metadata === 'object' ? (metadata as Record<string, unknown>) : {};

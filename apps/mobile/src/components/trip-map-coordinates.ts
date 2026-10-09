@@ -1,9 +1,11 @@
 export type MapCoordinate = { latitude: number; longitude: number };
 
-type MapRegion = MapCoordinate & {
+export type MapRegion = MapCoordinate & {
   latitudeDelta: number;
   longitudeDelta: number;
 };
+
+const MINIMUM_REGION_DELTA = 0.045;
 
 export function isValidMapCoordinate(coordinate: MapCoordinate) {
   return (
@@ -36,4 +38,49 @@ export function uniqueMapCoordinates(coordinates: MapCoordinate[]) {
 
 export function mapCameraKey(coordinates: MapCoordinate[]) {
   return coordinates.map(coordinate => `${coordinate.latitude}:${coordinate.longitude}`).join('|');
+}
+
+/** Builds an initial camera that contains the supplied itinerary coordinates. */
+export function mapRegionForCoordinates(coordinates: MapCoordinate[]): MapRegion | null {
+  const validCoordinates = uniqueMapCoordinates(coordinates);
+  if (!validCoordinates.length) return null;
+  if (validCoordinates.length === 1) {
+    return {
+      ...validCoordinates[0],
+      latitudeDelta: MINIMUM_REGION_DELTA,
+      longitudeDelta: MINIMUM_REGION_DELTA,
+    };
+  }
+
+  const latitudes = validCoordinates.map(coordinate => coordinate.latitude);
+  const minimumLatitude = Math.min(...latitudes);
+  const maximumLatitude = Math.max(...latitudes);
+  const longitudes = validCoordinates
+    .map(coordinate => (coordinate.longitude + 360) % 360)
+    .sort((left, right) => left - right);
+  let largestGap = -1;
+  let longitudeStart = longitudes[0];
+
+  longitudes.forEach((longitude, index) => {
+    const nextLongitude =
+      longitudes[(index + 1) % longitudes.length] + (index === longitudes.length - 1 ? 360 : 0);
+    const gap = nextLongitude - longitude;
+    if (gap > largestGap) {
+      largestGap = gap;
+      longitudeStart = nextLongitude % 360;
+    }
+  });
+
+  const longitudeSpan = 360 - largestGap;
+  const centeredLongitude = ((longitudeStart + longitudeSpan / 2 + 540) % 360) - 180;
+
+  return {
+    latitude: (minimumLatitude + maximumLatitude) / 2,
+    longitude: centeredLongitude,
+    latitudeDelta: Math.min(
+      170,
+      Math.max(MINIMUM_REGION_DELTA, (maximumLatitude - minimumLatitude) * 1.35),
+    ),
+    longitudeDelta: Math.min(360, Math.max(MINIMUM_REGION_DELTA, longitudeSpan * 1.35)),
+  };
 }

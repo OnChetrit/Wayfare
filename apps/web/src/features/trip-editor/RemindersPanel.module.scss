@@ -1,8 +1,9 @@
 .dialog {
   width: min(650px, calc(100% - 32px));
-  max-height: min(760px, calc(100vh - 32px));
+  max-height: min(760px, calc(100dvh - 32px));
   margin: auto;
   padding: 20px;
+  overflow: auto;
   border: 1px solid var(--line);
   border-radius: 16px;
   color: var(--ink);
@@ -10,7 +11,8 @@
   box-shadow: var(--shadow-float);
 
   &::backdrop {
-    background: rgba(31, 45, 37, 0.35);
+    background: var(--backdrop);
+    backdrop-filter: blur(3px);
   }
 
   header {
@@ -69,7 +71,7 @@
 }
 
 .list {
-  max-height: min(540px, calc(100vh - 220px));
+  max-height: min(540px, calc(100dvh - 220px));
   overflow: auto;
   display: grid;
   gap: 9px;

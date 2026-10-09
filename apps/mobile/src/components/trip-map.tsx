@@ -1,19 +1,20 @@
 import * as React from 'react';
+import { Text, View } from 'react-native';
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE, type Region } from 'react-native-maps';
 
 import {
   isValidMapCoordinate,
   mapCameraKey,
-  sameMapRegion,
+  mapRegionForCoordinates,
   uniqueMapCoordinates,
 } from '@/components/trip-map-coordinates';
 import { useTheme } from '@/theme/theme-provider';
 
-const initialRegion: Region = {
-  latitude: 41.9028,
-  longitude: 12.4964,
-  latitudeDelta: 0.22,
-  longitudeDelta: 0.22,
+const fallbackRegion: Region = {
+  latitude: 20,
+  longitude: 0,
+  latitudeDelta: 120,
+  longitudeDelta: 120,
 };
 
 const darkMapStyle = [
@@ -32,7 +33,9 @@ const darkMapStyle = [
 ];
 
 export type MapPlace = {
+  badge?: string;
   id: string;
+  sourcePlaceId?: string;
   name: string;
   subtitle: string;
   lat: number;
@@ -48,6 +51,7 @@ export type MapRoute = {
 };
 
 type TripMapProps = {
+  fitKey?: string;
   fitToPlaces?: boolean;
   onSelectPlace?: (place: MapPlace) => void;
   onVisiblePlacesChange?: (placeIds: string[]) => void;
@@ -75,6 +79,7 @@ function isPlaceVisible(place: MapPlace, region: Region) {
 }
 
 export function TripMap({
+  fitKey,
   fitToPlaces = false,
   onSelectPlace,
   onVisiblePlacesChange,
@@ -86,7 +91,13 @@ export function TripMap({
   const { colors, theme } = useTheme();
   const map = React.useRef<MapView>(null);
   const lastFittedCameraKey = React.useRef<string | null>(null);
-  const [region, setRegion] = React.useState(initialRegion);
+  const initialCameraCoordinates = uniqueMapCoordinates([
+    ...places.map(place => ({ latitude: place.lat, longitude: place.lng })),
+    ...(showRouteLines ? routes.flatMap(route => route.coordinates) : []),
+  ]);
+  const [initialRegion] = React.useState<Region>(
+    () => mapRegionForCoordinates(initialCameraCoordinates) ?? fallbackRegion,
+  );
   const [mapReady, setMapReady] = React.useState(false);
   const mapPlaces = React.useMemo(() => {
     const uniquePlaces = new Map<string, MapPlace>();
@@ -141,12 +152,22 @@ export function TripMap({
     [places, visibleRoutes],
   );
   const nextCameraKey = React.useMemo(() => mapCameraKey(cameraCoordinates), [cameraCoordinates]);
+  const publishVisiblePlaces = React.useCallback(
+    (visibleRegion: Region) => {
+      onVisiblePlacesChange?.(
+        mapPlaces.filter(place => isPlaceVisible(place, visibleRegion)).map(place => place.id),
+      );
+    },
+    [mapPlaces, onVisiblePlacesChange],
+  );
 
   React.useEffect(() => {
     if (!fitToPlaces || !mapReady || !cameraCoordinates.length) return;
-    if (lastFittedCameraKey.current === nextCameraKey) return;
+    const cameraKey = fitKey ?? nextCameraKey;
+    if (lastFittedCameraKey.current === cameraKey) return;
 
-    lastFittedCameraKey.current = nextCameraKey;
+    const isInitialFit = lastFittedCameraKey.current === null;
+    lastFittedCameraKey.current = cameraKey;
     if (cameraCoordinates.length === 1) {
       map.current?.animateToRegion(
         {
@@ -154,21 +175,15 @@ export function TripMap({
           latitudeDelta: 0.045,
           longitudeDelta: 0.045,
         },
-        360,
+        isInitialFit ? 0 : 360,
       );
       return;
     }
     map.current?.fitToCoordinates(cameraCoordinates, {
-      animated: true,
+      animated: !isInitialFit,
       edgePadding: { bottom: 56, left: 40, right: 40, top: 56 },
     });
-  }, [cameraCoordinates, fitToPlaces, mapReady, nextCameraKey]);
-
-  React.useEffect(() => {
-    onVisiblePlacesChange?.(
-      mapPlaces.filter(place => isPlaceVisible(place, region)).map(place => place.id),
-    );
-  }, [mapPlaces, onVisiblePlacesChange, region]);
+  }, [cameraCoordinates, fitToPlaces, fitKey, mapReady, nextCameraKey]);
 
   return (
     <MapView
@@ -177,12 +192,15 @@ export function TripMap({
       style={{ flex: 1 }}
       initialRegion={initialRegion}
       mapType="standard"
-      onMapReady={() => setMapReady(true)}
-      onRegionChangeComplete={nextRegion =>
-        setRegion(currentRegion =>
-          sameMapRegion(currentRegion, nextRegion) ? currentRegion : nextRegion,
-        )
-      }
+      pitchEnabled
+      rotateEnabled
+      scrollEnabled
+      zoomEnabled
+      onMapReady={() => {
+        setMapReady(true);
+        publishVisiblePlaces(initialRegion);
+      }}
+      onRegionChangeComplete={publishVisiblePlaces}
       customMapStyle={theme === 'dark' ? darkMapStyle : undefined}
     >
       {mapPlaces.map(place => (
@@ -193,7 +211,23 @@ export function TripMap({
           onPress={() => onSelectPlace?.(place)}
           pinColor={place.color ?? colors.danger}
           title={place.name}
-        />
+        >
+          {place.badge ? (
+            <View
+              style={{
+                backgroundColor: place.color,
+                borderRadius: 20,
+                padding: 8,
+                borderWidth: 2,
+                borderColor: '#fff',
+              }}
+            >
+              <Text accessibilityLabel={place.name} style={{ color: '#fff', fontWeight: '800' }}>
+                {place.badge}
+              </Text>
+            </View>
+          ) : null}
+        </Marker>
       ))}
       {visibleRoutes.map(route => (
         <Polyline

@@ -1,0 +1,22 @@
+.picker {
+  display: grid;
+  min-width: 0;
+  gap: 6px;
+}
+
+.search,
+.select {
+  width: 100%;
+  min-width: 0;
+  padding: 9px 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: 7px;
+  color: var(--ink);
+  background: var(--paper);
+  font: inherit;
+  font-size: 12px;
+}
+
+.search::placeholder {
+  color: var(--muted);
+}

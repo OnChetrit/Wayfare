@@ -1,3 +1,4 @@
+import { currencyOptions } from '@/lib/account-preferences';
 import AddIcon from '@expo/material-symbols/add.xml';
 import CheckIcon from '@expo/material-symbols/check.xml';
 import ReminderIcon from '@expo/material-symbols/notifications_active.xml';
@@ -82,13 +83,6 @@ const placeCategories: { label: string; value: PlaceCategory }[] = [
   { label: 'Shopping', value: 'SHOPPING' },
   { label: 'Transport', value: 'TRANSPORT' },
   { label: 'Custom', value: 'CUSTOM' },
-];
-
-const currencyOptions = [
-  { label: 'EUR · Euro', value: 'EUR' },
-  { label: 'USD · US Dollar', value: 'USD' },
-  { label: 'ILS · Shekel', value: 'ILS' },
-  { label: 'GBP · Pound', value: 'GBP' },
 ];
 
 type EditorKind = 'day' | 'flight' | 'place' | 'schedule' | 'segment' | 'stay';
@@ -437,7 +431,36 @@ function ItineraryEditor({
   if (process.env.EXPO_OS === 'ios') {
     return (
       <>
-        <Stack.Screen options={{ title: titleForKind(kind) }} />
+        <Stack.Screen
+          options={{
+            title: titleForKind(kind),
+            headerRight:
+              itemId && ['schedule', 'stay', 'place', 'flight'].includes(kind)
+                ? () => (
+                    <Button
+                      onPress={() =>
+                        router.push({
+                          pathname: '/item-details',
+                          params: {
+                            itemId,
+                            kind: (
+                              {
+                                schedule: 'ACTIVITY',
+                                stay: 'HOTEL',
+                                place: 'PLACE',
+                                flight: 'FLIGHT',
+                              } as Record<string, string>
+                            )[kind],
+                          },
+                        })
+                      }
+                    >
+                      Tickets &amp; payment
+                    </Button>
+                  )
+                : undefined,
+          }}
+        />
         <Host colorScheme={theme} seedColor={nativeColors.accent} style={{ flex: 1 }}>
           <Form modifiers={[scrollDismissesKeyboard('interactively')]}>
             {!isOnline ? (
@@ -451,6 +474,15 @@ function ItineraryEditor({
               <Section title="Couldn’t save changes">
                 <SwiftText modifiers={[foregroundStyle(nativeColors.danger)]}>
                   {message ?? messageFromError(activeError)}
+                </SwiftText>
+              </Section>
+            ) : null}
+
+            {schedule?.reservationLocked ? (
+              <Section title="Reservation">
+                <Label title="Reservation locked" systemImage="lock.fill" />
+                <SwiftText>
+                  Changes to this activity require confirmation before they are saved.
                 </SwiftText>
               </Section>
             ) : null}
@@ -1159,6 +1191,39 @@ function ItineraryEditor({
         <Text selectable style={{ color: colors.text, fontSize: 22, fontWeight: '800' }}>
           {titleForKind(kind)}
         </Text>
+        {schedule?.reservationLocked ? (
+          <Card style={{ borderColor: colors.success }}>
+            <Text selectable style={{ color: colors.success, fontWeight: '800' }}>
+              🔒 Reservation locked
+            </Text>
+            <Text selectable style={{ color: colors.textMuted, lineHeight: 20 }}>
+              Changes to this activity require confirmation before they are saved.
+            </Text>
+          </Card>
+        ) : null}
+        {itemId && ['schedule', 'stay', 'place', 'flight'].includes(kind) ? (
+          <Button
+            onPress={() =>
+              router.push({
+                pathname: '/item-details',
+                params: {
+                  itemId,
+                  kind: (
+                    {
+                      schedule: 'ACTIVITY',
+                      stay: 'HOTEL',
+                      place: 'PLACE',
+                      flight: 'FLIGHT',
+                    } as Record<string, string>
+                  )[kind],
+                },
+              })
+            }
+            tone="secondary"
+          >
+            Tickets &amp; payment
+          </Button>
+        ) : null}
         {kind === 'schedule' ? (
           <>
             <DateTimeField

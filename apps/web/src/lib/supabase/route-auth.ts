@@ -16,7 +16,9 @@ export async function requireRouteUser(): Promise<
     return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
   }
 
-  const supabase = await createClient(accessToken);
+  const supabase = await createClient(accessToken, {
+    'x-reservation-confirmations': requestHeaders.get('x-reservation-confirmations') ?? '{}',
+  });
   const {
     data: { user },
     error: userError,

@@ -1,7 +1,9 @@
 .userDialog {
   width: min(calc(100% - 32px), 410px);
+  max-height: min(720px, calc(100dvh - 32px));
   margin: auto;
   padding: 25px;
+  overflow: auto;
   border: 1px solid var(--line);
   border-radius: 18px;
   color: var(--ink);

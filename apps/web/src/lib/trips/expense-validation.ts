@@ -47,9 +47,7 @@ export async function validateTripExpense(
     .eq('id', tripId)
     .maybeSingle();
   if (!data) return 'Trip not found';
-  if (expenseDate < data.start_date || expenseDate > data.end_date) {
-    return 'Expense date must be inside the trip dates';
-  }
+  void expenseDate;
   void currency;
   return null;
 }

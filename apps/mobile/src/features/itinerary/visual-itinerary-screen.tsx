@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import * as React from 'react';
 import { ScrollView, Text, View } from 'react-native';
 
@@ -6,10 +7,11 @@ import {
   createLocationDivision,
   createSchedule,
   moveLocationBoundary,
+  updateActivityReservationLock,
   updateSchedule,
   updateStay,
 } from '@/api/trips';
-import { Button } from '@/components/ui/button';
+import { Button, IconButton } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Field } from '@/components/ui/field';
 import { ErrorState, LoadingState, OfflineNotice } from '@/components/ui/state';
@@ -52,12 +54,18 @@ function DayColumn({
   schedule,
   flights,
   onMove,
+  onToggleLock,
+  canLock,
+  lockPending,
   selected,
   onSelect,
 }: {
   day: TripDay;
   flights: TripFlight[];
   onMove: (item: ScheduleItem) => void;
+  onToggleLock: (item: ScheduleItem) => void;
+  canLock: boolean;
+  lockPending: boolean;
   onSelect: () => void;
   places: { id: string; name: string }[];
   schedule: ScheduleItem[];
@@ -120,13 +128,28 @@ function DayColumn({
                     : ''}
                   {item.note ? ` · ${item.note}` : ''}
                 </Text>
-                <Button
-                  accessibilityLabel={`Move ${entryTitle(item, places)} to another day`}
-                  onPress={() => onMove(item)}
-                  tone="quiet"
-                >
-                  Move to day
-                </Button>
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  <Button
+                    accessibilityLabel={`Move ${entryTitle(item, places)} to another day`}
+                    onPress={() => onMove(item)}
+                    style={{ flex: 1 }}
+                    tone="quiet"
+                  >
+                    Move to day
+                  </Button>
+                  <IconButton
+                    disabled={!canLock}
+                    label={
+                      item.reservationLocked
+                        ? `Unlock ${entryTitle(item, places)}`
+                        : `Lock ${entryTitle(item, places)}`
+                    }
+                    loading={lockPending}
+                    onPress={() => onToggleLock(item)}
+                  >
+                    <Text style={{ fontSize: 17 }}>{item.reservationLocked ? '🔓' : '🔒'}</Text>
+                  </IconButton>
+                </View>
               </View>
             </View>
           ))}
@@ -174,6 +197,7 @@ export function VisualItineraryScreen() {
   const { selectedTripDayDate, selectTripDay } = useTrips();
   const tripQuery = useTripEditor();
   const trip = tripQuery.data;
+  const [overview, setOverview] = React.useState(true);
   const [layout, setLayout] = React.useState<BoardLayout>('horizontal');
   const [mode, setMode] = React.useState<ViewMode>('board');
   const [movingItem, setMovingItem] = React.useState<ScheduleItem | null>(null);
@@ -254,6 +278,11 @@ export function VisualItineraryScreen() {
     },
     { onSuccess: () => setStayDateEdit(null) },
   );
+  const { mutation: reservationLockMutation } = useTripMutation(
+    activeTripId,
+    ({ itemId, locked }: { itemId: string; locked: boolean }) =>
+      updateActivityReservationLock(activeTripId, itemId, locked),
+  );
 
   if (tripQuery.isLoading) return <LoadingState label="Loading visual itinerary…" />;
   if (tripQuery.error) {
@@ -304,21 +333,70 @@ export function VisualItineraryScreen() {
         <Text selectable style={{ color: colors.textMuted, fontSize: 13, fontWeight: '700' }}>
           Selected day
         </Text>
-        <DateChooser days={trip.days} onSelect={selectTripDay} selectedDate={currentDate} />
+        <DateChooser
+          days={trip.days}
+          onSelect={date => {
+            selectTripDay(date);
+            setOverview(false);
+          }}
+          selectedDate={currentDate}
+        />
       </View>
 
       {mode === 'route' ? (
         <>
           <View style={{ gap: 2 }}>
             <Text selectable style={{ color: colors.text, fontSize: 19, fontWeight: '800' }}>
-              {selectedDay.label} ·{' '}
-              {formatDate(selectedDay.date, { weekday: 'long', month: 'long' })}
+              {overview
+                ? 'All itinerary routes'
+                : `${selectedDay.label} · ${formatDate(selectedDay.date, {
+                    weekday: 'long',
+                    month: 'long',
+                  })}`}
             </Text>
             <Text selectable style={{ color: colors.textMuted }}>
               Locations, stays, planned places, and flight airports with available coordinates.
             </Text>
           </View>
-          <DayRouteMap date={currentDate} trip={trip} />
+          <Button onPress={() => setOverview(true)}>All days</Button>
+          <DayRouteMap
+            date={overview ? '' : currentDate}
+            trip={trip}
+            onSelectDay={date => {
+              setOverview(!date);
+              if (date) selectTripDay(date);
+            }}
+          />
+          {overview &&
+            trip.days.map((day, index) => (
+              <View key={day.id}>
+                <Text selectable style={{ color: colors.text }}>
+                  Day {index + 1} · {day.shortDate}
+                </Text>
+                {trip.schedule
+                  .filter(item => item.date === day.date)
+                  .sort((a, b) => (a.startTime ?? '99').localeCompare(b.startTime ?? '99'))
+                  .map(item => (
+                    <Text selectable key={item.id} style={{ color: colors.text }}>
+                      {item.startTime ?? 'Any time'} ·{' '}
+                      {item.title ??
+                        trip.places.find(place => place.id === item.savedPlaceId)?.name ??
+                        'Activity'}
+                      {!item.savedPlaceId && ' · No mapped stop'}
+                    </Text>
+                  ))}
+                <Button
+                  onPress={() =>
+                    router.push({
+                      pathname: '/itinerary-editor',
+                      params: { kind: 'schedule', date: day.date },
+                    })
+                  }
+                >
+                  Add activity
+                </Button>
+              </View>
+            ))}
         </>
       ) : (
         <>
@@ -347,7 +425,15 @@ export function VisualItineraryScreen() {
                   day={day}
                   flights={trip.flights}
                   key={day.id}
+                  canLock={isOnline && trip.access.canEdit}
+                  lockPending={reservationLockMutation.isPending}
                   onMove={setMovingItem}
+                  onToggleLock={item =>
+                    reservationLockMutation.mutate({
+                      itemId: item.id,
+                      locked: !item.reservationLocked,
+                    })
+                  }
                   onSelect={() => selectTripDay(day.date)}
                   places={trip.places}
                   schedule={trip.schedule}
@@ -362,7 +448,15 @@ export function VisualItineraryScreen() {
                   day={day}
                   flights={trip.flights}
                   key={day.id}
+                  canLock={isOnline && trip.access.canEdit}
+                  lockPending={reservationLockMutation.isPending}
                   onMove={setMovingItem}
+                  onToggleLock={item =>
+                    reservationLockMutation.mutate({
+                      itemId: item.id,
+                      locked: !item.reservationLocked,
+                    })
+                  }
                   onSelect={() => selectTripDay(day.date)}
                   places={trip.places}
                   schedule={trip.schedule}

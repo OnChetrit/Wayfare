@@ -4,16 +4,19 @@ import {
   Clock3,
   Columns3,
   GripVertical,
+  Lock,
   MapPin,
   MessageSquareText,
   Plane,
   Plus,
   Rows3,
   Trash2,
+  Unlock,
 } from 'lucide-react';
-import { useState, type DragEvent } from 'react';
+import { useRef, useState, type DragEvent } from 'react';
 import { orderScheduleItemsForDay } from '@wayfare/domain';
 import styles from './TimelineView.module.scss';
+import { ItemIndicators } from './TripItemTools';
 import { categoryMeta } from './data';
 import { parseTimelineDragPayload, setTimelineDragPayload } from './timeline-dnd';
 import { flightTime } from '@/lib/trips/flights';
@@ -27,10 +30,12 @@ type TimelineViewProps = {
   selectedDate: string;
   selectedPlaceId: string | null;
   destinationLabel?: string | null;
+  canLockActivities: boolean;
   onSelectDay: (date: string) => void;
-  onSelectPlace: (place: SavedPlace) => void;
+  onEditActivity: (item: ScheduleItem) => void;
   onMoveActivity: (itemId: string, date: string) => void;
   onRemoveActivity: (itemId: string) => void;
+  onToggleActivityLock: (item: ScheduleItem) => void | Promise<void>;
   onAddPlaceToDay: (place: SavedPlace, date: string) => void;
   onAddActivity: (date: string) => void;
   onOpenDayNotes: (date: string) => void;
@@ -61,16 +66,29 @@ export function TimelineView({
   selectedDate,
   selectedPlaceId,
   destinationLabel,
+  canLockActivities,
   onSelectDay,
-  onSelectPlace,
+  onEditActivity,
   onMoveActivity,
   onRemoveActivity,
+  onToggleActivityLock,
   onAddPlaceToDay,
   onAddActivity,
   onOpenDayNotes,
 }: TimelineViewProps) {
   const [dragOverDate, setDragOverDate] = useState<string | null>(null);
   const [timelineLayout, setTimelineLayout] = useState<'vertical' | 'horizontal'>('vertical');
+  const [lockPendingId, setLockPendingId] = useState<string | null>(null);
+  const activityWasDragged = useRef(false);
+
+  async function toggleActivityLock(item: ScheduleItem) {
+    setLockPendingId(item.id);
+    try {
+      await onToggleActivityLock(item);
+    } finally {
+      setLockPendingId(null);
+    }
+  }
 
   function handleDrop(event: DragEvent<HTMLElement>, date: string) {
     event.preventDefault();
@@ -323,12 +341,23 @@ export function TimelineView({
                           <span className={styles.scheduledActivityTime}>{item.startTime}</span>
                         )}
                         <article
-                          className={`${styles.activityCard} ${styles.scheduleActivityCard} ${place && selectedPlaceId === place.id ? styles.activityCardSelected : ''}`}
+                          className={`${styles.activityCard} ${styles.scheduleActivityCard} ${item.reservationLocked ? styles.activityCardLocked : ''} ${place && selectedPlaceId === place.id ? styles.activityCardSelected : ''}`}
                           draggable
-                          onDragStart={event =>
-                            setTimelineDragPayload(event, { type: 'activity', itemId: item.id })
-                          }
-                          onDragEnd={() => setDragOverDate(null)}
+                          onClick={() => {
+                            if (activityWasDragged.current) return;
+                            onSelectDay(day.date);
+                            onEditActivity(item);
+                          }}
+                          onDragStart={event => {
+                            activityWasDragged.current = true;
+                            setTimelineDragPayload(event, { type: 'activity', itemId: item.id });
+                          }}
+                          onDragEnd={() => {
+                            setDragOverDate(null);
+                            window.setTimeout(() => {
+                              activityWasDragged.current = false;
+                            }, 0);
+                          }}
                         >
                           <span className={styles.dragHandle} aria-hidden="true">
                             <GripVertical size={15} />
@@ -339,24 +368,24 @@ export function TimelineView({
                           >
                             {place?.emoji ?? meta.emoji}
                           </span>
-                          <button
-                            type="button"
-                            className={styles.activityDetails}
-                            onClick={() => {
-                              onSelectDay(day.date);
-                              if (place) onSelectPlace(place);
-                            }}
-                          >
+                          <button type="button" className={styles.activityDetails}>
                             <strong>{title}</strong>
                             <span>
                               {meta.label} · {item.duration} min{item.note ? ' · note added' : ''}
                             </span>
                           </button>
-                          {place && (
-                            <span className={styles.placeMarker} title={place.subtitle}>
-                              <MapPin size={13} />
-                            </span>
-                          )}
+                          <span className={styles.activityIndicators}>
+                            <ItemIndicators
+                              kind="ACTIVITY"
+                              itemId={item.id}
+                              showReservationLock={false}
+                            />
+                            {place ? (
+                              <span className={styles.placeMarker} title={place.subtitle}>
+                                <MapPin size={13} />
+                              </span>
+                            ) : null}
+                          </span>
                           <button
                             type="button"
                             className={styles.activityRemove}
@@ -368,6 +397,28 @@ export function TimelineView({
                             title="Remove from day"
                           >
                             <Trash2 size={13} />
+                          </button>
+                          <button
+                            type="button"
+                            className={`${styles.activityLock} ${item.reservationLocked ? styles.activityLockActive : ''}`}
+                            disabled={!canLockActivities || lockPendingId !== null}
+                            aria-label={
+                              item.reservationLocked ? `Unlock ${title}` : `Lock ${title}`
+                            }
+                            aria-pressed={Boolean(item.reservationLocked)}
+                            title={
+                              item.reservationLocked ? 'Unlock reservation' : 'Lock reservation'
+                            }
+                            onClick={event => {
+                              event.stopPropagation();
+                              void toggleActivityLock(item);
+                            }}
+                          >
+                            {item.reservationLocked ? (
+                              <Unlock size={13} aria-hidden="true" />
+                            ) : (
+                              <Lock size={13} aria-hidden="true" />
+                            )}
                           </button>
                         </article>
                       </div>

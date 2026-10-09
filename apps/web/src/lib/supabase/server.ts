@@ -3,12 +3,17 @@ import { cookies } from 'next/headers';
 
 import { getSupabaseConfig } from './config';
 
-export async function createClient(accessToken?: string) {
+export async function createClient(
+  accessToken?: string,
+  extraHeaders: Record<string, string> = {},
+) {
   const cookieStore = await cookies();
   const { url, publishableKey } = getSupabaseConfig();
 
   return createServerClient(url, publishableKey, {
-    ...(accessToken ? { global: { headers: { Authorization: `Bearer ${accessToken}` } } } : {}),
+    ...(accessToken
+      ? { global: { headers: { Authorization: `Bearer ${accessToken}`, ...extraHeaders } } }
+      : {}),
     cookies: {
       getAll() {
         return cookieStore.getAll();

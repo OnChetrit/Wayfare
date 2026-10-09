@@ -1,17 +1,25 @@
-import { Fragment } from 'react';
+import { Fragment, useRef, useState, type DragEvent, type PointerEvent } from 'react';
 import { orderScheduleItemsForDay } from '@wayfare/domain';
 import {
   AlarmClock,
-  ArrowDown,
-  ArrowUp,
+  GripVertical,
+  Lock,
   MessageSquareText,
   Plane,
   Plus,
   Sparkles,
+  Trash2,
+  Unlock,
   X,
 } from 'lucide-react';
 import styles from './DayPlanPanel.module.scss';
+import { ItemIndicators } from './TripItemTools';
 import { categoryMeta } from './data';
+import {
+  parseTimelineDragPayload,
+  setTimelineDragPayload,
+  type TimelineDropPlacement,
+} from './timeline-dnd';
 import { flightTime } from '@/lib/trips/flights';
 import type { EditorMode, SavedPlace, ScheduleItem, Stay, TripDay, TripFlight } from './types';
 
@@ -28,16 +36,21 @@ type DayPlanPanelProps = {
   destinationLabel?: string | null;
   places: SavedPlace[];
   selectedPlaceId: string | null;
-  onSelectPlace: (place: SavedPlace) => void;
   onClose: () => void;
-  onMove: (item: ScheduleItem, direction: 'up' | 'down') => void;
+  onReorder: (
+    itemId: string,
+    targetId: string,
+    placement: TimelineDropPlacement,
+  ) => void | Promise<void>;
   onEdit: (item: ScheduleItem) => void;
   onRemove: (itemId: string) => void;
+  onToggleActivityLock: (item: ScheduleItem) => void | Promise<void>;
   onOpenActivityEditor: () => void;
   onOpenTravelDetails: () => void;
   onOpenDayNotes: () => void;
   onOpenReminders: () => void;
   canCreateReminders: boolean;
+  canLockActivities: boolean;
   onCreateReminder: (item: ScheduleItem, title: string) => void;
 };
 
@@ -211,6 +224,16 @@ function FlightTimelineItem({
   );
 }
 
+type ScheduleDropTarget = {
+  itemId: string;
+  placement: TimelineDropPlacement;
+};
+
+function pointerPlacement(element: HTMLElement, clientY: number): TimelineDropPlacement {
+  const bounds = element.getBoundingClientRect();
+  return clientY < bounds.top + bounds.height / 2 ? 'before' : 'after';
+}
+
 export function DayPlanPanel({
   mode,
   selectedDay,
@@ -224,18 +247,25 @@ export function DayPlanPanel({
   destinationLabel,
   places,
   selectedPlaceId,
-  onSelectPlace,
   onClose,
-  onMove,
+  onReorder,
   onEdit,
   onRemove,
+  onToggleActivityLock,
   onOpenActivityEditor,
   onOpenTravelDetails,
   onOpenDayNotes,
   onOpenReminders,
   canCreateReminders,
+  canLockActivities,
   onCreateReminder,
 }: DayPlanPanelProps) {
+  const [lockPendingId, setLockPendingId] = useState<string | null>(null);
+  const [draggingItemId, setDraggingItemId] = useState<string | null>(null);
+  const [dropTarget, setDropTarget] = useState<ScheduleDropTarget | null>(null);
+  const draggingItemIdRef = useRef<string | null>(null);
+  const dropTargetRef = useRef<ScheduleDropTarget | null>(null);
+  const activityWasDragged = useRef(false);
   const morningStay = selectedDay
     ? stays
         .filter(
@@ -299,6 +329,82 @@ export function DayPlanPanel({
     (showArrivalPlaceholder ? 1 : 0) +
     (showDeparturePlaceholder ? 1 : 0);
 
+  async function toggleActivityLock(item: ScheduleItem) {
+    setLockPendingId(item.id);
+    try {
+      await onToggleActivityLock(item);
+    } finally {
+      setLockPendingId(null);
+    }
+  }
+
+  function updateDropTarget(next: ScheduleDropTarget | null) {
+    dropTargetRef.current = next;
+    setDropTarget(current =>
+      current?.itemId === next?.itemId && current?.placement === next?.placement ? current : next,
+    );
+  }
+
+  function beginDrag(itemId: string) {
+    activityWasDragged.current = true;
+    draggingItemIdRef.current = itemId;
+    setDraggingItemId(itemId);
+  }
+
+  function clearDragState() {
+    draggingItemIdRef.current = null;
+    setDraggingItemId(null);
+    updateDropTarget(null);
+    window.setTimeout(() => {
+      activityWasDragged.current = false;
+    }, 0);
+  }
+
+  function handleCardDragStart(event: DragEvent<HTMLElement>, itemId: string) {
+    const button = (event.target as HTMLElement).closest('button');
+    if (button && !button.classList.contains(styles.scheduleDragHandle)) {
+      event.preventDefault();
+      return;
+    }
+    beginDrag(itemId);
+    setTimelineDragPayload(event, { type: 'activity', itemId });
+  }
+
+  function handleCardDrop(event: DragEvent<HTMLElement>, targetId: string) {
+    const payload = parseTimelineDragPayload(event);
+    if (!payload || payload.type !== 'activity') return;
+    event.preventDefault();
+    event.stopPropagation();
+    const placement = pointerPlacement(event.currentTarget, event.clientY);
+    clearDragState();
+    if (payload.itemId !== targetId) void onReorder(payload.itemId, targetId, placement);
+  }
+
+  function handleTouchDragMove(event: PointerEvent<HTMLButtonElement>) {
+    const itemId = draggingItemIdRef.current;
+    if (!itemId || event.pointerType === 'mouse') return;
+    event.preventDefault();
+    const card = document
+      .elementFromPoint(event.clientX, event.clientY)
+      ?.closest<HTMLElement>('[data-schedule-item-id]');
+    const targetId = card?.dataset.scheduleItemId;
+    if (!card || !targetId || targetId === itemId) {
+      updateDropTarget(null);
+      return;
+    }
+    updateDropTarget({ itemId: targetId, placement: pointerPlacement(card, event.clientY) });
+  }
+
+  function handleTouchDragEnd(event: PointerEvent<HTMLButtonElement>) {
+    if (event.pointerType === 'mouse' || !draggingItemIdRef.current) return;
+    const itemId = draggingItemIdRef.current;
+    const target = dropTargetRef.current;
+    clearDragState();
+    if (target && target.itemId !== itemId) {
+      void onReorder(itemId, target.itemId, target.placement);
+    }
+  }
+
   return (
     <aside
       className={`${styles.dayPanel} ${mode === 'day' ? styles.mobileVisible : ''}`}
@@ -319,25 +425,25 @@ export function DayPlanPanel({
           </p>
         </div>
         <div className={styles.panelActions}>
-        <button
-          type="button"
-          className={styles.dayNotesButton}
-          onClick={onOpenDayNotes}
-          disabled={!selectedDay}
-          aria-label={selectedDay?.notes ? 'Edit day notes' : 'Open day notes'}
-          title={selectedDay?.notes ? 'Edit day notes' : 'Day notes'}
-        >
-          <MessageSquareText size={16} />
-        </button>
-        <button
-          type="button"
-          className={styles.dayNotesButton}
-          onClick={onOpenReminders}
-          aria-label="Open personal reminders"
-          title="Personal reminders"
-        >
-          <AlarmClock size={16} />
-        </button>
+          <button
+            type="button"
+            className={styles.dayNotesButton}
+            onClick={onOpenDayNotes}
+            disabled={!selectedDay}
+            aria-label={selectedDay?.notes ? 'Edit day notes' : 'Open day notes'}
+            title={selectedDay?.notes ? 'Edit day notes' : 'Day notes'}
+          >
+            <MessageSquareText size={16} />
+          </button>
+          <button
+            type="button"
+            className={styles.dayNotesButton}
+            onClick={onOpenReminders}
+            aria-label="Open personal reminders"
+            title="Personal reminders"
+          >
+            <AlarmClock size={16} />
+          </button>
         </div>
         <button className={styles.panelClose} onClick={onClose} aria-label="Close day plan">
           <X size={16} />
@@ -387,6 +493,9 @@ export function DayPlanPanel({
               const color = place?.color ?? meta.color;
               const emoji = place?.emoji ?? meta.emoji;
               const title = place?.name ?? item.title ?? 'Activity';
+              const scheduleIndex = orderedSchedule.findIndex(
+                candidate => candidate.id === item.id,
+              );
               const timelineIndex = (showArrivalPlaceholder ? 1 : 0) + (startStay ? 1 : 0) + index;
               return (
                 <Fragment key={item.id}>
@@ -395,13 +504,30 @@ export function DayPlanPanel({
                       <div className={styles.timelineMarker}>{item.startTime}</div>
                     )}
                     <div
-                      className={`${styles.timelineItem} ${place && selectedPlaceId === place.id ? styles.timelineItemSelected : ''} ${!place ? styles.timelineItemManual : ''}`}
+                      className={`${styles.timelineItem} ${styles.timelineItemDraggable} ${draggingItemId === item.id ? styles.timelineItemDragging : ''} ${dropTarget?.itemId === item.id && dropTarget.placement === 'before' ? styles.timelineItemDropBefore : ''} ${dropTarget?.itemId === item.id && dropTarget.placement === 'after' ? styles.timelineItemDropAfter : ''} ${item.reservationLocked ? styles.timelineItemLocked : ''} ${place && selectedPlaceId === place.id ? styles.timelineItemSelected : ''} ${!place ? styles.timelineItemManual : ''}`}
+                      data-schedule-item-id={item.id}
+                      draggable
                       onClick={() => {
-                        if (place) {
-                          onSelectPlace(place);
-                          onClose();
+                        if (!activityWasDragged.current) onEdit(item);
+                      }}
+                      onDragStart={event => handleCardDragStart(event, item.id)}
+                      onDragOver={event => {
+                        const draggedId = draggingItemIdRef.current;
+                        if (!draggedId || draggedId === item.id) return;
+                        event.preventDefault();
+                        event.dataTransfer.dropEffect = 'move';
+                        updateDropTarget({
+                          itemId: item.id,
+                          placement: pointerPlacement(event.currentTarget, event.clientY),
+                        });
+                      }}
+                      onDragLeave={event => {
+                        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+                          updateDropTarget(null);
                         }
                       }}
+                      onDrop={event => handleCardDrop(event, item.id)}
+                      onDragEnd={clearDragState}
                     >
                       <div className={styles.timelineTrack}>
                         <div className={styles.timelineDot} style={{ backgroundColor: color }}>
@@ -413,28 +539,103 @@ export function DayPlanPanel({
                       </div>
                       <div className={styles.scheduleCard}>
                         <div className={styles.scheduleCardTop}>
-                          <span
-                            className={styles.categoryPill}
-                            style={{ color, backgroundColor: `${color}18` }}
-                          >
-                            {emoji} {meta.label}
+                          <span className={styles.scheduleCardHeading}>
+                            <button
+                              type="button"
+                              className={styles.scheduleDragHandle}
+                              draggable
+                              aria-label={`Reorder ${title}. Drag, or use the up and down arrow keys.`}
+                              title="Drag to reorder"
+                              onClick={event => event.stopPropagation()}
+                              onKeyDown={event => {
+                                if (event.key === 'ArrowUp' && scheduleIndex > 0) {
+                                  event.preventDefault();
+                                  event.stopPropagation();
+                                  void onReorder(
+                                    item.id,
+                                    orderedSchedule[scheduleIndex - 1].id,
+                                    'before',
+                                  );
+                                } else if (
+                                  event.key === 'ArrowDown' &&
+                                  scheduleIndex < orderedSchedule.length - 1
+                                ) {
+                                  event.preventDefault();
+                                  event.stopPropagation();
+                                  void onReorder(
+                                    item.id,
+                                    orderedSchedule[scheduleIndex + 1].id,
+                                    'after',
+                                  );
+                                }
+                              }}
+                              onPointerDown={event => {
+                                if (event.pointerType === 'mouse') return;
+                                event.stopPropagation();
+                                event.currentTarget.setPointerCapture(event.pointerId);
+                                beginDrag(item.id);
+                              }}
+                              onPointerMove={handleTouchDragMove}
+                              onPointerUp={handleTouchDragEnd}
+                              onPointerCancel={clearDragState}
+                            >
+                              <GripVertical size={13} aria-hidden="true" />
+                            </button>
+                            <span
+                              className={styles.categoryPill}
+                              style={{ color, backgroundColor: `${color}18` }}
+                            >
+                              {emoji} {meta.label}
+                            </span>
+                          </span>
+                          <span className={styles.scheduleCardActions}>
+                            <ItemIndicators
+                              kind="ACTIVITY"
+                              itemId={item.id}
+                              showReservationLock={false}
+                            />
+                            <button
+                              type="button"
+                              className={styles.activityRemoveButton}
+                              onClick={event => {
+                                event.stopPropagation();
+                                onRemove(item.id);
+                              }}
+                              aria-label={`Remove ${title}`}
+                              title="Remove from schedule"
+                            >
+                              <Trash2 size={13} aria-hidden="true" />
+                            </button>
+                            <button
+                              type="button"
+                              className={`${styles.activityLockButton} ${item.reservationLocked ? styles.activityLockButtonActive : ''}`}
+                              disabled={!canLockActivities || lockPendingId !== null}
+                              aria-label={
+                                item.reservationLocked ? `Unlock ${title}` : `Lock ${title}`
+                              }
+                              aria-pressed={Boolean(item.reservationLocked)}
+                              title={
+                                item.reservationLocked ? 'Unlock reservation' : 'Lock reservation'
+                              }
+                              onClick={event => {
+                                event.stopPropagation();
+                                void toggleActivityLock(item);
+                              }}
+                            >
+                              {item.reservationLocked ? (
+                                <Unlock size={13} aria-hidden="true" />
+                              ) : (
+                                <Lock size={13} aria-hidden="true" />
+                              )}
+                            </button>
                           </span>
                         </div>
                         <strong>{title}</strong>
                         <span>
                           {item.duration} min{item.note ? ' · note added' : ''}
                         </span>
-                        <div className={styles.cardControls}>
-                          <button
-                            onClick={event => {
-                              event.stopPropagation();
-                              onEdit(item);
-                            }}
-                            aria-label={`Edit ${title}`}
-                          >
-                            Edit
-                          </button>
-                          {item.note?.trim() ? (
+                        {item.note?.trim() ? (
+                          <div className={styles.cardControls}>
                             <button
                               disabled={!canCreateReminders}
                               onClick={event => {
@@ -450,35 +651,8 @@ export function DayPlanPanel({
                             >
                               Remind
                             </button>
-                          ) : null}
-                          <button
-                            onClick={event => {
-                              event.stopPropagation();
-                              void onMove(item, 'up');
-                            }}
-                            aria-label="Move activity up"
-                          >
-                            <ArrowUp size={13} />
-                          </button>
-                          <button
-                            onClick={event => {
-                              event.stopPropagation();
-                              void onMove(item, 'down');
-                            }}
-                            aria-label="Move activity down"
-                          >
-                            <ArrowDown size={13} />
-                          </button>
-                          <button
-                            onClick={event => {
-                              event.stopPropagation();
-                              onRemove(item.id);
-                            }}
-                            aria-label={`Remove ${title}`}
-                          >
-                            Remove
-                          </button>
-                        </div>
+                          </div>
+                        ) : null}
                       </div>
                     </div>
                   </div>

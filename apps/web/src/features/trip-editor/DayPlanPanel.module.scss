@@ -34,7 +34,6 @@
   }
 
   .panelHeader {
-
     .panelActions {
       display: flex;
       gap: 8px;
@@ -113,6 +112,31 @@
     cursor: pointer;
   }
 
+  .timelineItemDraggable {
+    cursor: grab;
+    transition: opacity 160ms ease;
+  }
+
+  .timelineItemDraggable:active {
+    cursor: grabbing;
+  }
+
+  .timelineItemDragging {
+    opacity: 0.5;
+  }
+
+  .timelineItemDropBefore .scheduleCard {
+    box-shadow:
+      inset 0 3px 0 var(--green),
+      var(--shadow-soft);
+  }
+
+  .timelineItemDropAfter .scheduleCard {
+    box-shadow:
+      inset 0 -3px 0 var(--green),
+      var(--shadow-soft);
+  }
+
   .timelineEvent {
     min-height: 106px;
   }
@@ -130,7 +154,7 @@
   }
 
   .timelineItemManual {
-    cursor: default;
+    cursor: pointer;
   }
 
   .timelineItemHotel {
@@ -266,7 +290,10 @@
     border: 1px solid var(--line);
     border-radius: 12px;
     background: var(--surface-strong);
-    transition: 0.2s ease;
+    transition:
+      border-color 0.2s ease,
+      background-color 0.2s ease,
+      box-shadow 0.2s ease;
 
     & > strong {
       display: block;
@@ -309,22 +336,26 @@
   }
 
   .scheduleCard:hover {
-    border-color: var(--line-strong);
+    border-color: var(--green);
     box-shadow: var(--shadow-soft);
-    transform: translateY(-1px);
   }
 
   .timelineItemSelected {
     .scheduleCard {
-      border-color: var(--line-strong);
+      border-color: var(--green);
       box-shadow: var(--shadow-soft);
-      transform: translateY(-1px);
     }
 
     .cardControls {
-      height: 25px;
-      margin-top: 6px;
       opacity: 1;
+      pointer-events: auto;
+    }
+  }
+
+  .timelineItemLocked {
+    .scheduleCard {
+      border-color: color-mix(in srgb, var(--warning) 42%, var(--line));
+      background: color-mix(in srgb, var(--warning-surface) 48%, var(--surface));
     }
   }
 
@@ -333,6 +364,102 @@
     align-items: center;
     justify-content: space-between;
     margin-bottom: 7px;
+  }
+
+  .scheduleCardHeading {
+    min-width: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .scheduleDragHandle {
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    display: grid;
+    place-items: center;
+    border: 0;
+    border-radius: 6px;
+    color: var(--soft-muted);
+    background: transparent;
+    cursor: grab;
+    touch-action: none;
+
+    &:hover,
+    &:focus-visible {
+      color: var(--green);
+      background: var(--mint);
+    }
+
+    &:active {
+      cursor: grabbing;
+    }
+  }
+
+  .scheduleCardActions {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .activityLockButton,
+  .activityRemoveButton {
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    display: grid;
+    place-items: center;
+    border: 0;
+    border-radius: 6px;
+    color: var(--muted);
+    background: var(--surface-subtle);
+    opacity: 0;
+    pointer-events: none;
+    transform: scale(0.92);
+    transition: 160ms ease;
+
+    &:hover:not(:disabled),
+    &:focus-visible {
+      color: var(--green);
+      background: var(--mint);
+    }
+
+    &:disabled {
+      cursor: not-allowed;
+    }
+  }
+
+  .activityRemoveButton:hover,
+  .activityRemoveButton:focus-visible {
+    color: var(--danger);
+    background: color-mix(in srgb, var(--danger) 10%, transparent);
+  }
+
+  .activityLockButtonActive {
+    color: var(--warning);
+    background: var(--warning-surface);
+    opacity: 1;
+    pointer-events: auto;
+    transform: scale(1);
+  }
+
+  .activityLockButtonActive:disabled {
+    opacity: 0.45;
+  }
+
+  .scheduleCard:hover .activityLockButton,
+  .scheduleCard:focus-within .activityLockButton,
+  .scheduleCard:hover .activityRemoveButton,
+  .scheduleCard:focus-within .activityRemoveButton {
+    opacity: 1;
+    pointer-events: auto;
+    transform: scale(1);
+  }
+
+  .scheduleCard:hover .activityLockButton:disabled,
+  .scheduleCard:focus-within .activityLockButton:disabled {
+    opacity: 0.45;
   }
 
   .categoryPill {
@@ -346,10 +473,11 @@
     display: flex;
     align-items: center;
     gap: 4px;
-    height: 0;
-    overflow: hidden;
+    height: 25px;
+    margin-top: 6px;
     opacity: 0;
-    transition: 0.2s ease;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
 
     button {
       border: 0;
@@ -364,18 +492,12 @@
       color: var(--green);
       background: var(--mint);
     }
-
-    button:last-child {
-      margin-left: auto;
-      color: var(--danger);
-      background: transparent;
-    }
   }
 
-  .scheduleCard:hover .cardControls {
-    height: 25px;
-    margin-top: 6px;
+  .scheduleCard:hover .cardControls,
+  .scheduleCard:focus-within .cardControls {
     opacity: 1;
+    pointer-events: auto;
   }
 
   .emptyDay {
@@ -456,13 +578,40 @@
     .panelClose {
       display: grid;
     }
+
+    .activityLockButton,
+    .activityRemoveButton {
+      opacity: 1;
+      pointer-events: auto;
+      transform: scale(1);
+    }
+
+    .activityLockButton:disabled {
+      opacity: 0.45;
+    }
+  }
+
+  @media (hover: none) {
+    .activityLockButton,
+    .activityRemoveButton {
+      opacity: 1;
+      pointer-events: auto;
+      transform: scale(1);
+    }
+
+    .activityLockButton:disabled {
+      opacity: 0.45;
+    }
   }
 
   @media (prefers-reduced-motion: reduce) {
     .scheduleCard,
     .placeCard,
     .marker,
-    .cardControls {
+    .cardControls,
+    .timelineItemDraggable,
+    .activityLockButton,
+    .activityRemoveButton {
       transition: none;
     }
   }

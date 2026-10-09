@@ -14,19 +14,15 @@ export function useTripRealtime() {
   const { session } = useAuth();
   const { selectedTripId } = useTrips();
   const queryClient = useQueryClient();
-  const [presence, setPresence] = React.useState<Array<{ userId: string; displayName: string }>>(
-    [],
-  );
+  const [presence, setPresence] = React.useState<{ userId: string; displayName: string }[]>([]);
 
   React.useEffect(() => {
     if (!session || !selectedTripId || !/^[0-9a-f-]{36}$/i.test(selectedTripId)) {
-      setPresence([]);
       return;
     }
 
-    const channel = supabase.channel(`trip:${selectedTripId}`, {
-      config: { private: true, presence: { key: session.user.id } },
-    });
+    let channel: ReturnType<typeof supabase.channel> | undefined;
+    let cancelled = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
     let newestRevision = -1;
     let pending = false;
@@ -43,41 +39,52 @@ export function useTripRealtime() {
       }, DEBOUNCE_MS);
     };
 
-    channel
-      .on('broadcast', { event: 'trip.changed' }, ({ payload }) => {
-        const parsed = tripChangedEventSchema.safeParse(payload);
-        if (!parsed.success || parsed.data.tripId !== selectedTripId) return;
-        if (parsed.data.revision <= newestRevision) return;
-        newestRevision = parsed.data.revision;
-        refresh();
-      })
-      .on('presence', { event: 'sync' }, () => {
-        const state = channel.presenceState<{ userId?: string; displayName?: string }>();
-        setPresence(
-          Object.values(state)
-            .flat()
-            .map(item => ({
-              userId: item.userId ?? '',
-              displayName: item.displayName ?? 'Trip member',
-            }))
-            .filter(item => item.userId),
-        );
-      })
-      .subscribe(async status => {
-        if (status === 'SUBSCRIBED') {
-          await channel.track({
-            userId: session.user.id,
-            displayName: session.user.user_metadata?.name ?? 'Trip member',
-          });
-        }
-      });
+    void (async () => {
+      await supabase.realtime.setAuth(session.access_token);
+      if (cancelled) return;
+
+      channel = supabase
+        .channel(`trip:${selectedTripId}`, {
+          config: { private: true, presence: { key: session.user.id } },
+        })
+        .on('broadcast', { event: 'trip.changed' }, ({ payload }) => {
+          const parsed = tripChangedEventSchema.safeParse(payload);
+          if (!parsed.success || parsed.data.tripId !== selectedTripId) return;
+          if (parsed.data.revision <= newestRevision) return;
+          newestRevision = parsed.data.revision;
+          refresh();
+        })
+        .on('presence', { event: 'sync' }, () => {
+          if (!channel) return;
+          const state = channel.presenceState<{ userId?: string; displayName?: string }>();
+          setPresence(
+            Object.values(state)
+              .flat()
+              .map(item => ({
+                userId: item.userId ?? '',
+                displayName: item.displayName ?? 'Trip member',
+              }))
+              .filter(item => item.userId),
+          );
+        })
+        .subscribe(async status => {
+          if (status === 'SUBSCRIBED' && channel) {
+            await channel.track({
+              userId: session.user.id,
+              displayName: session.user.user_metadata?.name ?? 'Trip member',
+            });
+          }
+        });
+    })();
 
     return () => {
+      cancelled = true;
       if (timer) clearTimeout(timer);
-      setPresence([]);
-      void supabase.removeChannel(channel);
+      if (channel) void supabase.removeChannel(channel);
     };
   }, [queryClient, selectedTripId, session]);
 
-  return { presence };
+  return {
+    presence: session && selectedTripId && /^[0-9a-f-]{36}$/i.test(selectedTripId) ? presence : [],
+  };
 }

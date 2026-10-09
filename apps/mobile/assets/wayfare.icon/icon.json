@@ -1,62 +1,60 @@
 {
-  "fill" : "none",
-  "groups" : [
+  "fill": "none",
+  "groups": [
     {
-      "layers" : [
+      "layers": [
         {
-          "blend-mode" : "normal",
-          "glass" : true,
-          "hidden" : false,
-          "image-name" : "wayfare-app-icon-light.svg",
-          "name" : "Wayfare compass",
-          "opacity" : 1
+          "blend-mode": "normal",
+          "glass": true,
+          "hidden": false,
+          "image-name": "wayfare-app-icon-light.svg",
+          "name": "Wayfare compass",
+          "opacity": 1
         },
         {
-          "hidden" : true,
-          "image-name" : "wayfare-app-icon-dark.svg",
-          "name" : "Wayfare compass — dark",
-          "opacity" : 1
+          "hidden": true,
+          "image-name": "wayfare-app-icon-dark.svg",
+          "name": "Wayfare compass — dark",
+          "opacity": 1
         },
         {
-          "hidden" : true,
-          "image-name" : "wayfare-app-icon-tinted.svg",
-          "name" : "Wayfare compass — tinted",
-          "opacity" : 1
+          "hidden": true,
+          "image-name": "wayfare-app-icon-tinted.svg",
+          "name": "Wayfare compass — tinted",
+          "opacity": 1
         },
         {
-          "hidden" : false,
-          "image-name" : "wayfare-mark-layer-light.svg",
-          "name" : "Wayfare mark",
-          "opacity" : 1
+          "hidden": false,
+          "image-name": "wayfare-mark-layer-light.svg",
+          "name": "Wayfare mark",
+          "opacity": 1
         },
         {
-          "hidden" : true,
-          "image-name" : "wayfare-mark-layer-dark.svg",
-          "name" : "Wayfare mark — dark",
-          "opacity" : 1
+          "hidden": true,
+          "image-name": "wayfare-mark-layer-dark.svg",
+          "name": "Wayfare mark — dark",
+          "opacity": 1
         },
         {
-          "hidden" : true,
-          "image-name" : "wayfare-mark-layer-tinted.svg",
-          "name" : "Wayfare mark — tinted",
-          "opacity" : 1
+          "hidden": true,
+          "image-name": "wayfare-mark-layer-tinted.svg",
+          "name": "Wayfare mark — tinted",
+          "opacity": 1
         }
       ],
-      "name" : "Wayfare logo",
-      "shadow" : {
-        "kind" : "none",
-        "opacity" : 0
+      "name": "Wayfare logo",
+      "shadow": {
+        "kind": "none",
+        "opacity": 0
       },
-      "translucency" : {
-        "enabled" : false,
-        "value" : 0
+      "translucency": {
+        "enabled": false,
+        "value": 0
       }
     }
   ],
-  "supported-platforms" : {
-    "circles" : [
-      "watchOS"
-    ],
-    "squares" : "shared"
+  "supported-platforms": {
+    "circles": ["watchOS"],
+    "squares": "shared"
   }
 }

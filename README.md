@@ -34,9 +34,11 @@ These are real captures of the authenticated trip workspace, shown at desktop an
 ## Run locally
 
 ```bash
+volta install node@22
 corepack enable
 # If you use Volta: volta install pnpm@12.3.4
 pnpm install
+cp .env.example .env.local
 pnpm run dev:web
 ```
 
@@ -52,7 +54,7 @@ Start in Expo Go for auth and planner flows. The native Google map and Google OA
 
 ```bash
 cd apps/mobile
-pnpm dlx eas-cli@latest build --profile development --platform ios
+npm exec --yes --package=eas-cli@latest -- eas build --profile development --platform ios
 ```
 
 `EXPO_PUBLIC_GOOGLE_MAPS_IOS_KEY` must be a platform-restricted iOS key; it is distinct from the web Maps JavaScript key. Server-only Google Places and AeroDataBox keys remain in the web app environment.
@@ -78,9 +80,7 @@ Flight search uses AeroDataBox through RapidAPI. Add the RapidAPI key to `.env.l
 ## Verification
 
 ```bash
-pnpm run typecheck
-pnpm test
-pnpm run build
+pnpm release:check
 ```
 
 The shared test suite covers date validation, currency-separated totals, query behavior, and bearer token parsing. Validate authentication/deep links, RLS permissions, viewer/editor roles, Google Places, and flight lookup on an iPhone before publishing an internal EAS build. Cached data remains visible while offline, but edits require reconnection.

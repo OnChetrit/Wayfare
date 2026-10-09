@@ -1,5 +1,6 @@
 'use client';
 
+import { type tripDayRoutes } from '@wayfare/domain';
 import Script from 'next/script';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import styles from './GoogleMapCanvas.module.scss';
@@ -138,6 +139,8 @@ function getFittedCamera(places: SavedPlace[], width: number, height: number): M
 
 type GoogleMapCanvasProps = {
   places: SavedPlace[];
+  dayRoutes?: ReturnType<typeof tripDayRoutes>;
+  onSelectDay?: (date: string) => void;
   routePlaces: SavedPlace[];
   flightRoutePlaces: SavedPlace[][];
   showRouteLines: boolean;
@@ -153,6 +156,8 @@ type GoogleMapCanvasProps = {
 export function GoogleMapCanvas({
   places,
   routePlaces,
+  dayRoutes,
+  onSelectDay,
   flightRoutePlaces,
   showRouteLines,
   selectedDate,
@@ -404,12 +409,15 @@ export function GoogleMapCanvas({
     // Keep the selected day's route in view when the day changes. The previous
     // implementation only fitted the initial set of places, so later days
     // could render markers outside the camera's current bounds.
-    const routeViewportPlaces = [...routePlaces, ...flightRoutePlaces.flat()].filter(
+    const routeViewportPlaces = [
+      ...(dayRoutes?.flatMap(day => day.stops.map(stop => stop.place)) ?? routePlaces),
+      ...flightRoutePlaces.flat(),
+    ].filter(
       (place, index, all) => all.findIndex(candidate => candidate.id === place.id) === index,
     );
     const viewportPlaces = routeViewportPlaces.length ? routeViewportPlaces : places;
     if (!viewportPlaces.length) return;
-    const viewportKey = `${selectedDate}:${routeViewportPlaces.length ? 'route' : 'places'}:${viewportPlaces.map(place => `${place.id}@${place.lat},${place.lng}`).join('|')}`;
+    const viewportKey = selectedDate || 'overview';
     if (lastFittedViewportKey.current === viewportKey) return;
 
     const targetCamera = getFittedCamera(
@@ -421,6 +429,7 @@ export function GoogleMapCanvas({
     transitionToCamera(targetCamera);
     lastFittedViewportKey.current = viewportKey;
   }, [
+    dayRoutes,
     flightRoutePlaces,
     isDarkTheme,
     places,
@@ -446,20 +455,69 @@ export function GoogleMapCanvas({
   }, [places, selectedPlaceId, transitionToCamera]);
 
   useEffect(() => {
-    if (!showRouteLines || !map.current || routePlaces.length < 2) return;
+    if (!map.current || !scriptReady) return;
     const googleApi = (window as Window & { google?: GoogleApi }).google;
     if (!googleApi?.maps?.Polyline) return;
-    const routeLine = new googleApi.maps.Polyline({
-      map: map.current,
-      path: routePlaces.map(place => ({ lat: place.lat, lng: place.lng })),
-      geodesic: true,
-      strokeColor: '#477d67',
-      strokeOpacity: 0.82,
-      strokeWeight: 3,
-      zIndex: 1,
-    });
-    return () => routeLine.setMap(null);
-  }, [isDarkTheme, routePlaces, showRouteLines]);
+    const groups = dayRoutes ?? [
+      {
+        date: selectedDate,
+        dayNumber: 1,
+        color: '#477d67',
+        stops: routePlaces.map(place => ({ place })),
+      },
+    ];
+    const lines = showRouteLines
+      ? groups
+          .filter(day => day.stops.length > 1)
+          .map(
+            day =>
+              new googleApi.maps.Polyline({
+                map: map.current!,
+                path: day.stops.map(stop => ({ lat: stop.place.lat, lng: stop.place.lng })),
+                geodesic: true,
+                strokeColor: day.color,
+                strokeOpacity: 0.85,
+                strokeWeight: 4,
+                zIndex: 2,
+              }),
+          )
+      : [];
+    const AdvancedMarker = googleApi.maps.marker?.AdvancedMarkerElement;
+    const badges = AdvancedMarker
+      ? groups
+          .filter(day => day.stops.length)
+          .map(day => {
+            const place = day.stops[0].place;
+            const content = document.createElement('button');
+            content.type = 'button';
+            content.textContent = String(day.dayNumber);
+            content.title = `Day ${day.dayNumber} · ${day.date}`;
+            content.setAttribute('aria-label', content.title);
+            Object.assign(content.style, {
+              background: day.color,
+              color: '#fff',
+              border: '2px solid white',
+              borderRadius: '50%',
+              minWidth: '32px',
+              height: '32px',
+              cursor: 'pointer',
+            });
+            content.onclick = () => onSelectDay?.(day.date);
+            return new AdvancedMarker({
+              map: map.current!,
+              position: { lat: place.lat, lng: place.lng },
+              title: content.title,
+              content,
+            });
+          })
+      : [];
+    return () => {
+      lines.forEach(line => line.setMap(null));
+      badges.forEach(marker => {
+        marker.map = null;
+      });
+    };
+  }, [dayRoutes, onSelectDay, routePlaces, selectedDate, showRouteLines, scriptReady, isDarkTheme]);
 
   useEffect(() => {
     if (!showRouteLines || !map.current || !flightRoutePlaces.length) return;
@@ -472,7 +530,14 @@ export function GoogleMapCanvas({
           path: route.map(place => ({ lat: place.lat, lng: place.lng })),
           geodesic: true,
           strokeColor: '#4d7fa3',
-          strokeOpacity: 0.9,
+          strokeOpacity: 0,
+          icons: [
+            {
+              icon: { path: 'M 0,-1 0,1', strokeOpacity: 1, scale: 3 },
+              offset: '0',
+              repeat: '14px',
+            },
+          ],
           strokeWeight: 3,
           zIndex: 1,
         }),

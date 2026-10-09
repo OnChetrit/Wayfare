@@ -1,8 +1,11 @@
 'use client';
 
+import { TripItemContext, TripItemTools } from './TripItemTools';
+import { reservationFetch as fetch } from '@/lib/reservation-fetch';
 import { useGSAP } from '@gsap/react';
 import gsap from 'gsap';
 import dynamic from 'next/dynamic';
+import { Plus } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
 import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { orderScheduleItemsForDay, type Reminder } from '@wayfare/domain';
@@ -20,6 +23,8 @@ import { RemindersPanel } from './RemindersPanel';
 import { useTripHeaderLayout } from './TripHeaderLayout';
 import { TripSettingsModal } from './TripSettingsModal';
 import { UserModal } from './UserModal';
+import { reorderTimelineItems, type TimelineDropPlacement } from './timeline-dnd';
+import { useTripRealtimeRefresh } from './use-trip-realtime-refresh';
 import { useMapRouteLinePreference } from '@/lib/map-route-line-preference';
 import { createClient } from '@/lib/supabase/client';
 import { parseAmount } from '@/lib/trips/amounts';
@@ -111,7 +116,7 @@ export function TripEditor({
   const [trip, setTrip] = useState(initialTrip);
   const currentTrip = trip ?? initialTrip;
   const days = currentTrip?.days ?? [];
-  const [selectedDate, setSelectedDate] = useState(currentTrip?.days[0]?.date ?? '');
+  const [selectedDate, setSelectedDate] = useState('');
   const [places, setPlaces] = useState<SavedPlace[]>(initialTrip?.places ?? []);
   const [schedule, setSchedule] = useState<ScheduleItem[]>(initialTrip?.schedule ?? []);
   const [locationSegments, setLocationSegments] = useState<LocationSegment[]>(
@@ -155,6 +160,29 @@ export function TripEditor({
     mode,
     onModeChange: changeMode,
   });
+
+  const refreshTrip = useCallback(async () => {
+    if (!currentTripId) return;
+
+    try {
+      const body = await requestJson<{ trip: TripEditorTrip }>(`/api/trips/${currentTripId}`, {
+        method: 'GET',
+      });
+      if (body.trip.id !== currentTripId) return;
+
+      setTrip(body.trip);
+      setPlaces(body.trip.places);
+      setSchedule(body.trip.schedule);
+      setLocationSegments(body.trip.locationSegments);
+      setStays(body.trip.stays);
+      setFlights(body.trip.flights);
+      setExpenses(body.trip.expenses);
+    } catch {
+      // A later Realtime event, focus, or online event will retry the refresh.
+    }
+  }, [currentTripId]);
+
+  useTripRealtimeRefresh(currentTripId, refreshTrip);
 
   useEffect(() => {
     const tripId = currentTrip?.id;
@@ -242,6 +270,7 @@ export function TripEditor({
   const editingActivityCategory =
     editingScheduleItem?.category ??
     places.find(place => place.id === editingScheduleItem?.savedPlaceId)?.category;
+  const editingActivityPlace = places.find(place => place.id === editingScheduleItem?.savedPlaceId);
   const selectedFlights = flights
     .filter(flight => flight.departureDate === selectedDate || flight.arrivalDate === selectedDate)
     .sort((a, b) => a.scheduledDepartureUtc.localeCompare(b.scheduledDepartureUtc));
@@ -496,6 +525,11 @@ export function TripEditor({
   }
 
   async function addToDay(place: SavedPlace, date = selectedDate, preserveWorkspaceView = false) {
+    if (!date) {
+      const chosen = window.prompt('Choose a trip date (YYYY-MM-DD)', days[0]?.date);
+      if (!chosen || !days.some(day => day.date === chosen)) return;
+      date = chosen;
+    }
     if (!date) return;
     let savedPlace: SavedPlace;
     try {
@@ -625,6 +659,28 @@ export function TripEditor({
       setSchedule(previousSchedule);
       showTimelineError(error);
       throw error;
+    }
+  }
+
+  async function toggleActivityReservation(item: ScheduleItem) {
+    if (!initialTrip) return;
+    setTimelineError(null);
+    try {
+      const body = await requestJson<{ locked: boolean }>(
+        `/api/trips/${initialTrip.id}/reservations/ACTIVITY/${item.id}`,
+        {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ locked: !item.reservationLocked }),
+        },
+      );
+      setSchedule(current =>
+        current.map(candidate =>
+          candidate.id === item.id ? { ...candidate, reservationLocked: body.locked } : candidate,
+        ),
+      );
+    } catch (error) {
+      showTimelineError(error);
     }
   }
 
@@ -1306,30 +1362,43 @@ export function TripEditor({
     }
   }
 
-  async function moveScheduleItem(item: ScheduleItem, direction: 'up' | 'down') {
+  async function reorderScheduleItems(
+    itemId: string,
+    targetId: string,
+    placement: TimelineDropPlacement,
+  ) {
+    const item = schedule.find(candidate => candidate.id === itemId);
+    const target = schedule.find(candidate => candidate.id === targetId);
+    if (!item || !target || item.date !== target.date || item.id === target.id) return;
+
     const items = orderScheduleItemsForDay(schedule, item.date);
-    const index = items.findIndex(candidate => candidate.id === item.id);
-    const target = direction === 'up' ? index - 1 : index + 1;
-    if (index < 0 || target < 0 || target >= items.length) return;
-    const targetItem = items[target];
-    if (item.sortOrder === undefined || targetItem.sortOrder === undefined) {
+    if (items.some(candidate => candidate.sortOrder === undefined)) {
       showTimelineError('This legacy activity needs to be refreshed before it can be reordered.');
       return;
     }
 
+    const reordered = reorderTimelineItems(items, itemId, targetId, placement);
+    if (reordered.every((candidate, index) => candidate.id === items[index]?.id)) return;
+
     const previousSchedule = schedule;
-    const swappedItems = [
-      { ...item, sortOrder: targetItem.sortOrder },
-      { ...targetItem, sortOrder: item.sortOrder },
-    ];
-    setSchedule(current =>
-      current.map(candidate => swappedItems.find(next => next.id === candidate.id) ?? candidate),
+    const orderSlots = items.map(candidate => candidate.sortOrder as number);
+    const reorderedItems = reordered.map((candidate, index) => ({
+      ...candidate,
+      sortOrder: orderSlots[index],
+    }));
+    const originalItemsById = new Map(items.map(candidate => [candidate.id, candidate]));
+    const changedItems = reorderedItems.filter(
+      candidate => originalItemsById.get(candidate.id)?.sortOrder !== candidate.sortOrder,
     );
-    if (!initialTrip || item.id.startsWith('schedule-') || item.id.startsWith('activity-')) return;
+    const changedItemsById = new Map(changedItems.map(candidate => [candidate.id, candidate]));
+    setSchedule(current =>
+      current.map(candidate => changedItemsById.get(candidate.id) ?? candidate),
+    );
+    if (!initialTrip || itemId.startsWith('schedule-') || itemId.startsWith('activity-')) return;
 
     try {
-      const [updatedItem, updatedTarget] = await Promise.all(
-        swappedItems.map(async next => {
+      const updatedItems = await Promise.all(
+        changedItems.map(async next => {
           const body = await requestJson<{ schedule: ScheduleItem }>(
             `/api/trips/${initialTrip.id}/schedule/${next.id}`,
             {
@@ -1345,14 +1414,12 @@ export function TripEditor({
           return body.schedule;
         }),
       );
+      const updatedItemsById = new Map(updatedItems.map(candidate => [candidate.id, candidate]));
       setSchedule(current =>
-        current.map(candidate =>
-          candidate.id === updatedItem.id
-            ? updatedItem
-            : candidate.id === updatedTarget.id
-              ? updatedTarget
-              : candidate,
-        ),
+        current.map(candidate => {
+          const updated = updatedItemsById.get(candidate.id);
+          return updated ? { ...candidate, ...updated } : candidate;
+        }),
       );
     } catch (error) {
       setSchedule(previousSchedule);
@@ -1394,10 +1461,6 @@ export function TripEditor({
     setShowDayPlanOnly(true);
   }
 
-  function selectTimelinePlace(place: SavedPlace) {
-    setSelectedPlaceId(place.id);
-  }
-
   function addActivityForDate(date: string) {
     setSelectedDate(date);
     setActivityEditorOpen({ kind: 'activity' });
@@ -1434,304 +1497,380 @@ export function TripEditor({
   }
 
   return (
-    <main className={styles.app} ref={editorRef} data-day-panel={selectedDate ? 'open' : 'closed'}>
-      {!currentTrip ? (
-        <AddTripFlow preferences={user.preferences} />
-      ) : (
-        <>
-          {mode !== 'expenses' && (
-            <DateBar
-              days={days}
-              selectedDate={selectedDate}
-              selectedLocationId={selectedLocationId}
-              schedule={schedule}
-              locationSegments={locationSegments}
-              stays={stays}
-              places={places}
-              destinationLabel={currentTrip.destinationLabel ?? currentTrip.name}
-              defaultCurrency={user.preferences.currency}
-              onSavePlace={savePlace}
-              onSelectDay={selectDay}
-              onSelectLocation={selectLocation}
-              onAddPlaceToLocation={addPlaceToLocation}
-              onMoveActivity={moveScheduleItemToDate}
-              onAddPlaceToDay={(place, date) => void addToDay(place, date, true)}
-              onAddLocation={addLocation}
-              onCreateLocationDivision={createLocationDivision}
-              onUpdateLocation={updateLocation}
-              onDeleteLocation={deleteLocation}
-              onMoveBoundary={moveBoundary}
-              onMoveSharedBoundary={moveSharedTimelineBoundary}
-              onCreateStay={createStay}
-              onUpdateStay={updateStay}
-              onMoveStayDates={moveStayDates}
-              onDeleteStay={deleteStay}
-            />
-          )}
-          {timelineError && (
-            <div className={styles.timelineError} role="status">
-              {timelineError}
-            </div>
-          )}
-          <div
-            className={`${styles.workspace} ${workspaceView === 'timeline' ? styles.workspaceTimeline : ''}`}
-          >
-            <PlaceHoverProvider>
-              {mode === 'expenses' ? (
-                <ExpensesPanel
-                  tripId={currentTrip.id}
-                  tripStartDate={currentTrip.startDate}
-                  tripEndDate={currentTrip.endDate}
-                  defaultCurrency={user.preferences.currency}
-                  expenses={expenses}
-                  stays={stays}
-                  flights={flights}
-                  schedule={schedule}
-                  places={places}
-                  days={days}
-                  onExpensesChange={updateExpenses}
-                  onLinkedStayPriceChange={updateLinkedStayPrice}
-                />
-              ) : workspaceView === 'timeline' ? (
-                <TimelineView
-                  days={days}
-                  schedule={schedule}
-                  flights={flights}
-                  places={places}
-                  selectedDate={selectedDate}
-                  selectedPlaceId={selectedPlaceId}
-                  destinationLabel={currentTrip.destinationLabel ?? currentTrip.name}
-                  onSelectDay={selectTimelineDay}
-                  onSelectPlace={selectTimelinePlace}
-                  onMoveActivity={moveScheduleItemToDate}
-                  onRemoveActivity={removeFromSchedule}
-                  onAddPlaceToDay={(place, date) => void addToDay(place, date, true)}
-                  onAddActivity={addActivityForDate}
-                  onOpenDayNotes={openDayNotesForDate}
-                />
-              ) : (
-                <>
-                  {activeLocation ? (
-                    <LocationPlanPanel
-                      mode={mode}
-                      location={activeLocation}
-                      places={places}
-                      selectedPlaceId={selectedPlaceId}
-                      onSelectPlace={selectPlace}
-                      onAddPlace={addPlaceToLocation}
-                      onRemovePlace={removePlaceFromLocation}
-                      onClose={() => setMode('map')}
-                    />
-                  ) : (
-                    <DayPlanPanel
-                      mode={mode}
-                      selectedDay={selectedDay}
-                      isFirstDay={selectedDate === days[0]?.date}
-                      isLastDay={selectedDate === days[days.length - 1]?.date}
-                      selectedSchedule={selectedSchedule}
-                      selectedFlights={selectedFlights}
-                      stays={stays}
-                      destinationLabel={currentTrip.destinationLabel ?? currentTrip.name}
-                      places={places}
-                      selectedPlaceId={selectedPlaceId}
-                      onSelectPlace={selectPlace}
-                      onClose={() => setMode('map')}
-                      onMove={moveScheduleItem}
-                      onEdit={item =>
-                        setActivityEditorOpen({ kind: 'activity', scheduleItemId: item.id })
-                      }
-                      onRemove={removeFromSchedule}
-                      onOpenActivityEditor={() => setActivityEditorOpen({ kind: 'activity' })}
-                      onOpenTravelDetails={() => openTripSettings(selectedDate)}
-                      hasArrivalFlight={hasArrivalFlight}
-                      hasDepartureFlight={hasDepartureFlight}
-                      onOpenDayNotes={() => setDayNotesOpen(true)}
-                      onOpenReminders={() => setRemindersOpen(true)}
-                      canCreateReminders={isOnline}
-                      onCreateReminder={openReminderFromSchedule}
-                    />
-                  )}
-                  <MapPanel
-                    mode={mode}
-                    destinationLabel={currentTrip.destinationLabel ?? currentTrip.name}
-                    places={places}
-                    schedule={schedule}
-                    locationSegments={locationSegments}
-                    activeLocation={activeLocation}
+    <TripItemContext.Provider
+      value={currentTrip ? { ...currentTrip, schedule, stays, flights, expenses, places } : null}
+    >
+      <main
+        className={styles.app}
+        ref={editorRef}
+        data-day-panel={selectedDate ? 'open' : 'closed'}
+      >
+        {!currentTrip ? (
+          <AddTripFlow preferences={user.preferences} />
+        ) : (
+          <>
+            {mode !== 'expenses' && (
+              <DateBar
+                days={days}
+                selectedDate={selectedDate}
+                selectedLocationId={selectedLocationId}
+                schedule={schedule}
+                locationSegments={locationSegments}
+                stays={stays}
+                places={places}
+                destinationLabel={currentTrip.destinationLabel ?? currentTrip.name}
+                defaultCurrency={user.preferences.currency}
+                onSavePlace={savePlace}
+                onSelectDay={date => selectDay(date === selectedDate ? '' : date)}
+                onSelectLocation={selectLocation}
+                onAddPlaceToLocation={addPlaceToLocation}
+                onMoveActivity={moveScheduleItemToDate}
+                onAddPlaceToDay={(place, date) => void addToDay(place, date, true)}
+                onAddLocation={addLocation}
+                onCreateLocationDivision={createLocationDivision}
+                onUpdateLocation={updateLocation}
+                onDeleteLocation={deleteLocation}
+                onMoveBoundary={moveBoundary}
+                onMoveSharedBoundary={moveSharedTimelineBoundary}
+                onCreateStay={createStay}
+                onUpdateStay={updateStay}
+                onMoveStayDates={moveStayDates}
+                onDeleteStay={deleteStay}
+              />
+            )}
+            {timelineError && (
+              <div className={styles.timelineError} role="status">
+                {timelineError}
+              </div>
+            )}
+            <div
+              className={`${styles.workspace} ${workspaceView === 'timeline' ? styles.workspaceTimeline : ''}`}
+            >
+              <PlaceHoverProvider>
+                {mode === 'expenses' ? (
+                  <ExpensesPanel
+                    tripId={currentTrip.id}
                     tripStartDate={currentTrip.startDate}
                     tripEndDate={currentTrip.endDate}
-                    selectedDate={selectedDate}
+                    defaultCurrency={user.preferences.currency}
+                    expenses={expenses}
                     stays={stays}
                     flights={flights}
-                    selectedPlaceId={selectedPlaceId}
-                    previewPlace={previewPlace}
-                    showDayPlanOnly={showDayPlanOnly}
-                    showRouteLines={showRouteLines}
-                    selectedDayLabel={selectedDay?.weekday.toLowerCase() ?? 'your day'}
-                    onSelectPlace={selectPlace}
-                    onShowDayPlanOnlyChange={setShowDayPlanOnly}
-                    onShowRouteLinesChange={setShowRouteLines}
-                    onVisibleMapPlacesChange={setVisibleMapPlaceIds}
-                    onClosePreview={() => setPreviewPlace(null)}
-                    onSavePlace={savePlace}
-                    onToggleFavorite={toggleFavorite}
-                    onSaveComment={savePlaceComment}
-                    canCreateReminders={isOnline}
-                    onCreateReminder={openReminderFromPlace}
-                    onAddToDay={addToDay}
+                    schedule={schedule}
+                    places={places}
+                    days={days}
+                    onExpensesChange={updateExpenses}
+                    onLinkedStayPriceChange={updateLinkedStayPrice}
                   />
-                </>
-              )}
-              {mode !== 'expenses' && (
-                <PlacesPanel
-                  mode={mode}
-                  places={places}
-                  filteredPlaces={filteredPlaces}
-                  locationCandidatePlaces={filteredPlaces}
-                  activeLocation={null}
-                  locationPlaces={[]}
-                  schedule={schedule}
-                  filter={filter}
-                  selectedPlaceId={selectedPlaceId}
-                  selectedDay={selectedDay}
-                  libraryQuery={libraryQuery}
-                  showOnlyVisiblePlaces={showOnlyVisiblePlaces}
-                  onFilterChange={setFilter}
-                  onQueryChange={setLibraryQuery}
-                  onShowOnlyVisiblePlacesChange={setShowOnlyVisiblePlaces}
-                  onSelectPlace={selectPlace}
-                  onAddToDay={addToDay}
-                  onAddToLocation={addPlaceToLocation}
-                  onRemoveFromLocation={removePlaceFromLocation}
-                  onToggleFavorite={toggleFavorite}
-                  onDeletePlace={deletePlace}
-                  onImportGoogleList={importGoogleList}
+                ) : workspaceView === 'timeline' ? (
+                  <TimelineView
+                    days={days}
+                    schedule={schedule}
+                    flights={flights}
+                    places={places}
+                    selectedDate={selectedDate}
+                    selectedPlaceId={selectedPlaceId}
+                    destinationLabel={currentTrip.destinationLabel ?? currentTrip.name}
+                    canLockActivities={currentTrip.access.canEdit}
+                    onSelectDay={selectTimelineDay}
+                    onEditActivity={item => {
+                      setSelectedDate(item.date);
+                      setActivityEditorOpen({ kind: 'activity', scheduleItemId: item.id });
+                    }}
+                    onMoveActivity={moveScheduleItemToDate}
+                    onRemoveActivity={removeFromSchedule}
+                    onToggleActivityLock={toggleActivityReservation}
+                    onAddPlaceToDay={(place, date) => void addToDay(place, date, true)}
+                    onAddActivity={addActivityForDate}
+                    onOpenDayNotes={openDayNotesForDate}
+                  />
+                ) : (
+                  <>
+                    {activeLocation ? (
+                      <LocationPlanPanel
+                        mode={mode}
+                        location={activeLocation}
+                        places={places}
+                        selectedPlaceId={selectedPlaceId}
+                        onSelectPlace={selectPlace}
+                        onAddPlace={addPlaceToLocation}
+                        onRemovePlace={removePlaceFromLocation}
+                        onClose={() => setMode('map')}
+                      />
+                    ) : !selectedDate ? (
+                      <aside className={styles.allDaysPanel} aria-label="All days itinerary">
+                        <div className={styles.allDaysHeader}>
+                          <span>Trip overview</span>
+                          <h2>All days</h2>
+                        </div>
+                        {days.map((day, index) => (
+                          <section className={styles.allDaysDay} key={day.id}>
+                            <button
+                              type="button"
+                              className={styles.allDaysDayHeader}
+                              onClick={() => selectDay(day.date)}
+                            >
+                              <span>{index + 1}</span>
+                              <strong>Day {index + 1}</strong>
+                              <small>{day.shortDate}</small>
+                            </button>
+                            <div className={styles.allDaysItems}>
+                              {orderScheduleItemsForDay(schedule, day.date).map(item => (
+                                <p key={item.id}>
+                                  <time>{item.startTime ?? 'Any time'}</time>
+                                  <span>
+                                    {item.title ??
+                                      places.find(place => place.id === item.savedPlaceId)?.name ??
+                                      'Activity'}
+                                    {!item.savedPlaceId && <small>No mapped stop</small>}
+                                  </span>
+                                </p>
+                              ))}
+                              {!schedule.some(item => item.date === day.date) ? (
+                                <p className={styles.allDaysEmpty}>Nothing planned yet</p>
+                              ) : null}
+                            </div>
+                            <button
+                              type="button"
+                              className={styles.allDaysAdd}
+                              onClick={() => addActivityForDate(day.date)}
+                            >
+                              <Plus size={13} /> Add activity
+                            </button>
+                          </section>
+                        ))}
+                      </aside>
+                    ) : (
+                      <DayPlanPanel
+                        mode={mode}
+                        selectedDay={selectedDay}
+                        isFirstDay={selectedDate === days[0]?.date}
+                        isLastDay={selectedDate === days[days.length - 1]?.date}
+                        selectedSchedule={selectedSchedule}
+                        selectedFlights={selectedFlights}
+                        stays={stays}
+                        destinationLabel={currentTrip.destinationLabel ?? currentTrip.name}
+                        places={places}
+                        selectedPlaceId={selectedPlaceId}
+                        onClose={() => setMode('map')}
+                        onReorder={reorderScheduleItems}
+                        onEdit={item =>
+                          setActivityEditorOpen({ kind: 'activity', scheduleItemId: item.id })
+                        }
+                        onRemove={removeFromSchedule}
+                        onToggleActivityLock={toggleActivityReservation}
+                        onOpenActivityEditor={() => setActivityEditorOpen({ kind: 'activity' })}
+                        onOpenTravelDetails={() => openTripSettings(selectedDate)}
+                        hasArrivalFlight={hasArrivalFlight}
+                        hasDepartureFlight={hasDepartureFlight}
+                        onOpenDayNotes={() => setDayNotesOpen(true)}
+                        onOpenReminders={() => setRemindersOpen(true)}
+                        canCreateReminders={isOnline}
+                        canLockActivities={currentTrip.access.canEdit}
+                        onCreateReminder={openReminderFromSchedule}
+                      />
+                    )}
+                    <MapPanel
+                      onSelectDay={selectDay}
+                      mode={mode}
+                      destinationLabel={currentTrip.destinationLabel ?? currentTrip.name}
+                      places={places}
+                      schedule={schedule}
+                      locationSegments={locationSegments}
+                      activeLocation={activeLocation}
+                      tripStartDate={currentTrip.startDate}
+                      tripEndDate={currentTrip.endDate}
+                      selectedDate={selectedDate}
+                      stays={stays}
+                      flights={flights}
+                      selectedPlaceId={selectedPlaceId}
+                      previewPlace={previewPlace}
+                      showDayPlanOnly={showDayPlanOnly}
+                      showRouteLines={showRouteLines}
+                      selectedDayLabel={selectedDay?.weekday.toLowerCase() ?? 'your day'}
+                      onSelectPlace={selectPlace}
+                      onShowDayPlanOnlyChange={setShowDayPlanOnly}
+                      onShowRouteLinesChange={setShowRouteLines}
+                      onVisibleMapPlacesChange={setVisibleMapPlaceIds}
+                      onClosePreview={() => setPreviewPlace(null)}
+                      onSavePlace={savePlace}
+                      onToggleFavorite={toggleFavorite}
+                      onSaveComment={savePlaceComment}
+                      canCreateReminders={isOnline}
+                      onCreateReminder={openReminderFromPlace}
+                      onAddToDay={addToDay}
+                    />
+                  </>
+                )}
+                {mode !== 'expenses' && (
+                  <PlacesPanel
+                    mode={mode}
+                    places={places}
+                    filteredPlaces={filteredPlaces}
+                    locationCandidatePlaces={filteredPlaces}
+                    activeLocation={null}
+                    locationPlaces={[]}
+                    schedule={schedule}
+                    filter={filter}
+                    selectedPlaceId={selectedPlaceId}
+                    selectedDay={selectedDay}
+                    libraryQuery={libraryQuery}
+                    showOnlyVisiblePlaces={showOnlyVisiblePlaces}
+                    onFilterChange={setFilter}
+                    onQueryChange={setLibraryQuery}
+                    onShowOnlyVisiblePlacesChange={setShowOnlyVisiblePlaces}
+                    onSelectPlace={selectPlace}
+                    onAddToDay={addToDay}
+                    onAddToLocation={addPlaceToLocation}
+                    onRemoveFromLocation={removePlaceFromLocation}
+                    onToggleFavorite={toggleFavorite}
+                    onDeletePlace={deletePlace}
+                    onImportGoogleList={importGoogleList}
+                  />
+                )}
+              </PlaceHoverProvider>
+            </div>
+          </>
+        )}
+        {currentTrip && settingsOpen && (
+          <TripSettingsModal
+            key={`${currentTrip.id}-${currentTrip.startDate}-${currentTrip.endDate}-${settingsFlightDate ?? ''}`}
+            open
+            trip={currentTrip}
+            initialFlightDate={settingsFlightDate}
+            focusFlights={Boolean(settingsFlightDate)}
+            onClose={closeTripSettings}
+            onSaved={updatedTrip => {
+              setTrip(current => ({ ...(current ?? currentTrip), ...updatedTrip, flights }));
+              setSelectedDate(currentDate =>
+                !currentDate || updatedTrip.days.some(day => day.date === currentDate)
+                  ? currentDate
+                  : (updatedTrip.days[0]?.date ?? ''),
+              );
+            }}
+            onDeleted={() => {
+              closeTripSettings();
+              router.replace('/editor');
+            }}
+            onFlightsChange={updateFlights}
+            onExpensesChange={updateExpenses}
+          />
+        )}
+        {currentTrip && selectedDay && dayNotesOpen && (
+          <DayNotesEditor
+            key={selectedDay.id}
+            open
+            dayLabel={selectedDay.label}
+            shortDate={selectedDay.shortDate}
+            initialNotes={selectedDay.notes ?? ''}
+            onClose={() => setDayNotesOpen(false)}
+            onSave={saveDayNotes}
+          />
+        )}
+        {currentTrip && selectedDay && activityEditorOpen && (
+          <ActivityEditor
+            key={`${selectedDay.date}-${activityEditorOpen.kind}-${editingScheduleItem?.id ?? 'new'}`}
+            open
+            dayLabel={selectedDay.label}
+            shortDate={selectedDay.shortDate}
+            tools={
+              editingScheduleItem ? (
+                <TripItemTools
+                  kind="ACTIVITY"
+                  itemId={editingScheduleItem.id}
+                  showReservationLock={false}
                 />
-              )}
-            </PlaceHoverProvider>
-          </div>
-        </>
-      )}
-      {currentTrip && settingsOpen && (
-        <TripSettingsModal
-          key={`${currentTrip.id}-${currentTrip.startDate}-${currentTrip.endDate}-${settingsFlightDate ?? ''}`}
-          open
-          trip={currentTrip}
-          initialFlightDate={settingsFlightDate}
-          focusFlights={Boolean(settingsFlightDate)}
-          onClose={closeTripSettings}
-          onSaved={updatedTrip => {
-            setTrip(current => ({ ...(current ?? currentTrip), ...updatedTrip, flights }));
-            setSelectedDate(currentDate =>
-              updatedTrip.days.some(day => day.date === currentDate)
-                ? currentDate
-                : (updatedTrip.days[0]?.date ?? ''),
-            );
-          }}
-          onDeleted={() => {
-            closeTripSettings();
-            router.replace('/editor');
-          }}
-          onFlightsChange={updateFlights}
-          onExpensesChange={updateExpenses}
-        />
-      )}
-      {currentTrip && selectedDay && dayNotesOpen && (
-        <DayNotesEditor
-          key={selectedDay.id}
-          open
-          dayLabel={selectedDay.label}
-          shortDate={selectedDay.shortDate}
-          initialNotes={selectedDay.notes ?? ''}
-          onClose={() => setDayNotesOpen(false)}
-          onSave={saveDayNotes}
-        />
-      )}
-      {currentTrip && selectedDay && activityEditorOpen && (
-        <ActivityEditor
-          key={`${selectedDay.date}-${activityEditorOpen.kind}-${editingScheduleItem?.id ?? 'new'}`}
-          open
-          dayLabel={selectedDay.label}
-          shortDate={selectedDay.shortDate}
-          initialTime={editingScheduleItem?.startTime ?? null}
-          initialName={editingActivityName}
-          initialDuration={editingScheduleItem?.duration}
-          initialNote={editingScheduleItem?.note}
-          initialAmount={editingScheduleItem?.amount}
-          initialCurrency={editingScheduleItem?.currency}
-          initialCategory={
-            editingActivityCategory ??
-            (activityEditorOpen.kind === 'activity' ? 'CUSTOM' : 'TRANSPORT')
-          }
-          defaultCurrency={user.preferences.currency}
-          title={
-            editingScheduleItem
-              ? 'Edit activity'
-              : activityEditorOpen.kind === 'arrival'
-                ? 'Add arrival details'
+              ) : undefined
+            }
+            reservationLocked={editingScheduleItem?.reservationLocked}
+            initialTime={editingScheduleItem?.startTime ?? null}
+            initialName={editingActivityName}
+            initialDuration={editingScheduleItem?.duration}
+            initialNote={editingScheduleItem?.note}
+            initialAmount={editingScheduleItem?.amount}
+            initialCurrency={editingScheduleItem?.currency}
+            initialCategory={
+              editingActivityCategory ??
+              (activityEditorOpen.kind === 'activity' ? 'CUSTOM' : 'TRANSPORT')
+            }
+            defaultCurrency={user.preferences.currency}
+            title={
+              editingScheduleItem
+                ? 'Edit activity'
+                : activityEditorOpen.kind === 'arrival'
+                  ? 'Add arrival details'
+                  : activityEditorOpen.kind === 'departure'
+                    ? 'Add departure details'
+                    : 'Add an activity'
+            }
+            nameLabel={
+              activityEditorOpen.kind === 'arrival'
+                ? 'How are you arriving?'
                 : activityEditorOpen.kind === 'departure'
-                  ? 'Add departure details'
-                  : 'Add an activity'
-          }
-          nameLabel={
-            activityEditorOpen.kind === 'arrival'
-              ? 'How are you arriving?'
-              : activityEditorOpen.kind === 'departure'
-                ? 'How are you leaving?'
+                  ? 'How are you leaving?'
+                  : undefined
+            }
+            namePlaceholder={
+              activityEditorOpen.kind === 'arrival'
+                ? 'Flight, train from home, airport transfer…'
+                : activityEditorOpen.kind === 'departure'
+                  ? 'Flight, train home, airport transfer…'
+                  : undefined
+            }
+            onClose={() => setActivityEditorOpen(null)}
+            onShowPlace={
+              editingActivityPlace
+                ? () => {
+                    setActivityEditorOpen(null);
+                    selectPlace(editingActivityPlace);
+                  }
                 : undefined
-          }
-          namePlaceholder={
-            activityEditorOpen.kind === 'arrival'
-              ? 'Flight, train from home, airport transfer…'
-              : activityEditorOpen.kind === 'departure'
-                ? 'Flight, train home, airport transfer…'
-                : undefined
-          }
-          onClose={() => setActivityEditorOpen(null)}
-          onSave={async draft => {
-            if (editingScheduleItem) await updateScheduleActivity(editingScheduleItem, draft);
-            else await addManualActivity(draft);
-            setActivityEditorOpen(null);
-          }}
-        />
-      )}
-      {currentTrip && (
-        <RemindersPanel
-          open={remindersOpen}
-          reminders={reminders}
-          loading={remindersLoading}
-          error={remindersError}
-          onClose={() => setRemindersOpen(false)}
-          onReload={loadReminders}
-          onEdit={reminder => setReminderEditor({ kind: 'edit', reminder })}
-          onComplete={reminder => void setReminderStatus(reminder, 'COMPLETED')}
-          onReopen={reminder => void setReminderStatus(reminder, 'OPEN')}
-          onDelete={reminder => void deleteReminder(reminder)}
-        />
-      )}
-      {currentTrip && reminderEditor && (
-        <ReminderModal
-          key={
-            reminderEditor.kind === 'create'
-              ? `${reminderEditor.source.sourceKind}-${reminderEditor.source.savedPlaceId ?? reminderEditor.source.scheduleItemId}`
-              : reminderEditor.reminder.id
-          }
-          open
-          reminder={reminderEditor.kind === 'edit' ? reminderEditor.reminder : undefined}
-          source={reminderEditor.kind === 'create' ? reminderEditor.source : undefined}
-          isOnline={isOnline}
-          onClose={() => setReminderEditor(null)}
-          onSave={saveReminder}
-        />
-      )}
-      {accountOpen && (
-        <UserModal
-          open
-          user={user}
-          onClose={() => setAccountOpen(false)}
-          onThemeChange={updateTheme}
-        />
-      )}
-    </main>
+            }
+            onSave={async draft => {
+              if (editingScheduleItem) await updateScheduleActivity(editingScheduleItem, draft);
+              else await addManualActivity(draft);
+              setActivityEditorOpen(null);
+            }}
+          />
+        )}
+        {currentTrip && (
+          <RemindersPanel
+            open={remindersOpen}
+            reminders={reminders}
+            loading={remindersLoading}
+            error={remindersError}
+            onClose={() => setRemindersOpen(false)}
+            onReload={loadReminders}
+            onEdit={reminder => setReminderEditor({ kind: 'edit', reminder })}
+            onComplete={reminder => void setReminderStatus(reminder, 'COMPLETED')}
+            onReopen={reminder => void setReminderStatus(reminder, 'OPEN')}
+            onDelete={reminder => void deleteReminder(reminder)}
+          />
+        )}
+        {currentTrip && reminderEditor && (
+          <ReminderModal
+            key={
+              reminderEditor.kind === 'create'
+                ? `${reminderEditor.source.sourceKind}-${reminderEditor.source.savedPlaceId ?? reminderEditor.source.scheduleItemId}`
+                : reminderEditor.reminder.id
+            }
+            open
+            reminder={reminderEditor.kind === 'edit' ? reminderEditor.reminder : undefined}
+            source={reminderEditor.kind === 'create' ? reminderEditor.source : undefined}
+            isOnline={isOnline}
+            onClose={() => setReminderEditor(null)}
+            onSave={saveReminder}
+          />
+        )}
+        {accountOpen && (
+          <UserModal
+            open
+            user={user}
+            onClose={() => setAccountOpen(false)}
+            onThemeChange={updateTheme}
+          />
+        )}
+      </main>
+    </TripItemContext.Provider>
   );
 }

@@ -1,9 +1,10 @@
+import { CurrencyPicker } from '@/components/CurrencyPicker';
+import { TripItemTools } from './TripItemTools';
 import { ArrowRight, Search, X } from 'lucide-react';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import styles from './StayEditor.module.scss';
 import type { StayDraft, StayEditorState } from './date-bar-types';
 import type { SavedPlace } from './types';
-import { currencyLabels, supportedCurrencies } from '@/lib/trips/currencies';
 
 type StayEditorProps = {
   editor: StayEditorState;
@@ -144,6 +145,7 @@ export function StayEditor({
       }}
     >
       <form onSubmit={submit}>
+        {editor.stayId && <TripItemTools kind="HOTEL" itemId={editor.stayId} />}
         <div className={styles.timelineEditorHeader}>
           <strong>{editor.stayId ? 'Edit stay' : 'Add stay'}</strong>
           <button
@@ -271,7 +273,7 @@ export function StayEditor({
             <input
               type="number"
               min="0"
-              step="0.01"
+              step="any"
               value={draft.price}
               onChange={event => onChangeDraft({ price: event.target.value })}
               placeholder="0.00"
@@ -280,16 +282,10 @@ export function StayEditor({
           </label>
           <label>
             Currency
-            <select
+            <CurrencyPicker
               value={draft.priceCurrency}
-              onChange={event => onChangeDraft({ priceCurrency: event.target.value })}
-            >
-              {supportedCurrencies.map(option => (
-                <option key={option} value={option}>
-                  {option} — {currencyLabels[option]}
-                </option>
-              ))}
-            </select>
+              onChange={value => onChangeDraft({ priceCurrency: value })}
+            />
           </label>
         </div>
         <div className={styles.editorTwoColumns}>

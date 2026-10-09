@@ -1,40 +1,7 @@
 import { z } from 'zod';
 
-export type TripFlight = {
-  id: string;
-  tripId: string;
-  flightNumber: string;
-  airlineName?: string;
-  airlineIata?: string;
-  airlineIcao?: string;
-  departureDate: string;
-  arrivalDate?: string;
-  departureAirportIata?: string;
-  departureAirportIcao?: string;
-  departureAirportName?: string;
-  departureTimeZone?: string;
-  arrivalAirportIata?: string;
-  arrivalAirportIcao?: string;
-  arrivalAirportName?: string;
-  arrivalTimeZone?: string;
-  scheduledDepartureLocal: string;
-  scheduledDepartureUtc: string;
-  scheduledArrivalLocal?: string;
-  scheduledArrivalUtc?: string;
-  revisedDepartureLocal?: string;
-  revisedArrivalLocal?: string;
-  departureTerminal?: string;
-  departureGate?: string;
-  departureCheckInDesk?: string;
-  arrivalTerminal?: string;
-  arrivalGate?: string;
-  arrivalBaggageBelt?: string;
-  status: string;
-  durationMinutes?: number;
-  aircraftModel?: string;
-  aircraftRegistration?: string;
-  lastUpdatedUtc?: string;
-};
+import type { TripFlight } from '@wayfare/domain';
+export type { TripFlight } from '@wayfare/domain';
 
 export type TripFlightCandidate = Omit<TripFlight, 'id' | 'tripId'>;
 
@@ -94,7 +61,7 @@ export const flightCandidateSchema = z.object({
 });
 
 export const flightSelect =
-  'id, trip_id, flight_number, airline_name, airline_iata, airline_icao, departure_date, arrival_date, departure_airport_iata, departure_airport_icao, departure_airport_name, departure_time_zone, arrival_airport_iata, arrival_airport_icao, arrival_airport_name, arrival_time_zone, scheduled_departure_local, scheduled_departure_utc, scheduled_arrival_local, scheduled_arrival_utc, revised_departure_local, revised_arrival_local, departure_terminal, departure_gate, departure_check_in_desk, arrival_terminal, arrival_gate, arrival_baggage_belt, status, duration_minutes, aircraft_model, aircraft_registration, last_updated_utc';
+  'id, trip_id, flight_number, airline_name, airline_iata, airline_icao, departure_date, arrival_date, departure_airport_iata, departure_airport_icao, departure_airport_name, departure_time_zone, arrival_airport_iata, arrival_airport_icao, arrival_airport_name, arrival_time_zone, scheduled_departure_local, scheduled_departure_utc, scheduled_arrival_local, scheduled_arrival_utc, revised_departure_local, revised_arrival_local, departure_terminal, departure_gate, departure_check_in_desk, arrival_terminal, arrival_gate, arrival_baggage_belt, status, duration_minutes, aircraft_model, aircraft_registration, last_updated_utc, reservation_locked, mutation_version';
 
 type ProviderDateTime = {
   local?: unknown;
@@ -219,6 +186,8 @@ export function flightCandidateFromProvider(flight: AeroDataBoxFlight): TripFlig
 }
 
 export function flightFromDatabase(row: {
+  reservation_locked?: boolean;
+  mutation_version?: number;
   id: string;
   trip_id: string;
   flight_number: string;
@@ -254,6 +223,8 @@ export function flightFromDatabase(row: {
   last_updated_utc: string | null;
 }): TripFlight {
   return {
+    reservationLocked: row.reservation_locked,
+    mutationVersion: row.mutation_version,
     id: row.id,
     tripId: row.trip_id,
     flightNumber: row.flight_number,

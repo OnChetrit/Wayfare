@@ -91,6 +91,16 @@ function RootNavigator() {
         }}
       />
       <Stack.Screen
+        name="item-details"
+        options={{
+          presentation: 'formSheet',
+          headerShown: true,
+          title: 'Reservation details',
+          sheetAllowedDetents: [1],
+          sheetGrabberVisible: true,
+        }}
+      />
+      <Stack.Screen
         name="expense-editor"
         options={{
           contentStyle: { backgroundColor: colors.background },

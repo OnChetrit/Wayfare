@@ -1,568 +1,424 @@
-import AddIcon from '@expo/material-symbols/add.xml';
-import CheckIcon from '@expo/material-symbols/check.xml';
-import {
-  Button as SwiftButton,
-  ConfirmationDialog,
-  DatePicker,
-  Form,
-  Host,
-  Label,
-  Picker,
-  Section,
-  Text as SwiftText,
-  TextField,
-  useNativeState,
-} from '@expo/ui/swift-ui';
-import {
-  accessibilityLabel,
-  datePickerStyle,
-  disabled,
-  foregroundStyle,
-  keyboardType,
-  lineLimit,
-  pickerStyle,
-  scrollDismissesKeyboard,
-  tag,
-  textInputAutocapitalization,
-} from '@expo/ui/swift-ui/modifiers';
-import { Stack, useLocalSearchParams, router } from 'expo-router';
-import * as React from 'react';
+import { useState } from 'react';
 import { Alert, ScrollView, Text, View } from 'react-native';
-
-import { expenseCategories, type ExpenseCategory } from '@wayfare/domain';
+import { Stack, router, useLocalSearchParams } from 'expo-router';
+import {
+  formatMoney,
+  moneyMinorUnits,
+  paymentStatusLabels,
+  splitMoneyEqually,
+  validateAllocation,
+  type ExpenseItem,
+  type ExpenseCategory,
+  type PaymentStatus,
+  type TripEditorTrip,
+} from '@wayfare/domain';
 import { createExpense, deleteExpense, updateExpense } from '@/api/trips';
 import { Button } from '@/components/ui/button';
-import { ChipGroup } from '@/components/ui/controls';
+import { Card } from '@/components/ui/card';
 import { DateTimeField } from '@/components/ui/date-time-field';
 import { Field } from '@/components/ui/field';
+import { CurrencyPicker } from '@/components/ui/currency-picker';
+import { ChipGroup } from '@/components/ui/controls';
 import { EmptyState, ErrorState, LoadingState, OfflineNotice } from '@/components/ui/state';
-import {
-  applyExpenseSource,
-  expenseCategoryLabels,
-  expenseSourcesForTrip,
-  isExpenseSourceKind,
-  newExpenseForm,
-  type ExpenseSource,
-  type ExpenseEditorValues,
-} from '@/features/expenses/expense-insights';
 import { useTripMutation } from '@/features/itinerary/use-trip-mutation';
 import { useTripEditor } from '@/features/trips/use-trip-editor';
-import { dateTimeFieldValue, dateTimePickerDate } from '@/components/ui/date-time-field-value';
-import { currencyOptions } from '@/lib/account-preferences';
+import { expenseCategoryLabels } from './expense-insights';
 import { messageFromError } from '@/lib/format';
 import { space } from '@/theme/tokens';
 import { useTheme } from '@/theme/theme-provider';
 
-const categories = expenseCategories.map(category => ({
-  label: expenseCategoryLabels[category],
-  value: category,
-}));
+function confirm(title: string, message: string) {
+  return new Promise<boolean>(resolve =>
+    Alert.alert(
+      title,
+      message,
+      [
+        { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
+        { text: 'Save changes', onPress: () => resolve(true) },
+      ],
+      { cancelable: false },
+    ),
+  );
+}
 
 function first(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
 }
 
 export function ExpenseEditorScreen() {
-  useTheme();
-  const {
-    expenseId: rawExpenseId,
-    sourceId: rawSourceId,
-    sourceKind: rawSourceKind,
-  } = useLocalSearchParams<{
+  const params = useLocalSearchParams<{
     expenseId?: string | string[];
     sourceId?: string | string[];
     sourceKind?: string | string[];
   }>();
-  const expenseId = first(rawExpenseId);
-  const sourceId = first(rawSourceId);
-  const sourceKind = first(rawSourceKind);
-  const tripQuery = useTripEditor();
-  if (tripQuery.isLoading) return <LoadingState label="Loading expense…" />;
-  if (tripQuery.error)
+  const query = useTripEditor();
+  if (query.isLoading) return <LoadingState label="Loading payment…" />;
+  if (query.error)
     return (
-      <ErrorState
-        message={messageFromError(tripQuery.error)}
-        onRetry={() => void tripQuery.refetch()}
-      />
+      <ErrorState message={messageFromError(query.error)} onRetry={() => void query.refetch()} />
     );
-  if (!tripQuery.data)
+  if (!query.data)
     return (
       <EmptyState
         title="No trip selected"
-        detail="Choose a trip before adding an expense."
-        action={<Button onPress={() => router.replace('/trip-form')}>Create trip</Button>}
+        detail="Choose a trip before adding or editing a payment."
       />
     );
+  const expenseId = first(params.expenseId);
   return (
     <ExpenseEditor
+      key={expenseId ?? 'new'}
+      trip={query.data}
       expenseId={expenseId}
-      initialSourceId={sourceId}
-      initialSourceKind={isExpenseSourceKind(sourceKind) ? sourceKind : undefined}
-      trip={tripQuery.data}
+      sourceId={first(params.sourceId)}
+      sourceKind={first(params.sourceKind)}
     />
   );
 }
-
 function ExpenseEditor({
   trip,
   expenseId,
-  initialSourceId,
-  initialSourceKind,
+  sourceId,
+  sourceKind,
 }: {
-  trip: NonNullable<ReturnType<typeof useTripEditor>['data']>;
+  trip: TripEditorTrip;
   expenseId?: string;
-  initialSourceId?: string;
-  initialSourceKind?: 'flight' | 'schedule' | 'stay';
+  sourceId?: string;
+  sourceKind?: string;
 }) {
-  const { colors, theme } = useTheme();
+  const { colors } = useTheme();
   const expense = trip.expenses.find(item => item.id === expenseId);
-  const isManagedExpense = Boolean(expense?.stayId || expense?.flightId);
-  const sources = expenseSourcesForTrip(trip);
-  const [form, setForm] = React.useState<ExpenseEditorValues>(() => {
-    const sourceKind = expense?.stayId
-      ? 'stay'
-      : expense?.flightId
-        ? 'flight'
-        : expense?.scheduleItemId
-          ? 'schedule'
-          : 'none';
-    if (expense) {
-      return {
-        title: expense?.title ?? '',
-        category: expense?.category ?? ('OTHER' as ExpenseCategory),
-        amount: String(expense.amount),
-        currency: expense?.currency ?? trip.defaultCurrency,
-        expenseDate: expense?.expenseDate ?? trip.startDate,
-        notes: expense?.notes ?? '',
-        sourceKind,
-        sourceId: expense?.stayId ?? expense?.flightId ?? expense?.scheduleItemId ?? '',
-      };
-    }
-    const initialSource = initialSourceKind
-      ? sources.find(source => source.kind === initialSourceKind && source.id === initialSourceId)
-      : undefined;
-    return newExpenseForm(trip, initialSource);
-  });
-  const [message, setMessage] = React.useState<string | null>(null);
-  const [isDeleteConfirmationPresented, setIsDeleteConfirmationPresented] = React.useState(false);
-  const nativeTitle = useNativeState(form.title);
-  const nativeAmount = useNativeState(form.amount);
-  const nativeNotes = useNativeState(form.notes);
-  const { isOnline, mutation: saveMutation } = useTripMutation(trip.id, async () => {
-    const currentForm =
-      process.env.EXPO_OS === 'ios'
-        ? {
-            ...form,
-            amount: nativeAmount.get(),
-            notes: nativeNotes.get(),
-            title: nativeTitle.get(),
-          }
-        : form;
-    const amount = Number(currentForm.amount);
-    if (!currentForm.title.trim() || !Number.isFinite(amount) || amount < 0)
-      throw new Error('Enter a title and valid amount.');
-    const source =
-      currentForm.sourceKind === 'stay'
-        ? { stayId: currentForm.sourceId || null }
-        : currentForm.sourceKind === 'flight'
-          ? { flightId: currentForm.sourceId || null }
-          : currentForm.sourceKind === 'schedule'
-            ? { scheduleItemId: currentForm.sourceId || null }
-            : {};
-    const input = {
-      title: currentForm.title.trim(),
-      category: currentForm.category,
-      amount,
-      currency: currentForm.currency.toUpperCase(),
-      expenseDate: currentForm.expenseDate,
-      notes: currentForm.notes.trim() || undefined,
-      ...source,
-    };
-    return expense ? updateExpense(trip.id, expense.id, input) : createExpense(trip.id, input);
-  });
-  const { mutation: deleteMutation } = useTripMutation(trip.id, () =>
-    deleteExpense(trip.id, expense!.id),
+  const sources: ExpenseItem[] = [
+    ...trip.flights.map(item => ({
+      kind: 'FLIGHT' as const,
+      itemId: item.id,
+      title: item.flightNumber,
+      date: item.departureDate,
+      category: 'FLIGHT',
+    })),
+    ...trip.stays.map(item => ({
+      kind: 'HOTEL' as const,
+      itemId: item.id,
+      title: item.name,
+      date: item.checkInDate,
+      category: 'HOTEL',
+    })),
+    ...trip.schedule.map(item => ({
+      kind: 'ACTIVITY' as const,
+      itemId: item.id,
+      title:
+        item.title ?? trip.places.find(place => place.id === item.savedPlaceId)?.name ?? 'Activity',
+      date: item.date,
+      category: 'OTHER',
+    })),
+  ];
+  const initialSource = sources.find(
+    item =>
+      item.itemId === sourceId &&
+      item.kind === { flight: 'FLIGHT', stay: 'HOTEL', schedule: 'ACTIVITY' }[sourceKind ?? ''],
   );
-  const sourceOptions =
-    form.sourceKind === 'none' ? [] : sources.filter(source => source.kind === form.sourceKind);
-  const isFormDisabled = !isOnline || saveMutation.isPending;
-  const formError =
-    message ||
-    (saveMutation.error || deleteMutation.error
-      ? messageFromError(saveMutation.error ?? deleteMutation.error)
-      : null);
-
-  function chooseSource(source: ExpenseSource) {
-    const currentForm =
-      process.env.EXPO_OS === 'ios'
-        ? {
-            ...form,
-            amount: nativeAmount.get(),
-            notes: nativeNotes.get(),
-            title: nativeTitle.get(),
-          }
-        : form;
-    const nextForm = applyExpenseSource(currentForm, source);
-    setForm(nextForm);
-    if (process.env.EXPO_OS === 'ios') {
-      nativeTitle.set(nextForm.title);
-      nativeAmount.set(nextForm.amount);
+  const [title, setTitle] = useState(expense?.title ?? initialSource?.title ?? '');
+  const [amount, setAmount] = useState(expense ? String(expense.amount) : '');
+  const [currency, setCurrency] = useState(expense?.currency ?? trip.defaultCurrency);
+  const [category, setCategory] = useState<ExpenseCategory>(expense?.category ?? 'OTHER');
+  const [date, setDate] = useState(expense?.expenseDate ?? trip.startDate);
+  const [status, setStatus] = useState<PaymentStatus>(
+    expense?.paymentStatus ?? (expense ? 'NEEDS_REVIEW' : 'UNPAID'),
+  );
+  const [paymentDate, setPaymentDate] = useState(expense?.paymentDate ?? '');
+  const [notes, setNotes] = useState(expense?.notes ?? '');
+  const [coverage, setCoverage] = useState<ExpenseItem[]>(
+    expense?.coverage ??
+      (initialSource
+        ? [initialSource]
+        : sources.filter(
+            item =>
+              item.itemId === expense?.flightId ||
+              item.itemId === expense?.stayId ||
+              item.itemId === expense?.scheduleItemId,
+          )),
+  );
+  const [query, setQuery] = useState('');
+  const { isOnline, mutation } = useTripMutation(trip.id, async () => {
+    if (!trip.access.canEdit) throw new Error('Editing permission required.');
+    moneyMinorUnits(amount, currency);
+    validateAllocation(amount, currency, coverage);
+    const confirmPaid = expense?.paymentStatus === 'PAID' && status === 'PAID';
+    if (
+      confirmPaid &&
+      !(await confirm(
+        'Keep payment paid?',
+        `Confirm ${title}, ${formatMoney(amount, currency)}, remains paid after these changes.`,
+      ))
+    )
+      return false;
+    const moveFrom: Record<string, number> = {};
+    for (const item of coverage) {
+      const previous = trip.expenses.find(
+        row =>
+          row.id !== expense?.id &&
+          row.coverage?.some(
+            link => link.itemId && link.itemId === item.itemId && link.kind === item.kind,
+          ),
+      );
+      if (previous) {
+        if (
+          !(await confirm(
+            'Move to this expense?',
+            `${item.title} is covered by ${previous.title}, ${formatMoney(previous.amount, previous.currency)}. Its amount, notes and receipts will be preserved.`,
+          ))
+        )
+          return false;
+        moveFrom[previous.id] = previous.version!;
+      }
     }
-  }
-
-  async function save() {
-    setMessage(null);
-    try {
-      await saveMutation.mutateAsync(undefined);
-      router.back();
-    } catch (error) {
-      setMessage(messageFromError(error));
-    }
-  }
-
-  function deleteExpenseAndClose() {
-    void deleteMutation
-      .mutateAsync(undefined)
-      .then(() => router.back())
-      .catch(error => setMessage(messageFromError(error, 'Could not delete this expense.')));
-  }
-
-  if (process.env.EXPO_OS === 'ios') {
-    return (
-      <>
-        <Host colorScheme={theme} seedColor={colors.accent} style={{ flex: 1 }}>
-          <Form modifiers={[scrollDismissesKeyboard('interactively')]}>
-            {!isOnline ? (
-              <Section title="Connection">
-                <Label title="You’re offline" systemImage="wifi.slash" />
-                <SwiftText>Reconnect to save changes to this expense.</SwiftText>
-              </Section>
-            ) : null}
-
-            <Section
-              footer={
-                <SwiftText>
-                  Give this cost a clear name and category so it stays easy to find later.
-                </SwiftText>
-              }
-              title="Expense details"
-            >
-              <TextField
-                autoFocus={!expense}
-                onTextChange={title => setForm(current => ({ ...current, title }))}
-                placeholder="What did you pay for?"
-                text={nativeTitle}
-                modifiers={[
-                  accessibilityLabel('Expense title'),
-                  textInputAutocapitalization('sentences'),
-                  disabled(isFormDisabled),
-                ]}
-              />
-              <Picker
-                label="Category"
-                onSelectionChange={category => setForm(current => ({ ...current, category }))}
-                selection={form.category}
-                systemImage="tag"
-                modifiers={[pickerStyle('navigationLink'), disabled(isFormDisabled)]}
-              >
-                {categories.map(category => (
-                  <SwiftText key={category.value} modifiers={[tag(category.value)]}>
-                    {category.label}
-                  </SwiftText>
-                ))}
-              </Picker>
-            </Section>
-
-            <Section title="Amount">
-              <TextField
-                onTextChange={amount => setForm(current => ({ ...current, amount }))}
-                placeholder="0.00"
-                text={nativeAmount}
-                modifiers={[
-                  accessibilityLabel('Expense amount'),
-                  keyboardType('decimal-pad'),
-                  disabled(isFormDisabled),
-                ]}
-              />
-            </Section>
-
-            <Section title="Currency">
-              <Picker
-                label="Currency"
-                onSelectionChange={currency => setForm(current => ({ ...current, currency }))}
-                selection={form.currency}
-                systemImage="banknote"
-                modifiers={[pickerStyle('menu'), disabled(isFormDisabled)]}
-              >
-                {currencyOptions.map(currency => (
-                  <SwiftText key={currency.value} modifiers={[tag(currency.value)]}>
-                    {currency.label}
-                  </SwiftText>
-                ))}
-              </Picker>
-            </Section>
-
-            <Section title="Date">
-              <DatePicker
-                displayedComponents={['date']}
-                onDateChange={expenseDate =>
-                  setForm(current => ({
-                    ...current,
-                    expenseDate: dateTimeFieldValue(expenseDate, 'date'),
-                  }))
-                }
-                selection={dateTimePickerDate(form.expenseDate, 'date')}
-                title="Expense date"
-                modifiers={[datePickerStyle('compact'), disabled(isFormDisabled)]}
-              />
-            </Section>
-
-            <Section
-              footer={
-                <SwiftText>
-                  Select an itinerary item to prefill its date, category, and known cost.
-                </SwiftText>
-              }
-              title="Link to itinerary"
-            >
-              <Picker
-                label="Link expense to"
-                onSelectionChange={sourceKind =>
-                  setForm(current => ({ ...current, sourceKind, sourceId: '' }))
-                }
-                selection={form.sourceKind}
-                modifiers={[pickerStyle('navigationLink'), disabled(isFormDisabled)]}
-              >
-                <SwiftText modifiers={[tag('none')]}>Nothing</SwiftText>
-                <SwiftText modifiers={[tag('stay')]}>Stay</SwiftText>
-                <SwiftText modifiers={[tag('flight')]}>Flight</SwiftText>
-                <SwiftText modifiers={[tag('schedule')]}>Itinerary item</SwiftText>
-              </Picker>
-              {form.sourceKind !== 'none' ? (
-                sourceOptions.length ? (
-                  <Picker
-                    label="Itinerary item"
-                    onSelectionChange={sourceId => {
-                      const source = sourceOptions.find(option => option.id === sourceId);
-                      if (source) chooseSource(source);
-                    }}
-                    selection={form.sourceId || null}
-                    modifiers={[pickerStyle('navigationLink'), disabled(isFormDisabled)]}
-                  >
-                    {sourceOptions.map(option => (
-                      <SwiftText key={option.id} modifiers={[tag(option.id)]}>
-                        {option.title}
-                      </SwiftText>
-                    ))}
-                  </Picker>
-                ) : (
-                  <SwiftText modifiers={[foregroundStyle('secondary')]}>
-                    No {form.sourceKind === 'schedule' ? 'itinerary items' : `${form.sourceKind}s`}{' '}
-                    are available for this trip.
-                  </SwiftText>
-                )
-              ) : null}
-            </Section>
-
-            <Section title="Notes">
-              <TextField
-                axis="vertical"
-                onTextChange={notes => setForm(current => ({ ...current, notes }))}
-                placeholder="Optional details"
-                text={nativeNotes}
-                modifiers={[
-                  lineLimit(3),
-                  accessibilityLabel('Expense notes'),
-                  textInputAutocapitalization('sentences'),
-                  disabled(isFormDisabled),
-                ]}
-              />
-            </Section>
-
-            {expense && isManagedExpense ? (
-              <Section title="Managed expense">
-                <Label title="Managed with itinerary" systemImage="link" />
-                <SwiftText>
-                  This expense is managed with its linked stay or flight. Edit or remove that
-                  itinerary item to update it.
-                </SwiftText>
-              </Section>
-            ) : null}
-
-            {formError ? (
-              <Section title="Couldn’t save expense">
-                <SwiftText modifiers={[foregroundStyle(colors.danger)]}>{formError}</SwiftText>
-              </Section>
-            ) : null}
-
-            {expense && !isManagedExpense ? (
-              <Section title="Danger zone">
-                <ConfirmationDialog
-                  isPresented={isDeleteConfirmationPresented}
-                  onIsPresentedChange={setIsDeleteConfirmationPresented}
-                  title="Delete this expense?"
-                  titleVisibility="visible"
-                >
-                  <ConfirmationDialog.Trigger>
-                    <SwiftButton
-                      label="Delete expense"
-                      role="destructive"
-                      systemImage="trash"
-                      onPress={() => setIsDeleteConfirmationPresented(true)}
-                      modifiers={[disabled(!isOnline || deleteMutation.isPending)]}
-                    />
-                  </ConfirmationDialog.Trigger>
-                  <ConfirmationDialog.Actions>
-                    <SwiftButton
-                      label="Delete expense"
-                      role="destructive"
-                      onPress={deleteExpenseAndClose}
-                    />
-                    <SwiftButton label="Cancel" role="cancel" />
-                  </ConfirmationDialog.Actions>
-                  <ConfirmationDialog.Message>
-                    <SwiftText>This cannot be undone.</SwiftText>
-                  </ConfirmationDialog.Message>
-                </ConfirmationDialog>
-              </Section>
-            ) : null}
-          </Form>
-        </Host>
-        <Stack.Toolbar placement="right">
-          <Stack.Toolbar.Button
-            accessibilityLabel={expense ? 'Save expense changes' : 'Add expense'}
-            disabled={isFormDisabled}
-            onPress={() => void save()}
-            tintColor={colors.accent}
-            variant="done"
-          >
-            {saveMutation.isPending ? 'Saving…' : expense ? 'Save' : 'Add'}
-          </Stack.Toolbar.Button>
-        </Stack.Toolbar>
-      </>
-    );
-  }
-
+    const payload = {
+      title,
+      amount: Number(amount),
+      currency,
+      category,
+      expenseDate: date,
+      paymentStatus: status,
+      paymentDate: paymentDate || null,
+      notes,
+      coverage: coverage.filter(item => item.itemId),
+      expectedVersion: expense?.version,
+      confirmPaid,
+      moveFrom,
+    };
+    if (expense) await updateExpense(trip.id, expense.id, payload);
+    else await createExpense(trip.id, payload);
+    return true;
+  });
+  const { mutation: remove } = useTripMutation(trip.id, () => deleteExpense(trip.id, expense!.id));
+  const disabled = !isOnline || mutation.isPending || !trip.access.canEdit;
   return (
-    <>
-      <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        contentContainerStyle={{ gap: space.md, padding: space.md, paddingBottom: 36 }}
-        style={{ backgroundColor: colors.background }}
-      >
-        <OfflineNotice visible={!isOnline} />
+    <ScrollView
+      contentInsetAdjustmentBehavior="automatic"
+      contentContainerStyle={{ padding: space.md, paddingBottom: 36, gap: space.md }}
+      style={{ backgroundColor: colors.background }}
+    >
+      <Stack.Screen options={{ title: expense ? 'Payment details' : 'Add expense' }} />
+      {!isOnline && <OfflineNotice visible />}
+      <Card>
+        <Text selectable style={{ color: colors.text, fontSize: 17, fontWeight: '700' }}>
+          Expense details
+        </Text>
+        <Field label="Title" value={title} onChangeText={setTitle} editable={!disabled} />
         <Field
-          label="Title"
-          value={form.title}
-          onChangeText={title => setForm(current => ({ ...current, title }))}
+          label="Amount"
+          value={amount}
+          onChangeText={setAmount}
+          keyboardType="decimal-pad"
+          editable={!disabled}
+        />
+        <CurrencyPicker
+          value={currency}
+          onChange={setCurrency}
+          preferred={[trip.defaultCurrency, ...trip.expenses.map(item => item.currency)]}
+          disabled={disabled}
         />
         <Text selectable style={{ color: colors.textMuted, fontSize: 13, fontWeight: '700' }}>
           Category
         </Text>
         <ChipGroup
-          options={categories}
-          value={form.category}
-          onChange={category => setForm(current => ({ ...current, category }))}
+          options={Object.entries(expenseCategoryLabels).map(([value, label]) => ({
+            value: value as ExpenseCategory,
+            label,
+          }))}
+          value={category}
+          onChange={setCategory}
+          disabled={disabled}
         />
-        <Field
-          label="Amount"
-          keyboardType="decimal-pad"
-          value={form.amount}
-          onChangeText={amount => setForm(current => ({ ...current, amount }))}
-        />
-        <View style={{ gap: 7 }}>
-          <Text selectable style={{ color: colors.textMuted, fontSize: 13, fontWeight: '700' }}>
-            Currency
-          </Text>
-          <ChipGroup
-            disabled={isFormDisabled}
-            options={[...currencyOptions]}
-            value={form.currency}
-            onChange={currency => setForm(current => ({ ...current, currency }))}
-          />
-        </View>
         <DateTimeField
-          label="Date"
+          label="Expense date"
           mode="date"
-          value={form.expenseDate}
-          onChangeText={expenseDate => setForm(current => ({ ...current, expenseDate }))}
+          value={date}
+          onChangeText={setDate}
+          disabled={disabled}
         />
-        <Text selectable style={{ color: colors.textMuted, fontSize: 13, fontWeight: '700' }}>
-          Link expense to
-        </Text>
+      </Card>
+
+      <Card>
+        <View style={{ gap: space.xs }}>
+          <Text selectable style={{ color: colors.text, fontSize: 17, fontWeight: '700' }}>
+            Payment status
+          </Text>
+          <Text selectable style={{ color: colors.textMuted, lineHeight: 19 }}>
+            {paymentStatusLabels[status]}
+          </Text>
+        </View>
         <ChipGroup
           options={[
-            { label: 'Nothing', value: 'none' },
-            { label: 'Stay', value: 'stay' },
-            { label: 'Flight', value: 'flight' },
-            { label: 'Itinerary item', value: 'schedule' },
+            { value: 'UNPAID', label: 'Unpaid' },
+            { value: 'PAID', label: 'Paid' },
           ]}
-          value={form.sourceKind}
-          onChange={sourceKind => setForm(current => ({ ...current, sourceKind, sourceId: '' }))}
+          value={status}
+          onChange={setStatus}
+          disabled={disabled}
         />
-        {form.sourceKind !== 'none' ? (
-          <View style={{ gap: 8 }}>
-            {sourceOptions.map(option => (
-              <Button
-                key={option.id}
-                onPress={() => setForm(current => applyExpenseSource(current, option))}
-                tone={form.sourceId === option.id ? 'primary' : 'secondary'}
-              >
-                {option.title}
-              </Button>
+        {status === 'PAID' ? (
+          <DateTimeField
+            label="Payment date"
+            mode="date"
+            value={paymentDate || date}
+            onChangeText={setPaymentDate}
+            disabled={disabled}
+          />
+        ) : null}
+      </Card>
+
+      <Card>
+        <View style={{ gap: space.xs }}>
+          <Text selectable style={{ color: colors.text, fontSize: 17, fontWeight: '700' }}>
+            Covered reservations
+          </Text>
+          <Text selectable style={{ color: colors.textMuted, lineHeight: 19 }}>
+            Select one or more items. This payment is counted once in trip totals.
+          </Text>
+        </View>
+        <Field label="Search reservations" value={query} onChangeText={setQuery} />
+        {(['FLIGHT', 'HOTEL', 'ACTIVITY'] as const).map(kind => {
+          const options = sources.filter(
+            item =>
+              item.kind === kind &&
+              `${item.title} ${item.date}`.toLowerCase().includes(query.toLowerCase()),
+          );
+          if (!options.length) return null;
+          return (
+            <View key={kind} style={{ gap: space.sm }}>
+              <Text selectable style={{ color: colors.textMuted, fontSize: 13, fontWeight: '700' }}>
+                {kind === 'FLIGHT' ? 'Flights' : kind === 'HOTEL' ? 'Hotels' : 'Activities'}
+              </Text>
+              {options.map(item => {
+                const selected = coverage.some(link => link.itemId === item.itemId);
+                return (
+                  <Button
+                    accessibilityState={{ selected }}
+                    key={item.itemId}
+                    disabled={disabled}
+                    tone={selected ? 'primary' : 'secondary'}
+                    onPress={() =>
+                      setCoverage(current =>
+                        selected
+                          ? current.filter(link => link.itemId !== item.itemId)
+                          : [...current, item],
+                      )
+                    }
+                  >
+                    {selected ? '✓ ' : ''}
+                    {item.title} · {item.date}
+                  </Button>
+                );
+              })}
+            </View>
+          );
+        })}
+        {coverage.length ? (
+          <View style={{ gap: space.sm }}>
+            <Text selectable style={{ color: colors.textMuted, fontSize: 13, fontWeight: '700' }}>
+              Optional allocation
+            </Text>
+            {coverage.map((item, index) => (
+              <Field
+                key={`${item.itemId}:${index}`}
+                label={`${item.title} share`}
+                value={item.allocatedAmount ?? ''}
+                keyboardType="decimal-pad"
+                editable={!disabled}
+                onChangeText={value =>
+                  setCoverage(current =>
+                    current.map((link, position) =>
+                      index === position ? { ...link, allocatedAmount: value || null } : link,
+                    ),
+                  )
+                }
+              />
             ))}
+            <Button
+              tone="secondary"
+              disabled={disabled}
+              onPress={() => {
+                try {
+                  const shares = splitMoneyEqually(amount, currency, coverage.length);
+                  setCoverage(current =>
+                    current.map((item, index) => ({ ...item, allocatedAmount: shares[index] })),
+                  );
+                } catch (error) {
+                  Alert.alert('Check amount', (error as Error).message);
+                }
+              }}
+            >
+              Split equally
+            </Button>
           </View>
         ) : null}
-        <Field
-          label="Notes"
-          multiline
-          value={form.notes}
-          onChangeText={notes => setForm(current => ({ ...current, notes }))}
-        />
-        {expense && !isManagedExpense ? (
+      </Card>
+
+      <Card>
+        <Text selectable style={{ color: colors.text, fontSize: 17, fontWeight: '700' }}>
+          Notes and documents
+        </Text>
+        <Field label="Notes" value={notes} onChangeText={setNotes} editable={!disabled} multiline />
+        {expense ? (
           <Button
-            disabled={!isOnline || deleteMutation.isPending}
-            loading={deleteMutation.isPending}
+            tone="secondary"
             onPress={() =>
-              Alert.alert('Delete this expense?', 'This cannot be undone.', [
+              router.push({
+                pathname: '/item-details',
+                params: { kind: 'EXPENSE', itemId: expense.id },
+              })
+            }
+          >
+            Tickets &amp; links
+          </Button>
+        ) : (
+          <Text selectable style={{ color: colors.textMuted, lineHeight: 19 }}>
+            Save the expense before adding receipts or links.
+          </Text>
+        )}
+      </Card>
+      {(mutation.error || remove.error) && (
+        <Text accessibilityRole="alert" selectable style={{ color: colors.danger }}>
+          {messageFromError(mutation.error ?? remove.error)}
+        </Text>
+      )}
+      <Button
+        disabled={disabled}
+        loading={mutation.isPending}
+        onPress={() =>
+          mutation.mutate(undefined, {
+            onSuccess: saved => {
+              if (saved) router.back();
+            },
+          })
+        }
+      >
+        {expense ? 'Save changes' : 'Add expense'}
+      </Button>
+      {expense && (
+        <Button
+          disabled={disabled}
+          loading={remove.isPending}
+          tone="danger"
+          onPress={() =>
+            Alert.alert(
+              'Delete expense?',
+              'Itinerary items remain; payment indicators will be removed.',
+              [
                 { text: 'Cancel', style: 'cancel' },
                 {
-                  text: 'Delete',
+                  text: 'Delete expense',
                   style: 'destructive',
-                  onPress: () =>
-                    void deleteMutation.mutateAsync(undefined).then(() => router.back()),
+                  onPress: () => remove.mutate(undefined, { onSuccess: () => router.back() }),
                 },
-              ])
-            }
-            tone="danger"
-          >
-            Delete expense
-          </Button>
-        ) : null}
-        {expense && isManagedExpense ? (
-          <Text selectable style={{ color: colors.textMuted, lineHeight: 20 }}>
-            This expense is managed with its linked stay or flight. Edit or remove that itinerary
-            item to update it.
-          </Text>
-        ) : null}
-        {message || saveMutation.error || deleteMutation.error ? (
-          <Text selectable style={{ color: colors.danger }}>
-            {message ?? messageFromError(saveMutation.error ?? deleteMutation.error)}
-          </Text>
-        ) : null}
-      </ScrollView>
-      <Stack.Toolbar placement="right">
-        <Stack.Toolbar.Button
-          accessibilityLabel={expense ? 'Save expense changes' : 'Add expense'}
-          disabled={!isOnline || saveMutation.isPending}
-          icon={process.env.EXPO_OS === 'ios' ? undefined : expense ? CheckIcon : AddIcon}
-          onPress={() => void save()}
-          tintColor={colors.accent}
-          variant="done"
+              ],
+            )
+          }
         >
-          {expense ? 'Save' : 'Add'}
-        </Stack.Toolbar.Button>
-      </Stack.Toolbar>
-    </>
+          Delete expense
+        </Button>
+      )}
+    </ScrollView>
   );
 }

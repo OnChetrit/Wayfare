@@ -1,7 +1,8 @@
 'use client';
 
+import { TripItemTools } from './TripItemTools';
 import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react';
-import { orderScheduleItemsForDay } from '@wayfare/domain';
+import { tripDayRoutes, orderScheduleItemsForDay } from '@wayfare/domain';
 import { ArrowLeft, ArrowRight, MapPinPlus, Route, Search, Star, X } from 'lucide-react';
 import styles from './MapPanel.module.scss';
 import { GoogleMapCanvas } from './GoogleMapCanvas';
@@ -18,6 +19,7 @@ import type {
 import { useClickOutside } from './use-click-outside';
 
 type MapPanelProps = {
+  onSelectDay: (date: string) => void;
   mode: EditorMode;
   destinationLabel?: string | null;
   places: SavedPlace[];
@@ -54,6 +56,14 @@ type MappableLocationSegment = LocationSegment & {
 
 function hasMapCoordinates(segment: LocationSegment): segment is MappableLocationSegment {
   return typeof segment.latitude === 'number' && typeof segment.longitude === 'number';
+}
+
+function formatDate(value: string) {
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    day: 'numeric',
+    timeZone: 'UTC',
+  }).format(new Date(`${value}T12:00:00Z`));
 }
 
 function locationPlaceFromSegment(segment: MappableLocationSegment): SavedPlace {
@@ -184,6 +194,7 @@ function PlaceCommentForm({
 }
 
 export function MapPanel({
+  onSelectDay,
   mode,
   destinationLabel,
   places,
@@ -312,7 +323,10 @@ export function MapPanel({
     () =>
       flights
         .filter(
-          flight => flight.departureDate === selectedDate || flight.arrivalDate === selectedDate,
+          flight =>
+            !selectedDate ||
+            flight.departureDate === selectedDate ||
+            flight.arrivalDate === selectedDate,
         )
         .map(flight =>
           [
@@ -416,6 +430,8 @@ export function MapPanel({
     };
   }, [airportPlaces, selectedDayAirports]);
 
+  const allDayRoutes = tripDayRoutes(tripStartDate, tripEndDate, schedule, places);
+  const visibleDayRoutes = allDayRoutes.filter(day => !selectedDate || day.date === selectedDate);
   const dayRoutePlaces = useMemo(() => {
     return groundRoutePlacesForDay(schedule, places, selectedDate);
   }, [places, schedule, selectedDate]);
@@ -463,7 +479,7 @@ export function MapPanel({
   const isShowingLocationPlaces = Boolean(activeLocation);
   const baseMapPlaces = isShowingLocationPlaces
     ? locationPlaces
-    : showDayPlanOnly
+    : showDayPlanOnly && Boolean(selectedDate)
       ? dayPlanPlaces
       : places;
   const mapPlaces = useMemo(() => {
@@ -617,7 +633,39 @@ export function MapPanel({
       aria-label="Map workspace"
     >
       <div className={styles.mapCanvas}>
+        <div className={styles.dayLegend} aria-label="Trip day legend">
+          <button
+            type="button"
+            className={styles.dayLegendAll}
+            onClick={() => onSelectDay('')}
+            aria-pressed={!selectedDate}
+          >
+            All days
+          </button>
+          {allDayRoutes.map(day => (
+            <button
+              type="button"
+              key={day.date}
+              onClick={() => onSelectDay(day.date)}
+              aria-pressed={day.date === selectedDate}
+            >
+              <span className={styles.dayLegendBadge} style={{ backgroundColor: day.color }}>
+                {day.dayNumber}
+              </span>
+              <span>
+                <strong>Day {day.dayNumber}</strong>
+                <small>
+                  {formatDate(day.date)}
+                  {!day.stops.length && ' · No mapped stops'}
+                  {day.unmappedCount > 0 && ` · ${day.unmappedCount} unmapped`}
+                </small>
+              </span>
+            </button>
+          ))}
+        </div>
         <GoogleMapCanvas
+          dayRoutes={visibleDayRoutes}
+          onSelectDay={onSelectDay}
           places={mapPlaces}
           routePlaces={isShowingLocationPlaces ? [] : dayRoutePlaces}
           flightRoutePlaces={isShowingLocationPlaces ? [] : flightRoutePlaces}
@@ -800,6 +848,7 @@ export function MapPanel({
               </div>
             )}
           </div>
+          {savedPreviewPlace && <TripItemTools kind="PLACE" itemId={savedPreviewPlace.id} />}
           <PlaceCommentForm
             key={`${previewPlace.id}-${savedPreviewPlace?.id ?? ''}-${savedPreviewPlace?.comment ?? ''}`}
             place={previewPlace}

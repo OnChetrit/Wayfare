@@ -3,13 +3,16 @@
   "version": "0.1.0",
   "private": true,
   "packageManager": "pnpm@12.3.4",
+  "engines": {
+    "node": "22.x"
+  },
   "workspaces": [
     "apps/*",
     "packages/*"
   ],
   "dependencies": {
     "react": "19.2.3",
-    "react-native": "0.86.2",
+    "react-native": "0.86.3",
     "react-native-reanimated": "4.5.1",
     "react-native-worklets": "0.10.1"
   },
@@ -25,7 +28,11 @@
     "typecheck": "pnpm -r --if-present run typecheck",
     "test": "pnpm --filter @wayfare/domain test && pnpm --filter @wayfare/map-preferences test && pnpm --filter @wayfare/web test && pnpm --filter @wayfare/mobile test",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "release:check": "node scripts/release-readiness.mjs all",
+    "release:check:web": "node scripts/release-readiness.mjs web",
+    "release:check:mobile": "node scripts/release-readiness.mjs mobile",
+    "release:check:database": "node scripts/release-readiness.mjs database"
   },
   "devDependencies": {
     "prettier": "^3.6.2",

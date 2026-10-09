@@ -1,0 +1,177 @@
+.tools {
+  display: grid;
+  grid-column: 1 / -1;
+  width: 100%;
+  box-sizing: border-box;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--paper);
+}
+
+.section,
+.documentList,
+.documentForm {
+  display: grid;
+  gap: 8px;
+}
+
+.sectionHeader,
+.documentRow,
+.actions,
+.status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sectionHeader {
+  justify-content: space-between;
+}
+
+.sectionHeader h3,
+.sectionHeader strong,
+.section p,
+.section details,
+.documentRow p {
+  margin: 0;
+}
+
+.sectionHeader h3,
+.sectionHeader strong {
+  color: var(--ink);
+  font-size: 12px;
+}
+
+.status,
+.section p,
+.section summary,
+.documentRow p,
+.hint {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.statusLocked {
+  color: var(--warning);
+}
+
+.documentRow {
+  justify-content: space-between;
+  min-width: 0;
+  padding: 9px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.documentRow p {
+  overflow: hidden;
+  color: var(--ink);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.actions {
+  flex: 0 0 auto;
+}
+
+.button,
+.buttonQuiet,
+.buttonDanger,
+.fileButton {
+  display: inline-flex;
+  min-height: 30px;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 6px 9px;
+  border: 0;
+  border-radius: 7px;
+  color: white;
+  background: var(--green-button);
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.buttonQuiet,
+.fileButton {
+  border: 1px solid var(--line-strong);
+  color: var(--ink);
+  background: var(--surface);
+}
+
+.buttonDanger {
+  color: var(--danger);
+  background: var(--danger-surface);
+}
+
+.button:disabled,
+.buttonQuiet:disabled,
+.buttonDanger:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.documentForm input,
+.documentForm select {
+  width: 100%;
+  min-width: 0;
+  padding: 9px 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: 7px;
+  color: var(--ink);
+  background: var(--surface);
+  font: inherit;
+  font-size: 12px;
+}
+
+.fileButton input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+}
+
+.progress {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.progress progress {
+  width: 100%;
+  accent-color: var(--green-button);
+}
+
+.error {
+  margin: 0;
+  color: var(--danger);
+  font-size: 11px;
+}
+
+.indicators {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.lockIndicator {
+  color: var(--warning);
+}
+
+.paidIndicator {
+  color: var(--green-dark);
+}
+
+@media (max-width: 560px) {
+  .documentRow {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

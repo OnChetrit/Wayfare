@@ -1,15 +1,24 @@
 import type { TripEditorTrip } from '@wayfare/domain';
 import * as React from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
 
 import { TripMap } from '@/components/trip-map';
 import { Card } from '@/components/ui/card';
 import { useDayPlanMap } from '@/features/itinerary/use-day-plan-map';
+import { itineraryRouteMapData } from '@/features/itinerary/itinerary-route-map';
 import { useMapRouteLinePreference } from '@/lib/use-map-route-line-preference';
 import { colors } from '@/theme/tokens';
 import { useTheme } from '@/theme/theme-provider';
 
-export function DayRouteMap({ date, trip }: { date: string; trip: TripEditorTrip }) {
+export function DayRouteMap({
+  date,
+  trip,
+  onSelectDay,
+}: {
+  date: string;
+  trip: TripEditorTrip;
+  onSelectDay?: (date: string) => void;
+}) {
   const { colors: themeColors } = useTheme();
   const { showRouteLines, setShowRouteLines } = useMapRouteLinePreference();
   const airportLoadKey = `${trip.id}:${date}`;
@@ -21,24 +30,66 @@ export function DayRouteMap({ date, trip }: { date: string; trip: TripEditorTrip
     trip,
   });
 
-  if (!mapPlaces.length && !hasAirportRequests) {
-    return (
-      <Card>
-        <Text selectable style={{ color: colors.text, fontSize: 16, fontWeight: '700' }}>
-          No route coordinates yet
-        </Text>
-        <Text selectable style={{ color: colors.textMuted, lineHeight: 20 }}>
-          Add coordinates to a location or save places to this day to see the route here.
-        </Text>
-      </Card>
-    );
-  }
+  const { days, places: stops, routes: dayLines } = itineraryRouteMapData(trip, date);
 
   return (
     <View style={{ gap: 10 }}>
-      {mapPlaces.length ? (
+      <ScrollView contentInsetAdjustmentBehavior="automatic" style={{ maxHeight: 180 }}>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => onSelectDay?.('')}
+          style={{ padding: 12 }}
+        >
+          <Text style={{ color: themeColors.text }}>All days</Text>
+        </Pressable>
+        {days.map(day => (
+          <Pressable
+            key={day.date}
+            accessibilityRole="button"
+            accessibilityLabel={`Day ${day.dayNumber}, ${day.date}`}
+            accessibilityState={{ selected: date === day.date }}
+            onPress={() => onSelectDay?.(day.date)}
+            style={{ padding: 12, borderLeftWidth: 5, borderColor: day.color }}
+          >
+            <Text style={{ color: themeColors.text }}>
+              Day {day.dayNumber} · {day.date}
+              {!day.stops.length ? ' · No mapped stops' : ''}
+              {day.unmappedCount ? ` · ${day.unmappedCount} unmapped` : ''}
+            </Text>
+          </Pressable>
+        ))}
+      </ScrollView>
+      {mapPlaces.length || stops.length ? (
         <View style={{ height: 360, overflow: 'hidden', borderRadius: 20 }}>
-          <TripMap fitToPlaces places={mapPlaces} routes={routes} showRouteLines={showRouteLines} />
+          <TripMap
+            fitToPlaces
+            fitKey={`${trip.id}:${date || 'overview'}`}
+            places={[
+              ...stops,
+              ...mapPlaces.filter(
+                place => !stops.some(stop => stop.lat === place.lat && stop.lng === place.lng),
+              ),
+            ]}
+            routes={[...dayLines, ...routes.filter(route => route.dashed)]}
+            showRouteLines={showRouteLines}
+            onSelectPlace={place => {
+              const daysAtPlace = days.filter(day =>
+                day.stops.some(
+                  stop => stop.place.lat === place.lat && stop.place.lng === place.lng,
+                ),
+              );
+              if (daysAtPlace.length === 1) onSelectDay?.(daysAtPlace[0].date);
+              else
+                Alert.alert(
+                  'Visiting days',
+                  place.name,
+                  daysAtPlace.map(day => ({
+                    text: `Day ${day.dayNumber} · ${day.date}`,
+                    onPress: () => onSelectDay?.(day.date),
+                  })),
+                );
+            }}
+          />
         </View>
       ) : (
         <Card>
@@ -109,8 +160,8 @@ export function DayRouteMap({ date, trip }: { date: string; trip: TripEditorTrip
         </Text>
       ) : null}
       <Text selectable style={{ color: colors.textMuted, fontSize: 13 }}>
-        Green lines are the day route. Dashed blue lines are flights. Flight airport coordinates
-        load only when requested.
+        Numbered days match the legend. In a focused day, markers show stop order. Dashed blue lines
+        are flights. Flight airport coordinates load only when requested.
       </Text>
     </View>
   );

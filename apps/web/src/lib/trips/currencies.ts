@@ -1,22 +1,13 @@
-import { z } from 'zod';
-
-export const supportedCurrencies = ['EUR', 'USD', 'ILS', 'GBP'] as const;
-
-export type SupportedCurrency = (typeof supportedCurrencies)[number];
-
-export const currencyLabels: Record<SupportedCurrency, string> = {
-  EUR: 'Euro',
-  USD: 'US Dollar',
-  ILS: 'Shekel',
-  GBP: 'Pound',
-};
-
-export const currencySchema = z.enum(supportedCurrencies);
-
+import { activeCurrencies, currencyInputSchema } from '@wayfare/domain';
+export const supportedCurrencies = activeCurrencies.map(currency => currency.code);
+export type SupportedCurrency = string;
+export const currencyLabels: Record<string, string> = Object.fromEntries(
+  activeCurrencies.map(currency => [currency.code, currency.name]),
+);
+export const currencySchema = currencyInputSchema;
 export function normalizeCurrency(value: string) {
   return value.trim().toUpperCase();
 }
-
 export function isSupportedCurrency(value: string): value is SupportedCurrency {
-  return supportedCurrencies.includes(value as SupportedCurrency);
+  return supportedCurrencies.includes(value);
 }

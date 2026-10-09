@@ -7,6 +7,8 @@ import {
   reminderSchema,
   tripSummarySchema,
   type Expense,
+  type PaymentStatus,
+  type ExpenseItem,
   type ReminderCreateInput,
   type ReminderUpdateInput,
   type LocationSegment,
@@ -107,6 +109,12 @@ export type ExpenseInput = Pick<
   Expense,
   'title' | 'category' | 'amount' | 'currency' | 'expenseDate' | 'notes'
 > & {
+  paymentStatus?: PaymentStatus;
+  paymentDate?: string | null;
+  coverage?: ExpenseItem[];
+  expectedVersion?: number;
+  confirmPaid?: boolean;
+  moveFrom?: Record<string, number>;
   stayId?: string | null;
   flightId?: string | null;
   scheduleItemId?: string | null;
@@ -313,6 +321,14 @@ export function updateSchedule(
 
 export function deleteSchedule(tripId: string, scheduleId: string) {
   return write(tripPath(tripId, `/schedule/${encodeURIComponent(scheduleId)}`), 'DELETE');
+}
+
+export function updateActivityReservationLock(tripId: string, scheduleId: string, locked: boolean) {
+  return write<{ locked: boolean }>(
+    tripPath(tripId, `/reservations/ACTIVITY/${encodeURIComponent(scheduleId)}`),
+    'PATCH',
+    { locked },
+  );
 }
 
 export function updateDayNotes(tripId: string, dayId: string, notes: string | null) {

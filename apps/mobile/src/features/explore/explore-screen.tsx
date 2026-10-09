@@ -28,6 +28,7 @@ import {
   tripDaysForExplore,
 } from '@/features/explore/explore-trip-days';
 import { useDayPlanMap } from '@/features/itinerary/use-day-plan-map';
+import { itineraryRouteMapData } from '@/features/itinerary/itinerary-route-map';
 import { messageFromError } from '@/lib/format';
 import { useTheme } from '@/theme/theme-provider';
 
@@ -58,6 +59,14 @@ function ExploreDayStrip({
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={{ gap: 8, paddingHorizontal: 16 }}
       >
+        <Button
+          accessibilityLabel="Show all itinerary routes on the map"
+          accessibilityState={{ selected: !currentDate }}
+          onPress={() => onSelectDay('')}
+          tone={!currentDate ? 'primary' : 'secondary'}
+        >
+          All days
+        </Button>
         {days.map(day => (
           <Button
             accessibilityLabel={`Show ${day.label}, ${day.shortDate} on the map`}
@@ -95,11 +104,17 @@ export function ExploreScreen() {
   const currentDate =
     selectedTripDayDate && exploreDays.some(day => day.date === selectedTripDayDate)
       ? selectedTripDayDate
-      : exploreDays[0]?.date;
+      : undefined;
   const { mapPlaces: dayPlanMapPlaces, routes: dayPlanRoutes } = useDayPlanMap({
     date: currentDate,
     trip,
   });
+  const itineraryMap = React.useMemo(
+    () => (trip ? itineraryRouteMapData(trip) : { days: [], places: [], routes: [] }),
+    [trip],
+  );
+  const mapPlaces = currentDate ? dayPlanMapPlaces : itineraryMap.places;
+  const mapRoutes = currentDate ? dayPlanRoutes : itineraryMap.routes;
   const updateVisibleMapPlaceIds = React.useCallback((placeIds: string[]) => {
     setVisibleMapPlaceIds(current => (haveSamePlaceIds(current, placeIds) ? current : placeIds));
   }, []);
@@ -169,7 +184,9 @@ export function ExploreScreen() {
 
   function showMapPlace(place: MapPlace) {
     setSelectedPlace(place);
-    const savedPlace = currentTrip.places.find(candidate => candidate.id === place.id);
+    const savedPlace = currentTrip.places.find(
+      candidate => candidate.id === (place.sourcePlaceId ?? place.id),
+    );
     if (savedPlace) showSavedPlace(savedPlace);
   }
 
@@ -184,10 +201,11 @@ export function ExploreScreen() {
       <View style={{ backgroundColor: colors.background, flex: 1 }}>
         <TripMap
           fitToPlaces
+          fitKey={`${trip.id}:${currentDate ?? 'overview'}`}
           onSelectPlace={showMapPlace}
           onVisiblePlacesChange={updateVisibleMapPlaceIds}
-          places={dayPlanMapPlaces}
-          routes={dayPlanRoutes}
+          places={mapPlaces}
+          routes={mapRoutes}
           selectedPlace={selectedPlace}
         />
         <View
@@ -339,6 +357,15 @@ export function ExploreScreen() {
             tintColor={colors.accent}
             title="Trip days"
           >
+            <Stack.Toolbar.MenuAction
+              isOn={!currentDate}
+              onPress={() => {
+                selectTripDay('');
+                setSelectedPlace(null);
+              }}
+            >
+              All days
+            </Stack.Toolbar.MenuAction>
             {exploreDaySections.map(section => (
               <Stack.Toolbar.Menu inline key={section.id} title={section.locationName}>
                 {section.days.map(day => (

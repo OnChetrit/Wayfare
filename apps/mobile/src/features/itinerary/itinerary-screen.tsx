@@ -30,7 +30,13 @@ import { Link, router, Stack } from 'expo-router';
 import * as React from 'react';
 import { Alert, RefreshControl, ScrollView, Text, View } from 'react-native';
 
-import { deleteFlight, deleteSchedule, deleteStay, updateSchedule } from '@/api/trips';
+import {
+  deleteFlight,
+  deleteSchedule,
+  deleteStay,
+  updateActivityReservationLock,
+  updateSchedule,
+} from '@/api/trips';
 import { Button, IconButton } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { ErrorState, EmptyState, LoadingState, OfflineNotice } from '@/components/ui/state';
@@ -125,6 +131,11 @@ export function ItineraryScreen() {
       startTime: string | null;
       sortOrder: number;
     }) => updateSchedule(trip!.id, id, { date, startTime, sortOrder }),
+  );
+  const { mutation: reservationLockMutation } = useTripMutation(
+    trip?.id ?? '',
+    ({ scheduleId, locked }: { scheduleId: string; locked: boolean }) =>
+      updateActivityReservationLock(trip!.id, scheduleId, locked),
   );
 
   if (!selectedTrip && !tripQuery.isLoading) {
@@ -353,6 +364,29 @@ export function ItineraryScreen() {
                           />
                         </SwipeActions.Actions>
                         <SwipeActions.Actions edge="trailing" allowsFullSwipe={false}>
+                          <SwiftButton
+                            label={item.reservationLocked ? 'Unlock' : 'Lock'}
+                            systemImage={item.reservationLocked ? 'lock.open' : 'lock.fill'}
+                            modifiers={[
+                              accessibilityLabel(
+                                item.reservationLocked
+                                  ? `Unlock ${entryTitle(item, trip.places)}`
+                                  : `Lock ${entryTitle(item, trip.places)}`,
+                              ),
+                              disabled(
+                                !isOnline ||
+                                  !trip.access.canEdit ||
+                                  reservationLockMutation.isPending,
+                              ),
+                              tint(item.reservationLocked ? colors.success : colors.accent),
+                            ]}
+                            onPress={() =>
+                              reservationLockMutation.mutate({
+                                scheduleId: item.id,
+                                locked: !item.reservationLocked,
+                              })
+                            }
+                          />
                           <SwiftButton
                             label="Delete"
                             systemImage="trash"
@@ -827,11 +861,29 @@ export function ItineraryScreen() {
                         />
                       ) : null}
                     </View>
-                    <Card style={[cardStyle, { flex: 1, marginBottom: space.sm }]}>
+                    <Card
+                      style={[
+                        cardStyle,
+                        { flex: 1, marginBottom: space.sm },
+                        item.reservationLocked
+                          ? {
+                              backgroundColor: colors.surfaceMuted,
+                              borderColor: colors.success,
+                            }
+                          : undefined,
+                      ]}
+                    >
                       <View style={{ alignItems: 'center', flexDirection: 'row', gap: 12 }}>
                         <View style={{ flex: 1, gap: 3 }}>
-                          <Text selectable style={{ color: tone, fontSize: 12, fontWeight: '800' }}>
-                            ACTIVITY
+                          <Text
+                            selectable
+                            style={{
+                              color: item.reservationLocked ? colors.success : tone,
+                              fontSize: 12,
+                              fontWeight: '800',
+                            }}
+                          >
+                            {item.reservationLocked ? '🔒 LOCKED ACTIVITY' : 'ACTIVITY'}
                           </Text>
                           <Text
                             selectable
@@ -854,6 +906,25 @@ export function ItineraryScreen() {
                             Edit
                           </IconButton>
                         </Link>
+                        <IconButton
+                          disabled={!isOnline || !trip.access.canEdit}
+                          label={
+                            item.reservationLocked
+                              ? `Unlock ${entryTitle(item, trip.places)}`
+                              : `Lock ${entryTitle(item, trip.places)}`
+                          }
+                          loading={reservationLockMutation.isPending}
+                          onPress={() =>
+                            reservationLockMutation.mutate({
+                              scheduleId: item.id,
+                              locked: !item.reservationLocked,
+                            })
+                          }
+                        >
+                          <Text style={{ fontSize: 17 }}>
+                            {item.reservationLocked ? '🔓' : '🔒'}
+                          </Text>
+                        </IconButton>
                       </View>
                       <View style={{ flexDirection: 'row', gap: 8 }}>
                         <IconButton

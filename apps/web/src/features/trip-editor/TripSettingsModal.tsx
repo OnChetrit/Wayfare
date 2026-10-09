@@ -1,5 +1,8 @@
 'use client';
 
+import { CurrencyPicker } from '@/components/CurrencyPicker';
+import { TripItemTools } from './TripItemTools';
+import { reservationFetch as fetch } from '@/lib/reservation-fetch';
 import { FormEvent, useEffect, useRef, useState } from 'react';
 import { CalendarDays, Plane, Plus, Save, Search, Trash2, X } from 'lucide-react';
 import styles from './TripSettingsModal.module.scss';
@@ -309,15 +312,10 @@ export function TripSettingsModal({
           <legend>Trip defaults</legend>
           <label>
             Currency
-            <select
+            <CurrencyPicker
               value={form.defaultCurrency}
-              onChange={event => update('defaultCurrency', event.target.value)}
-            >
-              <option value="EUR">EUR — Euro</option>
-              <option value="USD">USD — US Dollar</option>
-              <option value="ILS">ILS — Shekel</option>
-              <option value="GBP">GBP — Pound</option>
-            </select>
+              onChange={value => update('defaultCurrency', value)}
+            />
           </label>
         </fieldset>
 
@@ -407,6 +405,7 @@ export function TripSettingsModal({
               <span className={styles.resultsLabel}>TRIP FLIGHTS · {flights.length}</span>
               {flights.map(flight => (
                 <div className={styles.savedFlight} key={flight.id}>
+                  <TripItemTools kind="FLIGHT" itemId={flight.id} />
                   <div className={styles.savedFlightIcon}>
                     <Plane size={14} />
                   </div>

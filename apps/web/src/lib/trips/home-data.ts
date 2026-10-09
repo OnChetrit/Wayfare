@@ -110,6 +110,8 @@ function locationSegmentFromDatabase(row: {
 }
 
 function stayFromDatabase(row: {
+  reservation_locked?: boolean;
+  mutation_version?: number;
   id: string;
   trip_id: string;
   name: string;
@@ -129,6 +131,8 @@ function stayFromDatabase(row: {
   notes: string | null;
 }): Stay {
   return {
+    reservationLocked: row.reservation_locked,
+    mutationVersion: row.mutation_version,
     id: row.id,
     tripId: row.trip_id,
     name: row.name,
@@ -191,7 +195,7 @@ export async function getTripEditorTrip(
     supabase
       .from('stays')
       .select(
-        'id, trip_id, name, saved_place_id, address, location_label, price, price_amount, price_currency, cancellation_time, check_in_date, check_out_date, check_in_time, check_out_time, confirmation_number, secret_code, notes',
+        'id, trip_id, name, saved_place_id, address, location_label, price, price_amount, price_currency, cancellation_time, check_in_date, check_out_date, check_in_time, check_out_time, confirmation_number, secret_code, notes, reservation_locked, mutation_version',
       )
       .eq('trip_id', tripRow.id)
       .order('check_in_date'),
@@ -236,7 +240,7 @@ export async function getTripEditorTrip(
       ? supabase
           .from('schedule_items')
           .select(
-            'id, trip_day_id, saved_place_id, start_at_utc, duration_minutes, sort_order, title_override, category, notes, amount, currency',
+            'id, trip_day_id, saved_place_id, start_at_utc, duration_minutes, sort_order, title_override, category, notes, amount, currency, reservation_locked, mutation_version',
           )
           .in(
             'trip_day_id',
@@ -273,6 +277,8 @@ export async function getTripEditorTrip(
     );
     return [
       {
+        reservationLocked: row.reservation_locked,
+        mutationVersion: row.mutation_version,
         id: row.id,
         savedPlaceId: row.saved_place_id,
         date,

@@ -54,7 +54,7 @@ function uniqueById<T extends { id: string }>(items: T[]) {
 
 function inputsForDay(trip: TripEditorTrip, date: string): DayPlanInputs {
   const flights = trip.flights.filter(
-    flight => flight.departureDate === date || flight.arrivalDate === date,
+    flight => !date || flight.departureDate === date || flight.arrivalDate === date,
   );
   const flightAirportRoutes = flights
     .map(flight => [airportForFlight(flight, 'departure'), airportForFlight(flight, 'arrival')])

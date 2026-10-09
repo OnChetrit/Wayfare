@@ -1,0 +1,4 @@
+interface:
+  display_name: "Wayfare Operations"
+  short_description: "Build, deploy, and migrate Wayfare safely"
+  default_prompt: "Use $wayfare-operations to deploy Wayfare web and mobile safely."
