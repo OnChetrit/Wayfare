@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
-import { documentTargetSchema } from '@wayfare/domain';
+import { documentTargetSchema, documentUpdateInputSchema } from '@wayfare/domain';
 import { requireRouteUser } from '@/lib/supabase/route-auth';
+import { getTripAccess } from '@/lib/trips/members';
 type Context = { params: Promise<{ tripId: string; documentId: string }> };
 export async function GET(_request: Request, context: Context) {
   const { tripId, documentId } = await context.params;
@@ -28,13 +29,33 @@ export async function PATCH(request: Request, context: Context) {
   const { tripId, documentId } = await context.params;
   const auth = await requireRouteUser();
   if (auth instanceof NextResponse) return auth;
-  const body = await request.json();
-  const label = typeof body.label === 'string' ? body.label.trim() : '';
-  if (!label || label.length > 200)
-    return NextResponse.json({ error: 'Enter a label up to 200 characters.' }, { status: 400 });
+  const access = await getTripAccess(auth.supabase, tripId);
+  if (!access?.canEdit)
+    return NextResponse.json({ error: 'Editing permission required' }, { status: 403 });
+  const parsed = documentUpdateInputSchema.safeParse(await request.json());
+  if (!parsed.success)
+    return NextResponse.json(
+      { error: 'Enter a label and a valid HTTP or HTTPS link.' },
+      { status: 400 },
+    );
+  const { data: current } = await auth.supabase
+    .from('trip_documents')
+    .select('storage_path,url')
+    .eq('trip_id', tripId)
+    .eq('id', documentId)
+    .maybeSingle();
+  if (!current) return NextResponse.json({ error: 'Document not found' }, { status: 404 });
+  if (parsed.data.url !== undefined && (current.storage_path || !current.url))
+    return NextResponse.json(
+      { error: 'Uploaded files can be renamed, but their contents cannot be changed.' },
+      { status: 400 },
+    );
   const { error } = await auth.supabase
     .from('trip_documents')
-    .update({ label })
+    .update({
+      label: parsed.data.label,
+      ...(parsed.data.url === undefined ? {} : { url: parsed.data.url }),
+    })
     .eq('trip_id', tripId)
     .eq('id', documentId);
   return NextResponse.json(error ? { error: error.message } : { renamed: true }, {

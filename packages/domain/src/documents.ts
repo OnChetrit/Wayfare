@@ -4,16 +4,24 @@ export const documentTargetSchema = z.object({
   kind: z.enum(['ACTIVITY', 'HOTEL', 'FLIGHT', 'PLACE', 'EXPENSE']),
   itemId: z.uuid(),
 });
+export const documentLabelSchema = z.string().trim().min(1).max(200);
+export const documentUrlSchema = z
+  .url()
+  .refine(
+    value => ['http:', 'https:'].includes(new URL(value).protocol),
+    'Use an HTTP or HTTPS link.',
+  );
 export const documentLinkInputSchema = documentTargetSchema.extend({
-  label: z.string().trim().min(1).max(200),
-  url: z
-    .url()
-    .refine(
-      value => ['http:', 'https:'].includes(new URL(value).protocol),
-      'Use an HTTP or HTTPS link.',
-    ),
+  label: documentLabelSchema,
+  url: documentUrlSchema,
+});
+export const documentUpdateInputSchema = z.object({
+  label: documentLabelSchema,
+  url: documentUrlSchema.optional(),
 });
 export type DocumentTarget = z.infer<typeof documentTargetSchema>;
+export type DocumentLinkInput = z.infer<typeof documentLinkInputSchema>;
+export type DocumentUpdateInput = z.infer<typeof documentUpdateInputSchema>;
 export type TripDocument = {
   id: string;
   label: string;

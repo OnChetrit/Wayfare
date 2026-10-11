@@ -1,5 +1,4 @@
 import { useQuery } from '@tanstack/react-query';
-import ImportIcon from '@expo/material-symbols/playlist_add.xml';
 import SavedPlacesIcon from '@expo/material-symbols/list.xml';
 import { router, Stack } from 'expo-router';
 import * as React from 'react';
@@ -105,6 +104,7 @@ export function ExploreScreen() {
     selectedTripDayDate && exploreDays.some(day => day.date === selectedTripDayDate)
       ? selectedTripDayDate
       : undefined;
+  const currentDay = exploreDays.find(day => day.date === currentDate);
   const { mapPlaces: dayPlanMapPlaces, routes: dayPlanRoutes } = useDayPlanMap({
     date: currentDate,
     trip,
@@ -302,6 +302,10 @@ export function ExploreScreen() {
         </View>
         <SavedPlacesDrawer
           onClose={() => setSavedPlacesVisible(false)}
+          onImportPlaces={() => {
+            setSavedPlacesVisible(false);
+            router.push('/place-import');
+          }}
           isLocationMutationPending={locationPlaceMutation.isPending}
           isOnline={isOnline}
           locationMessage={locationMessage}
@@ -353,10 +357,12 @@ export function ExploreScreen() {
         {process.env.EXPO_OS === 'ios' && exploreDays.length ? (
           <Stack.Toolbar.Menu
             accessibilityLabel="Choose a trip day"
-            icon="calendar"
             tintColor={colors.accent}
             title="Trip days"
           >
+            <Stack.Toolbar.Label>
+              {currentDay ? `Days · ${currentDay.shortDate}` : 'All days'}
+            </Stack.Toolbar.Label>
             <Stack.Toolbar.MenuAction
               isOn={!currentDate}
               onPress={() => {
@@ -367,7 +373,11 @@ export function ExploreScreen() {
               All days
             </Stack.Toolbar.MenuAction>
             {exploreDaySections.map(section => (
-              <Stack.Toolbar.Menu inline key={section.id} title={section.locationName}>
+              <Stack.Toolbar.Menu
+                inline
+                key={`${section.id}:${section.days[0]?.date}`}
+                title={section.locationName}
+              >
                 {section.days.map(day => (
                   <Stack.Toolbar.MenuAction
                     isOn={day.date === currentDate}
@@ -384,12 +394,6 @@ export function ExploreScreen() {
             ))}
           </Stack.Toolbar.Menu>
         ) : null}
-        <Stack.Toolbar.Button
-          accessibilityLabel="Import a Google Maps list"
-          icon={process.env.EXPO_OS === 'ios' ? 'square.and.arrow.down' : ImportIcon}
-          onPress={() => router.push('/place-import')}
-          tintColor={colors.accent}
-        />
         <Stack.Toolbar.Button
           accessibilityLabel={`Open ${trip.places.length} saved places`}
           icon={process.env.EXPO_OS === 'ios' ? 'list.bullet' : SavedPlacesIcon}

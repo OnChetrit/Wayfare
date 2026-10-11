@@ -57,6 +57,7 @@ import { useTheme } from '@/theme/theme-provider';
 
 type SavedPlacesDrawerProps = {
   onClose: () => void;
+  onImportPlaces: () => void;
   onLocationScopeChange: (locationSegmentId?: string) => void;
   onSelectPlace: (place: SavedPlace) => void;
   onToggleLocationPlace: (place: SavedPlace, locationSegmentId: string, assigned: boolean) => void;
@@ -191,6 +192,7 @@ const allLocationsValue = '__all_locations__';
 
 function NativeSavedPlacesSheet({
   onClose,
+  onImportPlaces,
   onLocationScopeChange,
   onSelectPlace,
   onToggleLocationPlace,
@@ -284,16 +286,25 @@ function NativeSavedPlacesSheet({
                 </SwiftText>
               }
               header={
-                <VStack alignment="leading" spacing={2}>
-                  <SwiftText modifiers={[font({ textStyle: 'title2', weight: 'bold' })]}>
-                    Saved places
-                  </SwiftText>
-                  <SwiftText
-                    modifiers={[foregroundStyle({ type: 'hierarchical', style: 'secondary' })]}
-                  >
-                    Search, filter, and organize the places you want to visit.
-                  </SwiftText>
-                </VStack>
+                <HStack alignment="center" spacing={12}>
+                  <VStack alignment="leading" spacing={2}>
+                    <SwiftText modifiers={[font({ textStyle: 'title2', weight: 'bold' })]}>
+                      Saved places
+                    </SwiftText>
+                    <SwiftText
+                      modifiers={[foregroundStyle({ type: 'hierarchical', style: 'secondary' })]}
+                    >
+                      Search, filter, and organize the places you want to visit.
+                    </SwiftText>
+                  </VStack>
+                  <Spacer />
+                  <SwiftButton
+                    label="Import"
+                    systemImage="square.and.arrow.down"
+                    modifiers={[buttonStyle('bordered')]}
+                    onPress={onImportPlaces}
+                  />
+                </HStack>
               }
             >
               <TextField
@@ -479,6 +490,7 @@ function SavedPlaceLabel({ place }: { place: SavedPlace }) {
 
 function SavedPlacesDrawerFallback({
   onClose,
+  onImportPlaces,
   onLocationScopeChange,
   onSelectPlace,
   onToggleLocationPlace,
@@ -639,27 +651,53 @@ function SavedPlacesDrawerFallback({
                         : `${filteredPlaces.length} of ${places.length} places`}
                     </Text>
                   </View>
-                  <Pressable
-                    accessibilityLabel="Close saved places"
-                    accessibilityRole="button"
-                    onPress={dismiss}
-                    style={({ pressed }) => ({
-                      alignItems: 'center',
-                      backgroundColor: colors.surfaceMuted,
-                      borderColor: colors.borderStrong,
-                      borderCurve: 'continuous',
-                      borderRadius: 16,
-                      borderWidth: 1,
-                      height: 40,
-                      justifyContent: 'center',
-                      opacity: pressed ? 0.72 : 1,
-                      width: 40,
-                    })}
-                  >
-                    <Text selectable style={{ color: colors.text, fontSize: 22, lineHeight: 24 }}>
-                      ×
-                    </Text>
-                  </Pressable>
+                  <View style={{ alignItems: 'center', flexDirection: 'row', gap: 8 }}>
+                    <Pressable
+                      accessibilityLabel="Import a Google Maps list"
+                      accessibilityRole="button"
+                      onPress={onImportPlaces}
+                      style={({ pressed }) => ({
+                        alignItems: 'center',
+                        backgroundColor: colors.surfaceMuted,
+                        borderColor: colors.borderStrong,
+                        borderCurve: 'continuous',
+                        borderRadius: 14,
+                        borderWidth: 1,
+                        height: 40,
+                        justifyContent: 'center',
+                        opacity: pressed ? 0.72 : 1,
+                        paddingHorizontal: 12,
+                      })}
+                    >
+                      <Text
+                        selectable
+                        style={{ color: colors.text, fontSize: 13, fontWeight: '700' }}
+                      >
+                        Import
+                      </Text>
+                    </Pressable>
+                    <Pressable
+                      accessibilityLabel="Close saved places"
+                      accessibilityRole="button"
+                      onPress={dismiss}
+                      style={({ pressed }) => ({
+                        alignItems: 'center',
+                        backgroundColor: colors.surfaceMuted,
+                        borderColor: colors.borderStrong,
+                        borderCurve: 'continuous',
+                        borderRadius: 16,
+                        borderWidth: 1,
+                        height: 40,
+                        justifyContent: 'center',
+                        opacity: pressed ? 0.72 : 1,
+                        width: 40,
+                      })}
+                    >
+                      <Text selectable style={{ color: colors.text, fontSize: 22, lineHeight: 24 }}>
+                        ×
+                      </Text>
+                    </Pressable>
+                  </View>
                 </View>
                 <TextInput
                   accessibilityLabel="Search saved places"

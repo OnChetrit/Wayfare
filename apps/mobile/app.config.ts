@@ -14,6 +14,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     bundleIdentifier: 'com.onchetrit.wayfare',
     supportsTablet: false,
     infoPlist: {
+      ITSAppUsesNonExemptEncryption: false,
       UIViewControllerBasedStatusBarAppearance: true,
     },
   },

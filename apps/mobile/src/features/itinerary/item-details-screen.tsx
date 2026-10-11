@@ -10,10 +10,19 @@ import {
   documentMaxBytes,
   formatMoney,
   paymentStatusLabels,
+  type DocumentTarget,
   type TripDocument,
 } from '@wayfare/domain';
-import { requestWayfareApi } from '@/api/client';
+import {
+  createTripDocumentLink,
+  getTripDocumentAccess,
+  getTripDocuments,
+  linkExistingTripDocument,
+  removeTripDocument,
+  updateTripDocument,
+} from '@/api/documents';
 import { tripKeys } from '@/api/query-keys';
+import { updateReservationLock } from '@/api/trips';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -21,13 +30,29 @@ import { Field } from '@/components/ui/field';
 import { ErrorState, LoadingState, OfflineNotice } from '@/components/ui/state';
 import { useTripEditor } from '@/features/trips/use-trip-editor';
 import { useTripMutation } from './use-trip-mutation';
+import {
+  documentUploadMimeType,
+  documentsForTarget,
+  removalTargetForDocument,
+} from './activity-documents';
 import { invalidateTripData } from './trip-query-invalidation';
 import { messageFromError } from '@/lib/format';
 import { space } from '@/theme/tokens';
 import { useTheme } from '@/theme/theme-provider';
+
+function first(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value;
+}
+
 export function ItemDetailsScreen() {
-  const params = useLocalSearchParams<{ kind: string; itemId: string }>();
-  const target = documentTargetSchema.safeParse(params);
+  const params = useLocalSearchParams<{
+    kind?: string | string[];
+    itemId?: string | string[];
+  }>();
+  const target = documentTargetSchema.safeParse({
+    kind: first(params.kind),
+    itemId: first(params.itemId),
+  });
   const tripQuery = useTripEditor();
   const trip = tripQuery.data;
   const queryClient = useQueryClient();
@@ -36,8 +61,9 @@ export function ItemDetailsScreen() {
   const [url, setUrl] = useState('');
   const [error, setError] = useState('');
   const [progress, setProgress] = useState<number | null>(null);
-  const [renameId, setRenameId] = useState<string | null>(null);
-  const [renameLabel, setRenameLabel] = useState('');
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editLabel, setEditLabel] = useState('');
+  const [editUrl, setEditUrl] = useState('');
   const [selectedFile, setSelectedFile] = useState<DocumentPicker.DocumentPickerAsset | null>(null);
   const upload = useRef<XMLHttpRequest | null>(null);
   useEffect(() => () => upload.current?.abort(), []);
@@ -45,25 +71,49 @@ export function ItemDetailsScreen() {
   const documents = useQuery({
     queryKey: [...tripKeys.documents(trip?.id ?? ''), trip?.revision],
     enabled: Boolean(trip),
-    queryFn: ({ signal }) => requestWayfareApi<{ documents: TripDocument[] }>(base, { signal }),
+    queryFn: ({ signal }) => getTripDocuments(trip!.id, signal),
   });
   const { isOnline, mutation } = useTripMutation(
     trip?.id ?? '',
-    async ({ path, method, body }: { path: string; method: string; body: unknown }) =>
-      requestWayfareApi(path, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      }),
+    async (
+      change:
+        | { type: 'create-link'; label: string; url: string }
+        | { type: 'edit'; documentId: string; label: string; url?: string }
+        | { type: 'link-existing'; documentId: string }
+        | { type: 'remove'; documentId: string; target: DocumentTarget },
+    ) => {
+      if (!trip || !target.success) throw new Error('Select a valid trip item.');
+      if (change.type === 'create-link')
+        return createTripDocumentLink(trip.id, {
+          ...target.data,
+          label: change.label,
+          url: change.url,
+        });
+      if (change.type === 'edit')
+        return updateTripDocument(trip.id, change.documentId, {
+          label: change.label,
+          ...(change.url === undefined ? {} : { url: change.url }),
+        });
+      if (change.type === 'link-existing')
+        return linkExistingTripDocument(trip.id, change.documentId, target.data);
+      return removeTripDocument(trip.id, change.documentId, change.target);
+    },
     {
       onSuccess: () => {
         if (trip?.id) void queryClient.invalidateQueries({ queryKey: tripKeys.documents(trip.id) });
       },
     },
   );
+  const { mutation: reservationMutation } = useTripMutation(
+    trip?.id ?? '',
+    ({ kind, itemId, locked }: { kind: 'HOTEL' | 'FLIGHT'; itemId: string; locked: boolean }) =>
+      updateReservationLock(trip!.id, kind, itemId, locked),
+  );
   if (tripQuery.isLoading) return <LoadingState label="Loading reservation…" />;
   if (!trip || !target.success) return <ErrorState message="Select a valid trip item." />;
-  const { kind, itemId } = target.data;
+  const tripId = trip.id;
+  const documentTarget = target.data;
+  const { kind, itemId } = documentTarget;
   const item =
     kind === 'HOTEL'
       ? trip.stays.find(item => item.id === itemId)
@@ -79,17 +129,8 @@ export function ItemDetailsScreen() {
       expense.flightId === itemId ||
       expense.scheduleItemId === itemId,
   );
-  const linked =
-    documents.data?.documents.filter(document =>
-      document.document_links.some(
-        link =>
-          (link.kind === kind && link.item_id === itemId) ||
-          (payment && link.kind === 'EXPENSE' && link.item_id === payment.id),
-      ),
-    ) ?? [];
+  const linked = documentsForTarget(documents.data ?? [], documentTarget, payment?.id);
   const disabled = !isOnline || !trip.access.canEdit || mutation.isPending;
-  const write = (path: string, method: string, body: unknown) =>
-    mutation.mutate({ path, method, body });
   async function pick() {
     try {
       const result = await DocumentPicker.getDocumentAsync({
@@ -108,6 +149,11 @@ export function ItemDetailsScreen() {
   async function sendFile() {
     if (!selectedFile) return;
     setError('');
+    const mimeType = documentUploadMimeType(selectedFile.name, selectedFile.mimeType);
+    if (!mimeType) {
+      setError('Choose a PDF, JPEG, PNG, or WebP file.');
+      return;
+    }
     const { data } = await supabase.auth.getSession();
     if (!data.session) {
       setError('Sign in again to upload.');
@@ -117,7 +163,7 @@ export function ItemDetailsScreen() {
     form.append('file', {
       uri: selectedFile.uri,
       name: selectedFile.name,
-      type: selectedFile.mimeType ?? 'application/octet-stream',
+      type: mimeType,
     } as unknown as Blob);
     form.append('kind', kind);
     form.append('itemId', itemId);
@@ -155,7 +201,7 @@ export function ItemDetailsScreen() {
   }
   async function open(document: TripDocument, share = false) {
     try {
-      const access = await requestWayfareApi<{ url: string }>(`${base}/${document.id}`);
+      const access = await getTripDocumentAccess(tripId, document.id);
       if (share && document.storage_path) {
         const local = await File.downloadFileAsync(
           access.url,
@@ -175,15 +221,39 @@ export function ItemDetailsScreen() {
       setError((failure as Error).message);
     }
   }
+  function closeEditor() {
+    setEditId(null);
+    setEditLabel('');
+    setEditUrl('');
+  }
+  function confirmRemove(document: TripDocument) {
+    const removalTarget = removalTargetForDocument(document, documentTarget, payment?.id);
+    if (!removalTarget) return;
+    Alert.alert(
+      'Delete attachment?',
+      'This removes the attachment from this activity or its payment. The stored file is deleted when no references remain.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () =>
+            mutation.mutate({ type: 'remove', documentId: document.id, target: removalTarget }),
+        },
+      ],
+    );
+  }
   return (
     <ScrollView
       contentInsetAdjustmentBehavior="automatic"
       contentContainerStyle={{ padding: space.md, paddingBottom: 36, gap: space.md }}
       style={{ backgroundColor: colors.background }}
     >
-      <Stack.Screen options={{ title: 'Reservation details' }} />
+      <Stack.Screen
+        options={{ title: kind === 'ACTIVITY' ? 'Activity files & links' : 'Details' }}
+      />
       <OfflineNotice visible={!isOnline} />
-      {item && kind !== 'ACTIVITY' && (
+      {item && (kind === 'HOTEL' || kind === 'FLIGHT') && (
         <Card>
           <View style={{ gap: space.xs }}>
             <Text selectable style={{ color: colors.text, fontSize: 17, fontWeight: '700' }}>
@@ -196,10 +266,12 @@ export function ItemDetailsScreen() {
             </Text>
           </View>
           <Button
-            disabled={disabled}
-            loading={mutation.isPending}
+            disabled={!isOnline || !trip.access.canEdit || reservationMutation.isPending}
+            loading={reservationMutation.isPending}
             onPress={() =>
-              write(`/api/trips/${trip.id}/reservations/${kind}/${itemId}`, 'PATCH', {
+              reservationMutation.mutate({
+                kind,
+                itemId,
                 locked: !item.reservationLocked,
               })
             }
@@ -279,38 +351,62 @@ export function ItemDetailsScreen() {
             </Text>
           </View>
           <Button disabled={!isOnline} onPress={() => void open(document)} tone="secondary">
-            Open
+            {document.storage_path ? 'View file' : 'Open link'}
           </Button>
-          <Button disabled={!isOnline} onPress={() => void open(document, true)} tone="secondary">
-            Download / share
-          </Button>
+          {document.storage_path ? (
+            <Button disabled={!isOnline} onPress={() => void open(document, true)} tone="secondary">
+              Download / share
+            </Button>
+          ) : null}
           {trip.access.canEdit && (
             <>
               <Button
                 disabled={disabled}
                 onPress={() => {
-                  setRenameId(document.id);
-                  setRenameLabel(document.label);
+                  setEditId(document.id);
+                  setEditLabel(document.label);
+                  setEditUrl(document.url ?? '');
                 }}
                 tone="quiet"
               >
-                Rename
+                Edit
               </Button>
-              {renameId === document.id ? (
+              {editId === document.id ? (
                 <View style={{ gap: space.sm }}>
-                  <Field label="Document label" value={renameLabel} onChangeText={setRenameLabel} />
+                  <Field label="Name" value={editLabel} onChangeText={setEditLabel} />
+                  {document.url ? (
+                    <Field
+                      autoCapitalize="none"
+                      keyboardType="url"
+                      label="HTTP or HTTPS link"
+                      value={editUrl}
+                      onChangeText={setEditUrl}
+                    />
+                  ) : (
+                    <Text selectable style={{ color: colors.textMuted, lineHeight: 19 }}>
+                      File contents cannot be edited. You can rename this file or delete it and
+                      upload a replacement.
+                    </Text>
+                  )}
                   <View style={{ flexDirection: 'row', gap: space.sm }}>
                     <Button
                       disabled={disabled}
                       onPress={() => {
-                        write(`${base}/${renameId}`, 'PATCH', { label: renameLabel });
-                        setRenameId(null);
+                        mutation.mutate(
+                          {
+                            type: 'edit',
+                            documentId: document.id,
+                            label: editLabel,
+                            ...(document.url ? { url: editUrl } : {}),
+                          },
+                          { onSuccess: closeEditor },
+                        );
                       }}
                       style={{ flex: 1 }}
                     >
-                      Save label
+                      Save changes
                     </Button>
-                    <Button onPress={() => setRenameId(null)} style={{ flex: 1 }} tone="quiet">
+                    <Button onPress={closeEditor} style={{ flex: 1 }} tone="quiet">
                       Cancel
                     </Button>
                   </View>
@@ -318,28 +414,12 @@ export function ItemDetailsScreen() {
               ) : null}
               <Button
                 disabled={
-                  disabled ||
-                  !document.document_links.some(
-                    link => link.kind === kind && link.item_id === itemId,
-                  )
+                  disabled || !removalTargetForDocument(document, documentTarget, payment?.id)
                 }
-                onPress={() =>
-                  Alert.alert(
-                    'Remove attachment?',
-                    'This only unlinks the document here. The stored file is deleted when no references remain.',
-                    [
-                      { text: 'Cancel', style: 'cancel' },
-                      {
-                        text: 'Remove',
-                        style: 'destructive',
-                        onPress: () => write(`${base}/${document.id}`, 'DELETE', target.data),
-                      },
-                    ],
-                  )
-                }
+                onPress={() => confirmRemove(document)}
                 tone="danger"
               >
-                Remove
+                Delete
               </Button>
             </>
           )}
@@ -364,7 +444,17 @@ export function ItemDetailsScreen() {
           />
           <Button
             disabled={disabled}
-            onPress={() => write(base, 'POST', { ...target.data, label, url })}
+            onPress={() =>
+              mutation.mutate(
+                { type: 'create-link', label, url },
+                {
+                  onSuccess: () => {
+                    setLabel('');
+                    setUrl('');
+                  },
+                },
+              )
+            }
             tone="secondary"
           >
             Add link
@@ -393,19 +483,18 @@ export function ItemDetailsScreen() {
           )}
         </Card>
       )}
-      {trip.access.canEdit &&
-      documents.data?.documents.some(document => !linked.includes(document)) ? (
+      {trip.access.canEdit && documents.data?.some(document => !linked.includes(document)) ? (
         <Card>
           <Text selectable style={{ color: colors.text, fontSize: 17, fontWeight: '700' }}>
             Use an existing trip document
           </Text>
-          {documents.data?.documents
+          {documents.data
             .filter(document => !linked.includes(document))
             .map(document => (
               <Button
                 disabled={disabled}
                 key={document.id}
-                onPress={() => write(base, 'POST', { ...target.data, documentId: document.id })}
+                onPress={() => mutation.mutate({ type: 'link-existing', documentId: document.id })}
                 tone="secondary"
               >
                 {document.label}
@@ -413,9 +502,10 @@ export function ItemDetailsScreen() {
             ))}
         </Card>
       ) : null}
-      {(error || mutation.error || documents.error) && (
+      {(error || mutation.error || reservationMutation.error || documents.error) && (
         <Text accessibilityRole="alert" selectable style={{ color: colors.danger }}>
-          {error || messageFromError(mutation.error ?? documents.error)}
+          {error ||
+            messageFromError(mutation.error ?? reservationMutation.error ?? documents.error)}
         </Text>
       )}
     </ScrollView>

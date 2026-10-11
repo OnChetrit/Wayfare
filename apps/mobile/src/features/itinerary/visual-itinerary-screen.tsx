@@ -54,6 +54,7 @@ function DayColumn({
   schedule,
   flights,
   onMove,
+  onOpenDocuments,
   onToggleLock,
   canLock,
   lockPending,
@@ -63,6 +64,7 @@ function DayColumn({
   day: TripDay;
   flights: TripFlight[];
   onMove: (item: ScheduleItem) => void;
+  onOpenDocuments: (item: ScheduleItem) => void;
   onToggleLock: (item: ScheduleItem) => void;
   canLock: boolean;
   lockPending: boolean;
@@ -128,6 +130,13 @@ function DayColumn({
                     : ''}
                   {item.note ? ` · ${item.note}` : ''}
                 </Text>
+                <Button
+                  accessibilityLabel={`Open files and links for ${entryTitle(item, places)}`}
+                  onPress={() => onOpenDocuments(item)}
+                  tone="secondary"
+                >
+                  Files &amp; links
+                </Button>
                 <View style={{ flexDirection: 'row', gap: 8 }}>
                   <Button
                     accessibilityLabel={`Move ${entryTitle(item, places)} to another day`}
@@ -428,6 +437,12 @@ export function VisualItineraryScreen() {
                   canLock={isOnline && trip.access.canEdit}
                   lockPending={reservationLockMutation.isPending}
                   onMove={setMovingItem}
+                  onOpenDocuments={item =>
+                    router.push({
+                      pathname: '/item-details',
+                      params: { kind: 'ACTIVITY', itemId: item.id },
+                    })
+                  }
                   onToggleLock={item =>
                     reservationLockMutation.mutate({
                       itemId: item.id,
@@ -451,6 +466,12 @@ export function VisualItineraryScreen() {
                   canLock={isOnline && trip.access.canEdit}
                   lockPending={reservationLockMutation.isPending}
                   onMove={setMovingItem}
+                  onOpenDocuments={item =>
+                    router.push({
+                      pathname: '/item-details',
+                      params: { kind: 'ACTIVITY', itemId: item.id },
+                    })
+                  }
                   onToggleLock={item =>
                     reservationLockMutation.mutate({
                       itemId: item.id,

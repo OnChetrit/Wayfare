@@ -20,6 +20,7 @@
   "dependencies": {
     "@expo/material-symbols": "^0.1.1",
     "@expo/ui": "~57.0.22",
+    "@wayfare/domain": "workspace:*",
     "@react-native-community/netinfo": "12.0.1",
     "@shopify/flash-list": "2.0.2",
     "@supabase/supabase-js": "^2.112.4",

@@ -18,6 +18,7 @@ import {
   removeTripMember,
   revokeTripInvitation,
   updateTripMember,
+  updateReservationLock,
 } from './trips';
 
 import { WayfareApiError } from './error';
@@ -293,6 +294,22 @@ describe('trip API', () => {
       body: JSON.stringify(input),
       headers: { 'Content-Type': 'application/json' },
     });
+  });
+
+  it('updates reservation locks for each supported itinerary item kind', async () => {
+    requestWayfareApi.mockResolvedValueOnce({ locked: true });
+
+    await expect(updateReservationLock(rawTrip.id, 'HOTEL', 'stay-1', true)).resolves.toEqual({
+      locked: true,
+    });
+    expect(requestWayfareApi).toHaveBeenCalledWith(
+      `/api/trips/${rawTrip.id}/reservations/HOTEL/stay-1`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify({ locked: true }),
+        headers: { 'Content-Type': 'application/json' },
+      },
+    );
   });
 
   it('sends all linked-hotel stay details through the authenticated API', async () => {

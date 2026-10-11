@@ -1,4 +1,5 @@
 import AddIcon from '@expo/material-symbols/add.xml';
+import MoreIcon from '@expo/material-symbols/more_vert.xml';
 import {
   Button as SwiftButton,
   Host,
@@ -15,13 +16,20 @@ import {
 import {
   accessibilityAddTraits,
   accessibilityLabel,
+  backgroundOverlay,
+  buttonBorderShape,
   buttonStyle,
+  cornerRadius,
   disabled,
   font,
   foregroundStyle,
+  frame,
+  lineLimit,
   listStyle,
   monospacedDigit,
+  padding,
   refreshable,
+  strokeBorder,
   tag,
   tint,
 } from '@expo/ui/swift-ui/modifiers';
@@ -42,6 +50,7 @@ import { Card } from '@/components/ui/card';
 import { ErrorState, EmptyState, LoadingState, OfflineNotice } from '@/components/ui/state';
 import { Screen } from '@/components/ui/screen';
 import { dayItineraryEntries, type DayItineraryEntry } from '@/features/itinerary/day-itinerary';
+import { sectionExploreDaysByLocation } from '@/features/explore/explore-trip-days';
 import { flightEventDetail, flightRoute } from '@/features/itinerary/flight-details';
 import { useTripMutation } from '@/features/itinerary/use-trip-mutation';
 import { useTripEditor } from '@/features/trips/use-trip-editor';
@@ -63,9 +72,17 @@ function entryTitle(
   return places.find(place => place.id === item.savedPlaceId)?.name ?? item.title ?? 'Activity';
 }
 
-function itineraryEntryTone(kind: DayItineraryEntry['kind'], theme: 'light' | 'dark') {
-  if (kind === 'schedule') return theme === 'light' ? '#17795d' : '#4ab58b';
-  if (kind === 'flight') return theme === 'light' ? '#39799b' : '#7bb9dc';
+function itineraryEntryTone(entry: DayItineraryEntry, theme: 'light' | 'dark') {
+  if (entry.kind === 'schedule') return theme === 'light' ? '#17795d' : '#4ab58b';
+  if (entry.kind === 'flight') {
+    return entry.event === 'arrival'
+      ? theme === 'light'
+        ? '#e8795d'
+        : '#f08b70'
+      : theme === 'light'
+        ? '#17795d'
+        : '#4ab58b';
+  }
   return theme === 'light' ? '#81549d' : '#c39ae0';
 }
 
@@ -101,6 +118,66 @@ function scheduleEntryDetail(item: {
 
 function entryCountLabel(count: number) {
   return count === 1 ? '1 item planned' : `${count} items planned`;
+}
+
+const dayCardWidth = 70;
+const dayCardHeight = 72;
+const dayCardGap = 5;
+const dateStripRadius = 10;
+
+function tripDetailsMenu({
+  dayId,
+  date,
+  flightCount,
+  locationCount,
+  stayCount,
+}: {
+  dayId: string;
+  date: string;
+  flightCount: number;
+  locationCount: number;
+  stayCount: number;
+}) {
+  return (
+    <Stack.Toolbar.Menu
+      accessibilityLabel="Open trip details"
+      icon={process.env.EXPO_OS === 'ios' ? 'ellipsis' : MoreIcon}
+      title="Trip details"
+    >
+      <Stack.Toolbar.MenuAction onPress={() => router.push('/itinerary/visual')}>
+        Visual itinerary
+      </Stack.Toolbar.MenuAction>
+      <Stack.Toolbar.MenuAction onPress={() => router.push('/reminders')}>
+        Personal reminders
+      </Stack.Toolbar.MenuAction>
+      <Stack.Toolbar.MenuAction
+        onPress={() =>
+          router.push({ pathname: '/itinerary-editor', params: { kind: 'day', id: dayId } })
+        }
+      >
+        Day note
+      </Stack.Toolbar.MenuAction>
+      <Stack.Toolbar.MenuAction
+        onPress={() => router.push({ pathname: '/itinerary-editor', params: { kind: 'stays' } })}
+      >
+        {`Stays (${stayCount})`}
+      </Stack.Toolbar.MenuAction>
+      <Stack.Toolbar.MenuAction
+        onPress={() =>
+          router.push({ pathname: '/itinerary-editor', params: { kind: 'flights', date } })
+        }
+      >
+        {`Flights (${flightCount})`}
+      </Stack.Toolbar.MenuAction>
+      <Stack.Toolbar.MenuAction
+        onPress={() =>
+          router.push({ pathname: '/itinerary-editor', params: { kind: 'locations' } })
+        }
+      >
+        {`Locations (${locationCount})`}
+      </Stack.Toolbar.MenuAction>
+    </Stack.Toolbar.Menu>
+  );
 }
 
 export function ItineraryScreen() {
@@ -169,6 +246,7 @@ export function ItineraryScreen() {
   const selectedDay = trip.days.find(day => day.date === currentDate) ?? trip.days[0];
   const timeline = orderScheduleItemsForDay(trip.schedule, selectedDay.date);
   const dayEntries = dayItineraryEntries(trip.schedule, trip.flights, trip.stays, selectedDay.date);
+  const dayLocationSections = sectionExploreDaysByLocation(trip.days, trip.locationSegments);
 
   function confirmDelete(label: string, onConfirm: () => void) {
     Alert.alert(`Delete ${label}?`, 'This cannot be undone.', [
@@ -220,45 +298,95 @@ export function ItineraryScreen() {
             </Section>
             <Section title="Days">
               <SwiftScrollView axes="horizontal" showsIndicators={false}>
-                <HStack spacing={10}>
-                  {trip.days.map(day => {
-                    const isSelected = day.date === selectedDay.date;
-                    const { day: dayNumber, month } = dayDateParts(day.shortDate);
+                <HStack alignment="bottom" spacing={dayCardGap}>
+                  {dayLocationSections.map(locationSection => {
+                    const sectionWidth =
+                      locationSection.days.length * dayCardWidth +
+                      Math.max(0, locationSection.days.length - 1) * dayCardGap;
 
                     return (
-                      <SwiftButton
-                        key={day.id}
-                        modifiers={[
-                          buttonStyle(isSelected ? 'borderedProminent' : 'bordered'),
-                          accessibilityLabel(
-                            `View ${day.label}, ${formatDate(day.date, {
-                              weekday: 'long',
-                              month: 'long',
-                            })}`,
-                          ),
-                          ...(isSelected ? [accessibilityAddTraits(['isSelected'])] : []),
-                        ]}
-                        onPress={() => selectTripDay(day.date)}
+                      <VStack
+                        key={`${locationSection.id}:${locationSection.days[0]?.date}`}
+                        alignment="leading"
+                        spacing={dayCardGap}
                       >
-                        <VStack alignment="center" spacing={1}>
-                          <SwiftText
-                            modifiers={[font({ textStyle: 'caption', weight: 'semibold' })]}
-                          >
-                            {day.weekday}
-                          </SwiftText>
+                        {trip.locationSegments.length ? (
                           <SwiftText
                             modifiers={[
-                              font({ textStyle: 'title3', weight: 'bold' }),
-                              monospacedDigit(),
+                              font({ textStyle: 'caption', weight: 'semibold' }),
+                              foregroundStyle(
+                                locationSection.id === 'unassigned' ? 'secondary' : colors.accent,
+                              ),
+                              padding({ horizontal: 8, vertical: 6 }),
+                              frame({ width: sectionWidth, height: 30, alignment: 'center' }),
+                              backgroundOverlay({
+                                color:
+                                  locationSection.id === 'unassigned'
+                                    ? colors.surfaceMuted
+                                    : `${colors.accent}14`,
+                              }),
+                              cornerRadius(dateStripRadius),
+                              strokeBorder({
+                                color:
+                                  locationSection.id === 'unassigned'
+                                    ? colors.border
+                                    : colors.borderStrong,
+                                shape: 'roundedRectangle',
+                                cornerRadius: dateStripRadius,
+                              }),
+                              lineLimit(1),
                             ]}
                           >
-                            {dayNumber}
+                            {locationSection.id === 'unassigned'
+                              ? ' '
+                              : locationSection.locationName}
                           </SwiftText>
-                          <SwiftText modifiers={[font({ textStyle: 'caption2' })]}>
-                            {month}
-                          </SwiftText>
-                        </VStack>
-                      </SwiftButton>
+                        ) : null}
+                        <HStack spacing={dayCardGap}>
+                          {locationSection.days.map(day => {
+                            const isSelected = day.date === selectedDay.date;
+                            const { day: dayNumber, month } = dayDateParts(day.shortDate);
+
+                            return (
+                              <SwiftButton
+                                key={day.id}
+                                modifiers={[
+                                  buttonStyle(isSelected ? 'borderedProminent' : 'bordered'),
+                                  buttonBorderShape('roundedRectangle', dateStripRadius),
+                                  frame({ width: dayCardWidth, height: dayCardHeight }),
+                                  accessibilityLabel(
+                                    `View ${day.label}, ${formatDate(day.date, {
+                                      weekday: 'long',
+                                      month: 'long',
+                                    })}`,
+                                  ),
+                                  ...(isSelected ? [accessibilityAddTraits(['isSelected'])] : []),
+                                ]}
+                                onPress={() => selectTripDay(day.date)}
+                              >
+                                <VStack alignment="center" spacing={1}>
+                                  <SwiftText
+                                    modifiers={[font({ textStyle: 'caption', weight: 'semibold' })]}
+                                  >
+                                    {day.weekday}
+                                  </SwiftText>
+                                  <SwiftText
+                                    modifiers={[
+                                      font({ textStyle: 'title3', weight: 'bold' }),
+                                      monospacedDigit(),
+                                    ]}
+                                  >
+                                    {dayNumber}
+                                  </SwiftText>
+                                  <SwiftText modifiers={[font({ textStyle: 'caption2' })]}>
+                                    {month}
+                                  </SwiftText>
+                                </VStack>
+                              </SwiftButton>
+                            );
+                          })}
+                        </HStack>
+                      </VStack>
                     );
                   })}
                 </HStack>
@@ -288,7 +416,7 @@ export function ItineraryScreen() {
               {selectedDay.notes ? <SwiftText>{selectedDay.notes}</SwiftText> : null}
               {dayEntries.length ? (
                 dayEntries.map(entry => {
-                  const tone = itineraryEntryTone(entry.kind, theme);
+                  const tone = itineraryEntryTone(entry, theme);
 
                   if (entry.kind === 'schedule') {
                     const { item, scheduleIndex } = entry;
@@ -305,15 +433,17 @@ export function ItineraryScreen() {
                         >
                           <HStack alignment="firstTextBaseline" spacing={12}>
                             <VStack alignment="trailing" spacing={2}>
-                              <SwiftText
-                                modifiers={[
-                                  font({ weight: 'semibold' }),
-                                  foregroundStyle(entry.time ? tone : 'secondary'),
-                                  monospacedDigit(),
-                                ]}
-                              >
-                                {entry.time ?? 'Any time'}
-                              </SwiftText>
+                              {entry.time ? (
+                                <SwiftText
+                                  modifiers={[
+                                    font({ weight: 'semibold' }),
+                                    foregroundStyle(tone),
+                                    monospacedDigit(),
+                                  ]}
+                                >
+                                  {entry.time}
+                                </SwiftText>
+                              ) : null}
                               <SwiftText
                                 modifiers={[
                                   font({ textStyle: 'caption2' }),
@@ -412,15 +542,17 @@ export function ItineraryScreen() {
                       <SwipeActions key={entry.key} modifiers={[tag(entry.key)]}>
                         <HStack alignment="firstTextBaseline" spacing={12}>
                           <VStack alignment="trailing" spacing={2}>
-                            <SwiftText
-                              modifiers={[
-                                font({ weight: 'semibold' }),
-                                foregroundStyle(entry.time ? tone : 'secondary'),
-                                monospacedDigit(),
-                              ]}
-                            >
-                              {entry.time ?? 'All day'}
-                            </SwiftText>
+                            {entry.time ? (
+                              <SwiftText
+                                modifiers={[
+                                  font({ weight: 'semibold' }),
+                                  foregroundStyle(tone),
+                                  monospacedDigit(),
+                                ]}
+                              >
+                                {entry.time}
+                              </SwiftText>
+                            ) : null}
                             <SwiftText
                               modifiers={[
                                 font({ textStyle: 'caption2' }),
@@ -433,7 +565,9 @@ export function ItineraryScreen() {
                           <VStack alignment="leading" spacing={3}>
                             <Label
                               title={`${event === 'arrival' ? 'Arrive' : 'Depart'} · ${flight.flightNumber}`}
-                              systemImage="airplane"
+                              systemImage={
+                                event === 'arrival' ? 'airplane.arrival' : 'airplane.departure'
+                              }
                               modifiers={[foregroundStyle(tone)]}
                             />
                             <SwiftText>{flightRoute(flight)}</SwiftText>
@@ -477,15 +611,17 @@ export function ItineraryScreen() {
                       >
                         <HStack alignment="firstTextBaseline" spacing={12}>
                           <VStack alignment="trailing" spacing={2}>
-                            <SwiftText
-                              modifiers={[
-                                font({ weight: 'semibold' }),
-                                foregroundStyle(entry.time ? tone : 'secondary'),
-                                monospacedDigit(),
-                              ]}
-                            >
-                              {entry.time ?? 'All day'}
-                            </SwiftText>
+                            {entry.time ? (
+                              <SwiftText
+                                modifiers={[
+                                  font({ weight: 'semibold' }),
+                                  foregroundStyle(tone),
+                                  monospacedDigit(),
+                                ]}
+                              >
+                                {entry.time}
+                              </SwiftText>
+                            ) : null}
                             <SwiftText
                               modifiers={[
                                 font({ textStyle: 'caption2' }),
@@ -533,103 +669,16 @@ export function ItineraryScreen() {
                 </VStack>
               )}
             </Section>
-            <Section title="Trip details">
-              <SwiftButton
-                modifiers={[buttonStyle('plain')]}
-                onPress={() => router.push('/itinerary/visual')}
-              >
-                <HStack spacing={12}>
-                  <Label title="Visual itinerary" systemImage="map" />
-                  <Spacer />
-                  <SwiftText>›</SwiftText>
-                </HStack>
-              </SwiftButton>
-              <SwiftButton
-                modifiers={[buttonStyle('plain')]}
-                onPress={() => router.push('/reminders')}
-              >
-                <HStack spacing={12}>
-                  <Label title="Personal reminders" systemImage="bell" />
-                  <Spacer />
-                  <SwiftText>›</SwiftText>
-                </HStack>
-              </SwiftButton>
-              <SwiftButton
-                modifiers={[buttonStyle('plain')]}
-                onPress={() =>
-                  router.push({
-                    pathname: '/itinerary-editor',
-                    params: { kind: 'day', id: selectedDay.id },
-                  })
-                }
-              >
-                <HStack spacing={12}>
-                  <Label title="Day note" systemImage="note.text" />
-                  <Spacer />
-                  <SwiftText>›</SwiftText>
-                </HStack>
-              </SwiftButton>
-              <SwiftButton
-                modifiers={[buttonStyle('plain')]}
-                onPress={() =>
-                  router.push({ pathname: '/itinerary-editor', params: { kind: 'stays' } })
-                }
-              >
-                <HStack spacing={12}>
-                  <Label title={`Stays (${trip.stays.length})`} systemImage="bed.double" />
-                  <Spacer />
-                  <SwiftText>›</SwiftText>
-                </HStack>
-              </SwiftButton>
-              <SwiftButton
-                modifiers={[buttonStyle('plain')]}
-                onPress={() =>
-                  router.push({
-                    pathname: '/itinerary-editor',
-                    params: { kind: 'flights', date: selectedDay.date },
-                  })
-                }
-              >
-                <HStack spacing={12}>
-                  <Label title={`Flights (${trip.flights.length})`} systemImage="airplane" />
-                  <Spacer />
-                  <SwiftText>›</SwiftText>
-                </HStack>
-              </SwiftButton>
-              <SwiftButton
-                modifiers={[buttonStyle('plain')]}
-                onPress={() =>
-                  router.push({ pathname: '/itinerary-editor', params: { kind: 'places' } })
-                }
-              >
-                <HStack spacing={12}>
-                  <Label
-                    title={`Saved places (${trip.places.length})`}
-                    systemImage="mappin.and.ellipse"
-                  />
-                  <Spacer />
-                  <SwiftText>›</SwiftText>
-                </HStack>
-              </SwiftButton>
-              <SwiftButton
-                modifiers={[buttonStyle('plain')]}
-                onPress={() =>
-                  router.push({ pathname: '/itinerary-editor', params: { kind: 'locations' } })
-                }
-              >
-                <HStack spacing={12}>
-                  <Label
-                    title={`Locations (${trip.locationSegments.length})`}
-                    systemImage="globe.europe.africa"
-                  />
-                  <Spacer />
-                  <SwiftText>›</SwiftText>
-                </HStack>
-              </SwiftButton>
-            </Section>
           </List>
         </Host>
         <Stack.Toolbar placement="right">
+          {tripDetailsMenu({
+            date: selectedDay.date,
+            dayId: selectedDay.id,
+            flightCount: trip.flights.length,
+            locationCount: trip.locationSegments.length,
+            stayCount: trip.stays.length,
+          })}
           <Stack.Toolbar.Button
             accessibilityLabel="Add itinerary item"
             icon={process.env.EXPO_OS === 'ios' ? 'plus' : AddIcon}
@@ -684,48 +733,100 @@ export function ItineraryScreen() {
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ gap: 10, paddingHorizontal: 2 }}
+            contentContainerStyle={{ gap: dayCardGap, paddingHorizontal: 2 }}
           >
-            {trip.days.map(day => {
-              const isSelected = day.date === selectedDay.date;
-              const { day: dayNumber, month } = dayDateParts(day.shortDate);
-              const textColor = isSelected ? colors.accentText : colors.text;
+            {dayLocationSections.map(locationSection => (
+              <View
+                key={`${locationSection.id}:${locationSection.days[0]?.date}`}
+                style={{
+                  gap: dayCardGap,
+                  width:
+                    locationSection.days.length * dayCardWidth +
+                    Math.max(0, locationSection.days.length - 1) * dayCardGap,
+                }}
+              >
+                {trip.locationSegments.length ? (
+                  <Text
+                    selectable
+                    numberOfLines={1}
+                    style={{
+                      backgroundColor:
+                        locationSection.id === 'unassigned'
+                          ? colors.surfaceMuted
+                          : `${colors.accent}14`,
+                      borderColor:
+                        locationSection.id === 'unassigned' ? colors.border : colors.borderStrong,
+                      borderCurve: 'continuous',
+                      borderRadius: dateStripRadius,
+                      borderWidth: 1,
+                      color: locationSection.id === 'unassigned' ? colors.textMuted : colors.accent,
+                      fontSize: 12,
+                      fontWeight: '700',
+                      height: 30,
+                      paddingHorizontal: 8,
+                      paddingVertical: 6,
+                      textAlign: 'center',
+                    }}
+                  >
+                    {locationSection.id === 'unassigned' ? ' ' : locationSection.locationName}
+                  </Text>
+                ) : null}
+                <View style={{ flexDirection: 'row', gap: dayCardGap }}>
+                  {locationSection.days.map(day => {
+                    const isSelected = day.date === selectedDay.date;
+                    const { day: dayNumber, month } = dayDateParts(day.shortDate);
+                    const textColor = isSelected ? colors.accentText : colors.text;
 
-              return (
-                <Button
-                  key={day.id}
-                  accessibilityLabel={`View ${day.label}, ${formatDate(day.date, {
-                    weekday: 'long',
-                    month: 'long',
-                  })}`}
-                  accessibilityState={{ selected: isSelected }}
-                  onPress={() => selectTripDay(day.date)}
-                  style={{ minHeight: 82, minWidth: 74, paddingHorizontal: 11, paddingVertical: 8 }}
-                  tone={isSelected ? 'primary' : 'secondary'}
-                >
-                  <View style={{ alignItems: 'center', gap: 1 }}>
-                    <Text selectable style={{ color: textColor, fontSize: 11, fontWeight: '800' }}>
-                      {day.weekday}
-                    </Text>
-                    <Text
-                      selectable
-                      style={{
-                        color: textColor,
-                        fontSize: 24,
-                        fontVariant: ['tabular-nums'],
-                        fontWeight: '800',
-                        lineHeight: 28,
-                      }}
-                    >
-                      {dayNumber}
-                    </Text>
-                    <Text selectable style={{ color: textColor, fontSize: 11, fontWeight: '600' }}>
-                      {month}
-                    </Text>
-                  </View>
-                </Button>
-              );
-            })}
+                    return (
+                      <Button
+                        key={day.id}
+                        accessibilityLabel={`View ${day.label}, ${formatDate(day.date, {
+                          weekday: 'long',
+                          month: 'long',
+                        })}`}
+                        accessibilityState={{ selected: isSelected }}
+                        onPress={() => selectTripDay(day.date)}
+                        style={{
+                          borderRadius: dateStripRadius,
+                          height: dayCardHeight,
+                          paddingHorizontal: 8,
+                          paddingVertical: 6,
+                          width: dayCardWidth,
+                        }}
+                        tone={isSelected ? 'primary' : 'secondary'}
+                      >
+                        <View style={{ alignItems: 'center', gap: 1 }}>
+                          <Text
+                            selectable
+                            style={{ color: textColor, fontSize: 11, fontWeight: '800' }}
+                          >
+                            {day.weekday}
+                          </Text>
+                          <Text
+                            selectable
+                            style={{
+                              color: textColor,
+                              fontSize: 24,
+                              fontVariant: ['tabular-nums'],
+                              fontWeight: '800',
+                              lineHeight: 28,
+                            }}
+                          >
+                            {dayNumber}
+                          </Text>
+                          <Text
+                            selectable
+                            style={{ color: textColor, fontSize: 11, fontWeight: '600' }}
+                          >
+                            {month}
+                          </Text>
+                        </View>
+                      </Button>
+                    );
+                  })}
+                </View>
+              </View>
+            ))}
           </ScrollView>
         </View>
 
@@ -811,31 +912,32 @@ export function ItineraryScreen() {
           </View>
           {dayEntries.length ? (
             dayEntries.map((entry, entryIndex) => {
-              const tone = itineraryEntryTone(entry.kind, theme);
+              const tone = itineraryEntryTone(entry, theme);
               const cardStyle = {
                 backgroundColor:
                   entry.kind === 'schedule' ? undefined : itineraryEntrySurface(tone, theme),
                 borderLeftColor: tone,
                 borderLeftWidth: 4,
               };
-              const timeLabel = entry.time ?? (entry.kind === 'schedule' ? 'Flexible' : 'All day');
 
               if (entry.kind === 'schedule') {
                 const { item, scheduleIndex } = entry;
                 return (
                   <View key={entry.key} style={{ flexDirection: 'row', gap: 10 }}>
                     <View style={{ alignItems: 'flex-end', paddingTop: 15, width: 58 }}>
-                      <Text
-                        selectable
-                        style={{
-                          color: entry.time ? tone : colors.textMuted,
-                          fontSize: 12,
-                          fontVariant: ['tabular-nums'],
-                          fontWeight: '800',
-                        }}
-                      >
-                        {timeLabel}
-                      </Text>
+                      {entry.time ? (
+                        <Text
+                          selectable
+                          style={{
+                            color: tone,
+                            fontSize: 12,
+                            fontVariant: ['tabular-nums'],
+                            fontWeight: '800',
+                          }}
+                        >
+                          {entry.time}
+                        </Text>
+                      ) : null}
                     </View>
                     <View style={{ alignItems: 'center', width: 14 }}>
                       <View
@@ -926,6 +1028,18 @@ export function ItineraryScreen() {
                           </Text>
                         </IconButton>
                       </View>
+                      <Button
+                        accessibilityLabel={`Open files and links for ${entryTitle(item, trip.places)}`}
+                        onPress={() =>
+                          router.push({
+                            pathname: '/item-details',
+                            params: { kind: 'ACTIVITY', itemId: item.id },
+                          })
+                        }
+                        tone="secondary"
+                      >
+                        Files &amp; links
+                      </Button>
                       <View style={{ flexDirection: 'row', gap: 8 }}>
                         <IconButton
                           disabled={!isOnline || scheduleIndex === 0 || reorderMutation.isPending}
@@ -965,17 +1079,19 @@ export function ItineraryScreen() {
                 return (
                   <View key={entry.key} style={{ flexDirection: 'row', gap: 10 }}>
                     <View style={{ alignItems: 'flex-end', paddingTop: 15, width: 58 }}>
-                      <Text
-                        selectable
-                        style={{
-                          color: entry.time ? tone : colors.textMuted,
-                          fontSize: 12,
-                          fontVariant: ['tabular-nums'],
-                          fontWeight: '800',
-                        }}
-                      >
-                        {timeLabel}
-                      </Text>
+                      {entry.time ? (
+                        <Text
+                          selectable
+                          style={{
+                            color: tone,
+                            fontSize: 12,
+                            fontVariant: ['tabular-nums'],
+                            fontWeight: '800',
+                          }}
+                        >
+                          {entry.time}
+                        </Text>
+                      ) : null}
                     </View>
                     <View style={{ alignItems: 'center', width: 14 }}>
                       <View
@@ -1005,9 +1121,25 @@ export function ItineraryScreen() {
                       <Text selectable style={{ color: tone, fontSize: 12, fontWeight: '800' }}>
                         FLIGHT
                       </Text>
-                      <Text selectable style={{ color: tone, fontSize: 16, fontWeight: '700' }}>
-                        {event === 'arrival' ? 'Arrive' : 'Depart'} · {flight.flightNumber}
-                      </Text>
+                      <View style={{ alignItems: 'center', flexDirection: 'row', gap: 7 }}>
+                        <Text
+                          accessibilityElementsHidden
+                          importantForAccessibility="no"
+                          style={{
+                            color: tone,
+                            fontSize: 17,
+                            transform: [{ rotate: event === 'arrival' ? '90deg' : '0deg' }],
+                          }}
+                        >
+                          ✈︎
+                        </Text>
+                        <Text
+                          selectable
+                          style={{ color: tone, flex: 1, fontSize: 16, fontWeight: '700' }}
+                        >
+                          {event === 'arrival' ? 'Arrive' : 'Depart'} · {flight.flightNumber}
+                        </Text>
+                      </View>
                       <Text selectable style={{ color: colors.textMuted }}>
                         {flightRoute(flight)}
                       </Text>
@@ -1032,17 +1164,19 @@ export function ItineraryScreen() {
               return (
                 <View key={entry.key} style={{ flexDirection: 'row', gap: 10 }}>
                   <View style={{ alignItems: 'flex-end', paddingTop: 15, width: 58 }}>
-                    <Text
-                      selectable
-                      style={{
-                        color: entry.time ? tone : colors.textMuted,
-                        fontSize: 12,
-                        fontVariant: ['tabular-nums'],
-                        fontWeight: '800',
-                      }}
-                    >
-                      {timeLabel}
-                    </Text>
+                    {entry.time ? (
+                      <Text
+                        selectable
+                        style={{
+                          color: tone,
+                          fontSize: 12,
+                          fontVariant: ['tabular-nums'],
+                          fontWeight: '800',
+                        }}
+                      >
+                        {entry.time}
+                      </Text>
+                    ) : null}
                   </View>
                   <View style={{ alignItems: 'center', width: 14 }}>
                     <View
@@ -1104,43 +1238,15 @@ export function ItineraryScreen() {
             />
           )}
         </View>
-
-        <View style={{ gap: 10 }}>
-          <Text selectable style={{ color: colors.text, fontSize: 19, fontWeight: '800' }}>
-            Trip details
-          </Text>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-            <Link href="/itinerary/visual" asChild>
-              <Button tone="secondary">Visual itinerary</Button>
-            </Link>
-            <Link href="/reminders" asChild>
-              <Button tone="secondary">Personal reminders</Button>
-            </Link>
-            <Link
-              href={{ pathname: '/itinerary-editor', params: { kind: 'day', id: selectedDay.id } }}
-              asChild
-            >
-              <Button tone="secondary">Day note</Button>
-            </Link>
-            <Link href={{ pathname: '/itinerary-editor', params: { kind: 'stays' } }} asChild>
-              <Button tone="secondary">Stays ({trip.stays.length})</Button>
-            </Link>
-            <Link
-              href={{
-                pathname: '/itinerary-editor',
-                params: { kind: 'flights', date: selectedDay.date },
-              }}
-              asChild
-            >
-              <Button tone="secondary">Flights ({trip.flights.length})</Button>
-            </Link>
-            <Link href={{ pathname: '/itinerary-editor', params: { kind: 'locations' } }} asChild>
-              <Button tone="secondary">Locations ({trip.locationSegments.length})</Button>
-            </Link>
-          </View>
-        </View>
       </Screen>
       <Stack.Toolbar placement="right">
+        {tripDetailsMenu({
+          date: selectedDay.date,
+          dayId: selectedDay.id,
+          flightCount: trip.flights.length,
+          locationCount: trip.locationSegments.length,
+          stayCount: trip.stays.length,
+        })}
         <Stack.Toolbar.Button
           accessibilityLabel="Add itinerary item"
           icon={process.env.EXPO_OS === 'ios' ? 'plus' : AddIcon}

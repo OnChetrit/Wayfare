@@ -323,12 +323,21 @@ export function deleteSchedule(tripId: string, scheduleId: string) {
   return write(tripPath(tripId, `/schedule/${encodeURIComponent(scheduleId)}`), 'DELETE');
 }
 
-export function updateActivityReservationLock(tripId: string, scheduleId: string, locked: boolean) {
+export function updateReservationLock(
+  tripId: string,
+  kind: 'ACTIVITY' | 'HOTEL' | 'FLIGHT',
+  itemId: string,
+  locked: boolean,
+) {
   return write<{ locked: boolean }>(
-    tripPath(tripId, `/reservations/ACTIVITY/${encodeURIComponent(scheduleId)}`),
+    tripPath(tripId, `/reservations/${kind}/${encodeURIComponent(itemId)}`),
     'PATCH',
     { locked },
   );
+}
+
+export function updateActivityReservationLock(tripId: string, scheduleId: string, locked: boolean) {
+  return updateReservationLock(tripId, 'ACTIVITY', scheduleId, locked);
 }
 
 export function updateDayNotes(tripId: string, dayId: string, notes: string | null) {

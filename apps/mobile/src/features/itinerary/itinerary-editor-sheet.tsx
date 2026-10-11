@@ -434,31 +434,6 @@ function ItineraryEditor({
         <Stack.Screen
           options={{
             title: titleForKind(kind),
-            headerRight:
-              itemId && ['schedule', 'stay', 'place', 'flight'].includes(kind)
-                ? () => (
-                    <Button
-                      onPress={() =>
-                        router.push({
-                          pathname: '/item-details',
-                          params: {
-                            itemId,
-                            kind: (
-                              {
-                                schedule: 'ACTIVITY',
-                                stay: 'HOTEL',
-                                place: 'PLACE',
-                                flight: 'FLIGHT',
-                              } as Record<string, string>
-                            )[kind],
-                          },
-                        })
-                      }
-                    >
-                      Tickets &amp; payment
-                    </Button>
-                  )
-                : undefined,
           }}
         />
         <Host colorScheme={theme} seedColor={nativeColors.accent} style={{ flex: 1 }}>
@@ -484,6 +459,31 @@ function ItineraryEditor({
                 <SwiftText>
                   Changes to this activity require confirmation before they are saved.
                 </SwiftText>
+              </Section>
+            ) : null}
+
+            {itemId && ['schedule', 'stay', 'place', 'flight'].includes(kind) ? (
+              <Section title="Files & links">
+                <SwiftButton
+                  label="View and manage attachments"
+                  systemImage="paperclip"
+                  onPress={() =>
+                    router.push({
+                      pathname: '/item-details',
+                      params: {
+                        itemId,
+                        kind: (
+                          {
+                            schedule: 'ACTIVITY',
+                            stay: 'HOTEL',
+                            place: 'PLACE',
+                            flight: 'FLIGHT',
+                          } as Record<string, string>
+                        )[kind],
+                      },
+                    })
+                  }
+                />
               </Section>
             ) : null}
 
@@ -1221,7 +1221,7 @@ function ItineraryEditor({
             }
             tone="secondary"
           >
-            Tickets &amp; payment
+            Files &amp; links
           </Button>
         ) : null}
         {kind === 'schedule' ? (

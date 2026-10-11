@@ -7,6 +7,7 @@ import {
   paymentTotals,
   documentContentType,
   documentLinkInputSchema,
+  documentUpdateInputSchema,
   tripDayRoutes,
   toggleTripDay,
   reservationAcknowledgements,
@@ -59,6 +60,16 @@ describe('documents and route contracts', () => {
     ).toBe(false);
     expect(documentContentType(new TextEncoder().encode('%PDF-1.7'))).toBe('application/pdf');
     expect(documentContentType(new TextEncoder().encode('<script>'))).toBeNull();
+  });
+  it('validates document renames and editable web links', () => {
+    expect(
+      documentUpdateInputSchema.parse({ label: '  Museum tickets  ', url: 'https://example.com' }),
+    ).toEqual({ label: 'Museum tickets', url: 'https://example.com' });
+    expect(documentUpdateInputSchema.safeParse({ label: 'Ticket' }).success).toBe(true);
+    expect(
+      documentUpdateInputSchema.safeParse({ label: 'Ticket', url: 'file:///private/ticket.pdf' })
+        .success,
+    ).toBe(false);
   });
   it('includes empty days without renumbering', () => {
     const days = tripDayRoutes('2030-01-01', '2030-01-03', [], []);
