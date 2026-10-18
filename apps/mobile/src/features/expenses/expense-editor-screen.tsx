@@ -205,19 +205,18 @@ function ExpenseEditor({
           Expense details
         </Text>
         <Field label="Title" value={title} onChangeText={setTitle} editable={!disabled} />
-        <Field
-          label="Amount"
-          value={amount}
-          onChangeText={setAmount}
-          keyboardType="decimal-pad"
-          editable={!disabled}
-        />
-        <CurrencyPicker
-          value={currency}
-          onChange={setCurrency}
-          preferred={[trip.defaultCurrency, ...trip.expenses.map(item => item.currency)]}
-          disabled={disabled}
-        />
+        <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: space.sm }}>
+          <View style={{ flex: 1 }}>
+            <Field
+              label="Amount"
+              value={amount}
+              onChangeText={setAmount}
+              keyboardType="decimal-pad"
+              editable={!disabled}
+            />
+          </View>
+          <CurrencyPicker value={currency} onChange={setCurrency} disabled={disabled} />
+        </View>
         <Text selectable style={{ color: colors.textMuted, fontSize: 13, fontWeight: '700' }}>
           Category
         </Text>

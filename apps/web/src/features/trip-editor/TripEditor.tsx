@@ -137,7 +137,8 @@ export function TripEditor({
   const [settingsFlightDate, setSettingsFlightDate] = useState<string | undefined>();
   const [activityEditorOpen, setActivityEditorOpen] = useState<ActivityEditorState | null>(null);
   const [dayNotesOpen, setDayNotesOpen] = useState(false);
-  const [showDayPlanOnly, setShowDayPlanOnly] = useState(true);
+  const [showDayPlan, setShowDayPlan] = useState(true);
+  const [showSavedPlaces, setShowSavedPlaces] = useState(true);
   const { showRouteLines, setShowRouteLines } = useMapRouteLinePreference();
   const [showOnlyVisiblePlaces, setShowOnlyVisiblePlaces] = useState(false);
   const [visibleMapPlaceIds, setVisibleMapPlaceIds] = useState<string[]>([]);
@@ -338,7 +339,6 @@ export function TripEditor({
       setSelectedLocationId(null);
       setSelectedPlaceId(null);
       setPreviewPlace(null);
-      setShowDayPlanOnly(true);
       setMode('day');
     });
   }
@@ -1458,7 +1458,6 @@ export function TripEditor({
     setSelectedDate(date);
     setSelectedPlaceId(null);
     setPreviewPlace(null);
-    setShowDayPlanOnly(true);
   }
 
   function addActivityForDate(date: string) {
@@ -1519,7 +1518,7 @@ export function TripEditor({
                 stays={stays}
                 places={places}
                 destinationLabel={currentTrip.destinationLabel ?? currentTrip.name}
-                defaultCurrency={user.preferences.currency}
+                defaultCurrency={currentTrip.defaultCurrency}
                 onSavePlace={savePlace}
                 onSelectDay={date => selectDay(date === selectedDate ? '' : date)}
                 onSelectLocation={selectLocation}
@@ -1552,7 +1551,7 @@ export function TripEditor({
                     tripId={currentTrip.id}
                     tripStartDate={currentTrip.startDate}
                     tripEndDate={currentTrip.endDate}
-                    defaultCurrency={user.preferences.currency}
+                    defaultCurrency={currentTrip.defaultCurrency}
                     expenses={expenses}
                     stays={stays}
                     flights={flights}
@@ -1685,11 +1684,13 @@ export function TripEditor({
                       flights={flights}
                       selectedPlaceId={selectedPlaceId}
                       previewPlace={previewPlace}
-                      showDayPlanOnly={showDayPlanOnly}
+                      showDayPlan={showDayPlan}
+                      showSavedPlaces={showSavedPlaces}
                       showRouteLines={showRouteLines}
                       selectedDayLabel={selectedDay?.weekday.toLowerCase() ?? 'your day'}
                       onSelectPlace={selectPlace}
-                      onShowDayPlanOnlyChange={setShowDayPlanOnly}
+                      onShowDayPlanChange={setShowDayPlan}
+                      onShowSavedPlacesChange={setShowSavedPlaces}
                       onShowRouteLinesChange={setShowRouteLines}
                       onVisibleMapPlacesChange={setVisibleMapPlaceIds}
                       onClosePreview={() => setPreviewPlace(null)}
@@ -1793,7 +1794,7 @@ export function TripEditor({
               editingActivityCategory ??
               (activityEditorOpen.kind === 'activity' ? 'CUSTOM' : 'TRANSPORT')
             }
-            defaultCurrency={user.preferences.currency}
+            defaultCurrency={currentTrip.defaultCurrency}
             title={
               editingScheduleItem
                 ? 'Edit activity'

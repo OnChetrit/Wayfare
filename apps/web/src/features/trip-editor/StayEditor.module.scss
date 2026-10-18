@@ -218,6 +218,13 @@
     display: grid;
   }
 
+  .amountControls {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+    margin-top: 5px;
+  }
+
   .timelineEditorActions {
     justify-content: flex-end;
     gap: 7px;

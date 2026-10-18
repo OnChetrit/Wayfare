@@ -35,7 +35,7 @@ import {
   type TripDay,
   type TripFlight,
 } from '@wayfare/domain';
-import { CurrencyPicker } from '@/components/CurrencyPicker';
+import { AmountCurrencyPicker } from '@/components/AmountCurrencyPicker';
 import {
   expenseCategories,
   expenseCategoryLabels,
@@ -103,7 +103,11 @@ export function ExpensesPanel(props: Props) {
   const [paymentDate, setPaymentDate] = useState('');
   const [notes, setNotes] = useState('');
   const [coverage, setCoverage] = useState<ExpenseItem[]>([]);
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState<Record<ExpenseItem['kind'], string>>({
+    FLIGHT: '',
+    HOTEL: '',
+    ACTIVITY: '',
+  });
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const [combineIds, setCombineIds] = useState<string[]>([]);
@@ -152,7 +156,7 @@ export function ExpensesPanel(props: Props) {
     setPaymentDate(expense?.paymentDate ?? '');
     setNotes(expense?.notes ?? '');
     setError('');
-    setQuery('');
+    setQuery({ FLIGHT: '', HOTEL: '', ACTIVITY: '' });
     setCoverage(
       expense?.coverage ??
         sources.filter(
@@ -503,24 +507,23 @@ export function ExpensesPanel(props: Props) {
             Expense name
             <input required value={title} onChange={event => setTitle(event.target.value)} />
           </label>
-          <div className={styles.formColumns}>
-            <label>
-              Amount
+          <div className={styles.amountField}>
+            <label htmlFor="expense-amount">Amount</label>
+            <div className={styles.amountControls}>
               <input
+                id="expense-amount"
+                type="number"
+                min="0"
+                step="any"
                 required
                 inputMode="decimal"
                 value={amount}
                 onChange={event => setAmount(event.target.value)}
               />
-            </label>
-            <label>
-              Currency
-              <CurrencyPicker
-                value={currency}
-                onChange={setCurrency}
-                preferred={[defaultCurrency, ...expenses.map(item => item.currency)]}
-              />
-            </label>
+              <AmountCurrencyPicker value={currency} onChange={setCurrency} />
+            </div>
+          </div>
+          <div className={styles.formColumns}>
             <label>
               Category
               <select
@@ -567,40 +570,62 @@ export function ExpensesPanel(props: Props) {
           </label>
           <fieldset className={styles.coverageFieldset}>
             <legend>Covered reservations</legend>
-            <input
-              className={styles.coverageSearch}
-              aria-label="Search reservations"
-              placeholder="Search flights, hotels, and activities"
-              value={query}
-              onChange={event => setQuery(event.target.value)}
-            />
             {(['FLIGHT', 'HOTEL', 'ACTIVITY'] as const).map(kind => (
               <div className={styles.coverageGroup} key={kind}>
                 <strong>
                   {kind === 'FLIGHT' ? 'Flights' : kind === 'HOTEL' ? 'Hotels' : 'Activities'}
                 </strong>
-                {sources
-                  .filter(
-                    item =>
-                      item.kind === kind &&
-                      `${item.title} ${item.date}`.toLowerCase().includes(query.toLowerCase()),
-                  )
-                  .map(item => (
-                    <label className={styles.coverageOption} key={item.itemId}>
-                      <input
-                        type="checkbox"
-                        checked={coverage.some(link => link.itemId === item.itemId)}
-                        onChange={event =>
-                          setCoverage(current =>
-                            event.target.checked
-                              ? [...current, item]
-                              : current.filter(link => link.itemId !== item.itemId),
-                          )
-                        }
-                      />
-                      {item.title} · {item.date}
-                    </label>
-                  ))}
+                <details className={styles.coverageSelect}>
+                  <summary>
+                    {coverage.filter(item => item.kind === kind).length
+                      ? coverage
+                          .filter(item => item.kind === kind)
+                          .map(item => item.title)
+                          .join(', ')
+                      : `Select ${kind === 'FLIGHT' ? 'flights' : kind === 'HOTEL' ? 'hotels' : 'activities'}`}
+                  </summary>
+                  <div className={styles.coverageOptions}>
+                    <input
+                      className={styles.coverageSearch}
+                      aria-label={`Search ${kind.toLowerCase()}s`}
+                      placeholder="Search items"
+                      value={query[kind]}
+                      onChange={event =>
+                        setQuery(current => ({ ...current, [kind]: event.target.value }))
+                      }
+                    />
+                    {sources
+                      .filter(
+                        item =>
+                          item.kind === kind &&
+                          `${item.title} ${item.date}`
+                            .toLowerCase()
+                            .includes(query[kind].toLowerCase()),
+                      )
+                      .map(item => (
+                        <label className={styles.coverageOption} key={item.itemId}>
+                          <input
+                            type="checkbox"
+                            checked={coverage.some(
+                              link => link.itemId === item.itemId && link.kind === item.kind,
+                            )}
+                            onChange={event =>
+                              setCoverage(current =>
+                                event.target.checked
+                                  ? [...current, item]
+                                  : current.filter(
+                                      link =>
+                                        link.itemId !== item.itemId || link.kind !== item.kind,
+                                    ),
+                              )
+                            }
+                          />
+                          {item.title} · {item.date}
+                        </label>
+                      ))}
+                    {!sources.some(item => item.kind === kind) && <span>No items available</span>}
+                  </div>
+                </details>
               </div>
             ))}
             {coverage.map((item, index) => (

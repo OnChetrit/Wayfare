@@ -541,6 +541,36 @@
   text-transform: uppercase;
 }
 
+.coverageSelect {
+  position: relative;
+}
+
+.coverageSelect summary {
+  overflow: hidden;
+  padding: 9px 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: 7px;
+  background: var(--paper);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.coverageOptions {
+  display: grid;
+  max-height: 230px;
+  gap: 5px;
+  overflow: auto;
+  padding: 8px 0;
+}
+
+.coverageOptions > span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
 .coverageOption {
   display: flex !important;
   min-height: 34px;
@@ -561,6 +591,19 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12px;
+}
+
+.amountField {
+  display: grid;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.amountControls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
 }
 
 .error {

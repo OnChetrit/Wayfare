@@ -60,6 +60,42 @@ export const flightCandidateSchema = z.object({
     .transform(value => value ?? undefined),
 });
 
+export function flightCandidateToDatabase(flight: TripFlightCandidate) {
+  return {
+    flight_number: flight.flightNumber,
+    airline_name: flight.airlineName ?? null,
+    airline_iata: flight.airlineIata ?? null,
+    airline_icao: flight.airlineIcao ?? null,
+    departure_date: flight.departureDate,
+    arrival_date: flight.arrivalDate ?? null,
+    departure_airport_iata: flight.departureAirportIata ?? null,
+    departure_airport_icao: flight.departureAirportIcao ?? null,
+    departure_airport_name: flight.departureAirportName ?? null,
+    departure_time_zone: flight.departureTimeZone ?? null,
+    arrival_airport_iata: flight.arrivalAirportIata ?? null,
+    arrival_airport_icao: flight.arrivalAirportIcao ?? null,
+    arrival_airport_name: flight.arrivalAirportName ?? null,
+    arrival_time_zone: flight.arrivalTimeZone ?? null,
+    scheduled_departure_local: flight.scheduledDepartureLocal,
+    scheduled_departure_utc: flight.scheduledDepartureUtc,
+    scheduled_arrival_local: flight.scheduledArrivalLocal ?? null,
+    scheduled_arrival_utc: flight.scheduledArrivalUtc ?? null,
+    revised_departure_local: flight.revisedDepartureLocal ?? null,
+    revised_arrival_local: flight.revisedArrivalLocal ?? null,
+    departure_terminal: flight.departureTerminal ?? null,
+    departure_gate: flight.departureGate ?? null,
+    departure_check_in_desk: flight.departureCheckInDesk ?? null,
+    arrival_terminal: flight.arrivalTerminal ?? null,
+    arrival_gate: flight.arrivalGate ?? null,
+    arrival_baggage_belt: flight.arrivalBaggageBelt ?? null,
+    status: flight.status,
+    duration_minutes: flight.durationMinutes ?? null,
+    aircraft_model: flight.aircraftModel ?? null,
+    aircraft_registration: flight.aircraftRegistration ?? null,
+    last_updated_utc: flight.lastUpdatedUtc ?? null,
+  };
+}
+
 export const flightSelect =
   'id, trip_id, flight_number, airline_name, airline_iata, airline_icao, departure_date, arrival_date, departure_airport_iata, departure_airport_icao, departure_airport_name, departure_time_zone, arrival_airport_iata, arrival_airport_icao, arrival_airport_name, arrival_time_zone, scheduled_departure_local, scheduled_departure_utc, scheduled_arrival_local, scheduled_arrival_utc, revised_departure_local, revised_arrival_local, departure_terminal, departure_gate, departure_check_in_desk, arrival_terminal, arrival_gate, arrival_baggage_belt, status, duration_minutes, aircraft_model, aircraft_registration, last_updated_utc, reservation_locked, mutation_version';
 

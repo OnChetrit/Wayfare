@@ -69,6 +69,22 @@ export function formatMoney(amount: number | string, currency: string) {
   }).format(Number(amount));
 }
 
+export function currencySymbol(code: string) {
+  try {
+    return (
+      new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: code,
+        currencyDisplay: 'narrowSymbol',
+      })
+        .formatToParts(0)
+        .find(part => part.type === 'currency')?.value ?? code
+    );
+  } catch {
+    return code;
+  }
+}
+
 export function searchCurrencies(query: string, preferred: readonly string[] = []) {
   const needle = query.trim().toLowerCase();
   return activeCurrencies

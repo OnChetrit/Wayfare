@@ -3,10 +3,11 @@
 import { TripItemTools } from './TripItemTools';
 import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { tripDayRoutes, orderScheduleItemsForDay } from '@wayfare/domain';
-import { ArrowLeft, ArrowRight, MapPinPlus, Route, Search, Star, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, MapPinPlus, Search, Settings2, Star, X } from 'lucide-react';
 import styles from './MapPanel.module.scss';
 import { GoogleMapCanvas } from './GoogleMapCanvas';
 import { groundRoutePlacesForDay } from './map-route-data';
+import { visibleBaseMapPlaces } from './map-place-visibility';
 import { usePlaceHover } from './PlaceHoverContext';
 import type {
   EditorMode,
@@ -33,11 +34,13 @@ type MapPanelProps = {
   flights: TripFlight[];
   selectedPlaceId: string | null;
   previewPlace: SavedPlace | null;
-  showDayPlanOnly: boolean;
+  showDayPlan: boolean;
+  showSavedPlaces: boolean;
   showRouteLines: boolean;
   selectedDayLabel: string;
   onSelectPlace: (place: SavedPlace) => void;
-  onShowDayPlanOnlyChange: (value: boolean) => void;
+  onShowDayPlanChange: (value: boolean) => void;
+  onShowSavedPlacesChange: (value: boolean) => void;
   onShowRouteLinesChange: (value: boolean) => void;
   onVisibleMapPlacesChange: (placeIds: string[]) => void;
   onClosePreview: () => void;
@@ -56,14 +59,6 @@ type MappableLocationSegment = LocationSegment & {
 
 function hasMapCoordinates(segment: LocationSegment): segment is MappableLocationSegment {
   return typeof segment.latitude === 'number' && typeof segment.longitude === 'number';
-}
-
-function formatDate(value: string) {
-  return new Intl.DateTimeFormat('en-US', {
-    month: 'short',
-    day: 'numeric',
-    timeZone: 'UTC',
-  }).format(new Date(`${value}T12:00:00Z`));
 }
 
 function locationPlaceFromSegment(segment: MappableLocationSegment): SavedPlace {
@@ -208,11 +203,13 @@ export function MapPanel({
   flights,
   selectedPlaceId,
   previewPlace,
-  showDayPlanOnly,
+  showDayPlan,
+  showSavedPlaces,
   showRouteLines,
   selectedDayLabel,
   onSelectPlace,
-  onShowDayPlanOnlyChange,
+  onShowDayPlanChange,
+  onShowSavedPlacesChange,
   onShowRouteLinesChange,
   onVisibleMapPlacesChange,
   onClosePreview,
@@ -232,6 +229,7 @@ export function MapPanel({
   const [savingPlaceId, setSavingPlaceId] = useState<string | null>(null);
   const [favoritingPlaceId, setFavoritingPlaceId] = useState<string | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [mapSettingsOpen, setMapSettingsOpen] = useState(false);
   const [previewPhotoSelection, setPreviewPhotoSelection] = useState<{
     placeId: string;
     index: number;
@@ -239,11 +237,25 @@ export function MapPanel({
   const [airportPlaces, setAirportPlaces] = useState<Record<string, SavedPlace>>({});
   const { hoveredPlaceId } = usePlaceHover();
   const mapSearchRef = useRef<HTMLDivElement>(null);
+  const mapSettingsRef = useRef<HTMLDivElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
   const airportLookupsInFlight = useRef(new Set<string>());
 
   useClickOutside(mapSearchRef, () => setSearchOpen(false), searchOpen);
+  useClickOutside(mapSettingsRef, () => setMapSettingsOpen(false), mapSettingsOpen);
   useClickOutside(previewRef, onClosePreview, Boolean(previewPlace));
+
+  useEffect(() => {
+    if (!mapSettingsOpen) return;
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        setMapSettingsOpen(false);
+        mapSettingsRef.current?.querySelector<HTMLButtonElement>('[aria-expanded]')?.focus();
+      }
+    }
+    document.addEventListener('keydown', closeOnEscape);
+    return () => document.removeEventListener('keydown', closeOnEscape);
+  }, [mapSettingsOpen]);
 
   const localResults = useMemo(() => {
     const normalized = query.toLowerCase().trim();
@@ -477,11 +489,18 @@ export function MapPanel({
     [activeLocation, places],
   );
   const isShowingLocationPlaces = Boolean(activeLocation);
-  const baseMapPlaces = isShowingLocationPlaces
-    ? locationPlaces
-    : showDayPlanOnly && Boolean(selectedDate)
-      ? dayPlanPlaces
-      : places;
+  const baseMapPlaces = useMemo(
+    () =>
+      visibleBaseMapPlaces({
+        savedPlaces: isShowingLocationPlaces ? locationPlaces : places,
+        dayPlanPlaces,
+        selectedDate,
+        showSavedPlaces,
+        showDayPlan,
+        showingLocationPlaces: isShowingLocationPlaces,
+      }),
+    [dayPlanPlaces, isShowingLocationPlaces, locationPlaces, places, selectedDate, showDayPlan, showSavedPlaces],
+  );
   const mapPlaces = useMemo(() => {
     // Search results are cleared as soon as one is selected. Keep the selected
     // result in the marker set so the map can center on and display its pin.
@@ -501,7 +520,7 @@ export function MapPanel({
       }
       return !baseMapPlaces.some(candidate => candidate.id === place.id);
     });
-    const routeOnlyPlaces = isShowingLocationPlaces
+    const routeOnlyPlaces = isShowingLocationPlaces || !showDayPlan
       ? []
       : [...dayRoutePlaces, ...flightRoutePlaces.flat()].filter(
           place => !baseMapPlaces.some(candidate => candidate.id === place.id),
@@ -526,6 +545,7 @@ export function MapPanel({
     query,
     results,
     selectedPlaceId,
+    showDayPlan,
   ]);
   const scheduledPlaceIds = useMemo(
     () =>
@@ -633,38 +653,9 @@ export function MapPanel({
       aria-label="Map workspace"
     >
       <div className={styles.mapCanvas}>
-        <div className={styles.dayLegend} aria-label="Trip day legend">
-          <button
-            type="button"
-            className={styles.dayLegendAll}
-            onClick={() => onSelectDay('')}
-            aria-pressed={!selectedDate}
-          >
-            All days
-          </button>
-          {allDayRoutes.map(day => (
-            <button
-              type="button"
-              key={day.date}
-              onClick={() => onSelectDay(day.date)}
-              aria-pressed={day.date === selectedDate}
-            >
-              <span className={styles.dayLegendBadge} style={{ backgroundColor: day.color }}>
-                {day.dayNumber}
-              </span>
-              <span>
-                <strong>Day {day.dayNumber}</strong>
-                <small>
-                  {formatDate(day.date)}
-                  {!day.stops.length && ' · No mapped stops'}
-                  {day.unmappedCount > 0 && ` · ${day.unmappedCount} unmapped`}
-                </small>
-              </span>
-            </button>
-          ))}
-        </div>
         <GoogleMapCanvas
           dayRoutes={visibleDayRoutes}
+          showDayBadges={showDayPlan && !isShowingLocationPlaces}
           onSelectDay={onSelectDay}
           places={mapPlaces}
           routePlaces={isShowingLocationPlaces ? [] : dayRoutePlaces}
@@ -678,33 +669,63 @@ export function MapPanel({
           onGooglePlaceClick={placeId => void selectGooglePlace(placeId)}
           onVisiblePlaceIdsChange={onVisibleMapPlacesChange}
         />
-        <div className={styles.mapControls} aria-label="Map visibility options">
-          <span className={styles.mapControlLabel}>Map shows</span>
-          {isShowingLocationPlaces ? (
-            <span>{activeLocation?.locationName ?? 'Location'} places</span>
-          ) : (
-            <button
-              type="button"
-              className={styles.switchButton}
-              role="switch"
-              aria-checked={showDayPlanOnly}
-              onClick={() => onShowDayPlanOnlyChange(!showDayPlanOnly)}
-            >
-              <span className={styles.switchTrack} aria-hidden="true">
-                <span className={styles.switchThumb} />
-              </span>
-              <span>{showDayPlanOnly ? 'Day plan' : 'All saved places'}</span>
-            </button>
-          )}
+        <div ref={mapSettingsRef} className={styles.mapSettings}>
           <button
             type="button"
-            className={styles.routeLinesButton}
-            aria-pressed={showRouteLines}
-            onClick={() => onShowRouteLinesChange(!showRouteLines)}
+            className={styles.mapSettingsButton}
+            aria-label="Map settings"
+            aria-expanded={mapSettingsOpen}
+            aria-controls="map-settings-popover"
+            onClick={() => setMapSettingsOpen(open => !open)}
           >
-            <Route aria-hidden="true" size={15} />
-            <span>Route lines</span>
+            <Settings2 aria-hidden="true" size={19} />
           </button>
+          {mapSettingsOpen && (
+            <div
+              id="map-settings-popover"
+              className={styles.mapSettingsPopover}
+              aria-label="Map visibility options"
+            >
+              <span className={styles.mapControlLabel}>Map visibility</span>
+              <button
+                type="button"
+                className={styles.switchButton}
+                role="switch"
+                aria-checked={showSavedPlaces}
+                onClick={() => onShowSavedPlacesChange(!showSavedPlaces)}
+              >
+                <span>Show saved places</span>
+                <span className={styles.switchTrack} aria-hidden="true">
+                  <span className={styles.switchThumb} />
+                </span>
+              </button>
+              <button
+                type="button"
+                className={styles.switchButton}
+                role="switch"
+                aria-checked={showDayPlan}
+                disabled={isShowingLocationPlaces}
+                onClick={() => onShowDayPlanChange(!showDayPlan)}
+              >
+                <span>Show day plan</span>
+                <span className={styles.switchTrack} aria-hidden="true">
+                  <span className={styles.switchThumb} />
+                </span>
+              </button>
+              <button
+                type="button"
+                className={styles.switchButton}
+                role="switch"
+                aria-checked={showRouteLines}
+                onClick={() => onShowRouteLinesChange(!showRouteLines)}
+              >
+                <span>Show route lines</span>
+                <span className={styles.switchTrack} aria-hidden="true">
+                  <span className={styles.switchThumb} />
+                </span>
+              </button>
+            </div>
+          )}
         </div>
         <div ref={mapSearchRef} className={styles.mapSearch}>
           <Search size={17} />

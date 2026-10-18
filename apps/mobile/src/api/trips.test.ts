@@ -19,6 +19,7 @@ import {
   revokeTripInvitation,
   updateTripMember,
   updateReservationLock,
+  updateFlight,
 } from './trips';
 
 import { WayfareApiError } from './error';
@@ -310,6 +311,26 @@ describe('trip API', () => {
         headers: { 'Content-Type': 'application/json' },
       },
     );
+  });
+
+  it('updates a saved flight through its authenticated trip route', async () => {
+    const flightId = '018f7f0e-7c54-7b24-a9d2-4e3683c98f99';
+    const candidate = {
+      flightNumber: 'LY316',
+      departureDate: '2026-10-10',
+      scheduledDepartureLocal: '2026-10-10T09:00:00+03:00',
+      scheduledDepartureUtc: '2026-10-10T06:00:00Z',
+      status: 'Scheduled',
+    };
+    requestWayfareApi.mockResolvedValueOnce({ flight: { id: flightId } });
+
+    await updateFlight(rawTrip.id, flightId, candidate);
+
+    expect(requestWayfareApi).toHaveBeenCalledWith(`/api/trips/${rawTrip.id}/flights/${flightId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(candidate),
+      headers: { 'Content-Type': 'application/json' },
+    });
   });
 
   it('sends all linked-hotel stay details through the authenticated API', async () => {

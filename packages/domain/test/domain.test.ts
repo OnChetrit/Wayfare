@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   currencyTotals,
+  currencySymbol,
   createdTripInvitationSchema,
   dayRouteSavedPlaceIds,
   invitationCreateSchema,
@@ -69,6 +70,11 @@ describe('shared domain contracts', () => {
       },
     ];
     expect(currencyTotals(expenses)).toEqual({ EUR: 34, USD: 12 });
+  });
+
+  it('shows a compact currency symbol while retaining the ISO code for selection', () => {
+    expect(currencySymbol('EUR')).toBe('€');
+    expect(currencySymbol('USD')).toBe('$');
   });
 
   it('replays offline work in original sequence', () => {

@@ -11,80 +11,6 @@
     background: var(--map-background);
   }
 
-  .dayLegend {
-    position: absolute;
-    z-index: 4;
-    bottom: 18px;
-    left: 18px;
-    display: grid;
-    width: min(240px, calc(100% - 36px));
-    max-height: 190px;
-    gap: 4px;
-    padding: 7px;
-    overflow-y: auto;
-    border: 1px solid var(--line);
-    border-radius: 12px;
-    color: var(--ink);
-    background: var(--surface-glass-strong);
-    box-shadow: var(--shadow-soft);
-
-    button {
-      display: flex;
-      min-height: 38px;
-      align-items: center;
-      gap: 8px;
-      padding: 6px 8px;
-      border: 1px solid transparent;
-      border-radius: 8px;
-      color: var(--ink);
-      background: transparent;
-      cursor: pointer;
-      text-align: left;
-
-      &:hover,
-      &[aria-pressed='true'] {
-        border-color: var(--line);
-        background: var(--surface-green);
-      }
-    }
-
-    strong,
-    small {
-      display: block;
-    }
-
-    strong {
-      font-size: 11px;
-    }
-
-    small {
-      margin-top: 2px;
-      color: var(--muted);
-      font-size: 9px;
-    }
-  }
-
-  .dayLegendAll {
-    justify-content: center;
-    color: var(--green-dark) !important;
-    font-size: 11px;
-    font-weight: 700;
-  }
-
-  .dayLegendBadge {
-    display: grid;
-    flex: 0 0 25px;
-    width: 25px;
-    height: 25px;
-    place-items: center;
-    border: 2px solid white;
-    border-radius: 50%;
-    color: white;
-    font-size: 10px;
-    font-weight: 800;
-    box-shadow: 0 2px 5px rgba(23, 36, 30, 0.18);
-  }
-
   .mapSearch {
     position: absolute;
     z-index: 5;
@@ -218,23 +144,47 @@
     font-size: 11px;
   }
 
-  .mapControls {
+  .mapSettings {
     position: absolute;
     z-index: 5;
     top: 20px;
     right: 24px;
-    min-height: 44px;
-    padding: 7px 10px 7px 12px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
+  }
+
+  .mapSettingsButton {
+    width: 44px;
+    height: 44px;
+    display: grid;
+    place-items: center;
     border: 1px solid rgba(227, 234, 228, 0.9);
     border-radius: 12px;
+    color: var(--green-dark);
     background: var(--surface-glass-strong);
     box-shadow: 0 7px 20px rgba(57, 79, 63, 0.1);
+    cursor: pointer;
+
+    &:hover,
+    &[aria-expanded='true'] {
+      background: var(--surface-green);
+    }
+  }
+
+  .mapSettingsPopover {
+    position: absolute;
+    top: 50px;
+    right: 0;
+    width: 212px;
+    padding: 10px;
+    display: grid;
+    gap: 3px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--surface-glass-strong);
+    box-shadow: var(--shadow-soft);
   }
 
   .mapControlLabel {
+    padding: 3px 5px 7px;
     color: var(--soft-muted);
     font:
       11px 'DM Mono',
@@ -244,17 +194,28 @@
   }
 
   .switchButton {
-    min-height: 29px;
-    padding: 0;
+    min-height: 38px;
+    padding: 0 5px;
     display: flex;
     align-items: center;
-    gap: 7px;
+    justify-content: space-between;
+    gap: 10px;
     border: 0;
-    color: var(--green-dark);
+    border-radius: 7px;
+    color: var(--ink);
     background: transparent;
     font-size: 12px;
-    font-weight: 700;
     white-space: nowrap;
+    cursor: pointer;
+
+    &:hover:not(:disabled) {
+      background: var(--surface-green);
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
 
     &[aria-checked='true'] {
       .switchTrack {
@@ -267,37 +228,6 @@
     }
   }
 
-  .routeLinesButton {
-    min-height: 29px;
-    padding: 0 8px;
-    border: 1px solid var(--line-strong);
-    border-radius: 8px;
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    color: var(--muted);
-    background: var(--surface-strong);
-    font-size: 12px;
-    font-weight: 700;
-    white-space: nowrap;
-
-    &[aria-pressed='true'] {
-      border-color: var(--green);
-      color: white;
-      background: var(--green-button);
-    }
-
-    &:hover {
-      color: var(--green-dark);
-      background: var(--surface-green);
-    }
-
-    &[aria-pressed='true']:hover {
-      color: white;
-      background: var(--green-button-hover);
-    }
-  }
-
   .switchTrack {
     position: relative;
     width: 30px;
@@ -306,14 +236,6 @@
     border-radius: 999px;
     background: var(--soft-muted);
     transition: 0.2s ease;
-  }
-
-  .switchOn {
-    background: var(--green-button);
-
-    .switchThumb {
-      transform: translateX(12px);
-    }
   }
 
   .switchThumb {
@@ -609,34 +531,9 @@
       width: calc(100% - 30px);
     }
 
-    .mapControls {
+    .mapSettings {
       top: 73px;
       right: 15px;
-      left: 15px;
-      min-height: 44px;
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 6px;
-      padding: 6px;
-    }
-
-    .mapControlLabel {
-      display: none;
-    }
-
-    .switchButton,
-    .routeLinesButton {
-      min-width: 0;
-      justify-content: center;
-    }
-
-    .mapControls > span:not(.mapControlLabel) {
-      grid-column: 1 / -1;
-      padding: 0 6px;
-    }
-
-    .mapControls > span:not(.mapControlLabel) + .routeLinesButton {
-      grid-column: 1 / -1;
     }
 
     .dayRouteBadge {

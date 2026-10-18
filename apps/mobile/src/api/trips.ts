@@ -440,6 +440,14 @@ export function createFlight(tripId: string, flight: Omit<TripFlight, 'id' | 'tr
   return write(tripPath(tripId, '/flights'), 'POST', flight);
 }
 
+export function updateFlight(
+  tripId: string,
+  flightId: string,
+  flight: Omit<TripFlight, 'id' | 'tripId'>,
+) {
+  return write(tripPath(tripId, `/flights/${encodeURIComponent(flightId)}`), 'PATCH', flight);
+}
+
 export function deleteFlight(tripId: string, flightId: string) {
   return write(tripPath(tripId, `/flights/${encodeURIComponent(flightId)}`), 'DELETE');
 }

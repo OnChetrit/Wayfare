@@ -1,7 +1,6 @@
 import { Redirect } from 'expo-router';
 
 import { useAuth } from '@/features/auth/auth-context';
-import { OnboardingScreen } from '@/features/auth/onboarding-screen';
 import { rootScreenForAuth } from '@/features/auth/root-route';
 
 export default function IndexRoute() {
@@ -11,5 +10,5 @@ export default function IndexRoute() {
   if (rootScreen === 'loading') return null;
   if (rootScreen === 'itinerary') return <Redirect href="/itinerary" />;
 
-  return <OnboardingScreen />;
+  return <Redirect href="/login" />;
 }

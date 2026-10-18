@@ -143,6 +143,7 @@ type GoogleMapCanvasProps = {
   onSelectDay?: (date: string) => void;
   routePlaces: SavedPlace[];
   flightRoutePlaces: SavedPlace[][];
+  showDayBadges: boolean;
   showRouteLines: boolean;
   selectedDate: string;
   scheduledPlaceIds: Set<string>;
@@ -159,6 +160,7 @@ export function GoogleMapCanvas({
   dayRoutes,
   onSelectDay,
   flightRoutePlaces,
+  showDayBadges,
   showRouteLines,
   selectedDate,
   scheduledPlaceIds,
@@ -483,7 +485,7 @@ export function GoogleMapCanvas({
           )
       : [];
     const AdvancedMarker = googleApi.maps.marker?.AdvancedMarkerElement;
-    const badges = AdvancedMarker
+    const badges = AdvancedMarker && showDayBadges
       ? groups
           .filter(day => day.stops.length)
           .map(day => {
@@ -517,7 +519,7 @@ export function GoogleMapCanvas({
         marker.map = null;
       });
     };
-  }, [dayRoutes, onSelectDay, routePlaces, selectedDate, showRouteLines, scriptReady, isDarkTheme]);
+  }, [dayRoutes, onSelectDay, routePlaces, selectedDate, showDayBadges, showRouteLines, scriptReady, isDarkTheme]);
 
   useEffect(() => {
     if (!showRouteLines || !map.current || !flightRoutePlaces.length) return;

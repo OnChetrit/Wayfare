@@ -1,0 +1,83 @@
+.picker {
+  position: relative;
+  min-width: 60px;
+}
+
+.picker summary {
+  display: grid;
+  min-height: 36px;
+  padding: 8px 12px;
+  place-items: center;
+  border: 1px solid var(--line-strong);
+  border-radius: 7px;
+  color: var(--ink);
+  background: var(--paper);
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 700;
+  list-style: none;
+}
+
+.picker summary::-webkit-details-marker {
+  display: none;
+}
+
+.picker summary:focus-visible,
+.menu button:focus-visible,
+.menu input:focus-visible {
+  outline: 2px solid var(--green-button);
+  outline-offset: 2px;
+}
+
+.menu {
+  position: absolute;
+  z-index: 20;
+  right: 0;
+  width: min(270px, 80vw);
+  padding: 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: 9px;
+  background: var(--surface);
+  box-shadow: var(--shadow-soft);
+}
+
+.quick {
+  display: flex;
+  gap: 5px;
+  margin-bottom: 8px;
+}
+
+.menu button {
+  padding: 7px 9px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--ink);
+  background: var(--paper);
+  cursor: pointer;
+  font: inherit;
+}
+
+.quick button {
+  flex: 1;
+}
+
+.quick span {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.menu input {
+  width: 100%;
+}
+
+.results {
+  display: grid;
+  max-height: 170px;
+  gap: 3px;
+  overflow: auto;
+  margin-top: 6px;
+}
+
+.results button {
+  text-align: left;
+}

@@ -47,8 +47,9 @@ import {
 } from '@/api/trips';
 import { Button, IconButton } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { ErrorState, EmptyState, LoadingState, OfflineNotice } from '@/components/ui/state';
 import { Screen } from '@/components/ui/screen';
+import { ErrorState, EmptyState, LoadingState, OfflineNotice } from '@/components/ui/state';
+import { canModifyActivity } from '@/features/itinerary/activity-lock';
 import { dayItineraryEntries, type DayItineraryEntry } from '@/features/itinerary/day-itinerary';
 import { sectionExploreDaysByLocation } from '@/features/explore/explore-trip-days';
 import { flightEventDetail, flightRoute } from '@/features/itinerary/flight-details';
@@ -182,7 +183,7 @@ function tripDetailsMenu({
 
 export function ItineraryScreen() {
   const { theme } = useTheme();
-  const { selectedTrip, selectedTripDayDate, selectTripDay } = useTrips();
+  const { isLoadingTrips, selectedTrip, selectedTripDayDate, selectTripDay } = useTrips();
   const tripQuery = useTripEditor();
   const trip = tripQuery.data;
   const { isOnline, mutation: deleteScheduleMutation } = useTripMutation(
@@ -215,7 +216,10 @@ export function ItineraryScreen() {
       updateActivityReservationLock(trip!.id, scheduleId, locked),
   );
 
-  if (!selectedTrip && !tripQuery.isLoading) {
+  if (isLoadingTrips || tripQuery.isLoading) {
+    return <LoadingState label="Loading your itinerary…" />;
+  }
+  if (!selectedTrip) {
     return (
       <Screen>
         <EmptyState
@@ -226,7 +230,6 @@ export function ItineraryScreen() {
       </Screen>
     );
   }
-  if (tripQuery.isLoading) return <LoadingState label="Loading your itinerary…" />;
   if (tripQuery.error) {
     return (
       <ErrorState
@@ -258,7 +261,16 @@ export function ItineraryScreen() {
   function moveItem(index: number, direction: -1 | 1) {
     const next = timeline[index + direction];
     const current = timeline[index];
-    if (!next || !current || current.sortOrder === undefined || next.sortOrder === undefined)
+    if (
+      !next ||
+      !current ||
+      !isOnline ||
+      !trip?.access.canEdit ||
+      current.reservationLocked ||
+      next.reservationLocked ||
+      current.sortOrder === undefined ||
+      next.sortOrder === undefined
+    )
       return;
     void Promise.all([
       reorderMutation.mutateAsync({
@@ -420,10 +432,17 @@ export function ItineraryScreen() {
 
                   if (entry.kind === 'schedule') {
                     const { item, scheduleIndex } = entry;
+                    const title = entryTitle(item, trip.places);
+                    const activityTone = item.reservationLocked ? colors.locked : tone;
+                    const canModify = canModifyActivity(item, {
+                      canEdit: trip.access.canEdit,
+                      isOnline,
+                      pending: reservationLockMutation.isPending,
+                    });
                     return (
                       <SwipeActions key={entry.key} modifiers={[tag(entry.key)]}>
                         <SwiftButton
-                          modifiers={[buttonStyle('plain')]}
+                          modifiers={[buttonStyle('plain'), disabled(item.reservationLocked)]}
                           onPress={() =>
                             router.push({
                               pathname: '/itinerary-editor',
@@ -431,13 +450,30 @@ export function ItineraryScreen() {
                             })
                           }
                         >
-                          <HStack alignment="firstTextBaseline" spacing={12}>
+                          <HStack
+                            alignment="firstTextBaseline"
+                            spacing={12}
+                            modifiers={
+                              item.reservationLocked
+                                ? [
+                                    padding({ horizontal: 10, vertical: 8 }),
+                                    backgroundOverlay({ color: colors.lockedSurface }),
+                                    cornerRadius(10),
+                                    strokeBorder({
+                                      color: colors.lockedBorder,
+                                      shape: 'roundedRectangle',
+                                      cornerRadius: 10,
+                                    }),
+                                  ]
+                                : []
+                            }
+                          >
                             <VStack alignment="trailing" spacing={2}>
                               {entry.time ? (
                                 <SwiftText
                                   modifiers={[
                                     font({ weight: 'semibold' }),
-                                    foregroundStyle(tone),
+                                    foregroundStyle(activityTone),
                                     monospacedDigit(),
                                   ]}
                                 >
@@ -450,14 +486,16 @@ export function ItineraryScreen() {
                                   foregroundStyle('secondary'),
                                 ]}
                               >
-                                Activity
+                                {item.reservationLocked ? 'Locked' : 'Activity'}
                               </SwiftText>
                             </VStack>
                             <VStack alignment="leading" spacing={3}>
                               <Label
-                                title={entryTitle(item, trip.places)}
-                                systemImage="mappin.circle.fill"
-                                modifiers={[foregroundStyle(tone)]}
+                                title={title}
+                                systemImage={
+                                  item.reservationLocked ? 'lock.fill' : 'mappin.circle.fill'
+                                }
+                                modifiers={[foregroundStyle(activityTone)]}
                               />
                               <SwiftText modifiers={[foregroundStyle('secondary')]}>
                                 {scheduleEntryDetail(item)}
@@ -473,7 +511,10 @@ export function ItineraryScreen() {
                             systemImage="arrow.up"
                             modifiers={[
                               disabled(
-                                !isOnline || scheduleIndex === 0 || reorderMutation.isPending,
+                                !canModify ||
+                                  scheduleIndex === 0 ||
+                                  timeline[scheduleIndex - 1]?.reservationLocked ||
+                                  reorderMutation.isPending,
                               ),
                               tint(colors.accent),
                             ]}
@@ -484,8 +525,9 @@ export function ItineraryScreen() {
                             systemImage="arrow.down"
                             modifiers={[
                               disabled(
-                                !isOnline ||
+                                !canModify ||
                                   scheduleIndex === timeline.length - 1 ||
+                                  timeline[scheduleIndex + 1]?.reservationLocked ||
                                   reorderMutation.isPending,
                               ),
                               tint(colors.accent),
@@ -499,16 +541,14 @@ export function ItineraryScreen() {
                             systemImage={item.reservationLocked ? 'lock.open' : 'lock.fill'}
                             modifiers={[
                               accessibilityLabel(
-                                item.reservationLocked
-                                  ? `Unlock ${entryTitle(item, trip.places)}`
-                                  : `Lock ${entryTitle(item, trip.places)}`,
+                                item.reservationLocked ? `Unlock ${title}` : `Lock ${title}`,
                               ),
                               disabled(
                                 !isOnline ||
                                   !trip.access.canEdit ||
                                   reservationLockMutation.isPending,
                               ),
-                              tint(item.reservationLocked ? colors.success : colors.accent),
+                              tint(item.reservationLocked ? colors.locked : colors.accent),
                             ]}
                             onPress={() =>
                               reservationLockMutation.mutate({
@@ -521,7 +561,7 @@ export function ItineraryScreen() {
                             label="Delete"
                             systemImage="trash"
                             modifiers={[
-                              disabled(!isOnline || deleteScheduleMutation.isPending),
+                              disabled(!canModify || deleteScheduleMutation.isPending),
                               tint(colors.danger),
                             ]}
                             onPress={() =>
@@ -922,6 +962,12 @@ export function ItineraryScreen() {
 
               if (entry.kind === 'schedule') {
                 const { item, scheduleIndex } = entry;
+                const title = entryTitle(item, trip.places);
+                const canModify = canModifyActivity(item, {
+                  canEdit: trip.access.canEdit,
+                  isOnline,
+                  pending: reservationLockMutation.isPending,
+                });
                 return (
                   <View key={entry.key} style={{ flexDirection: 'row', gap: 10 }}>
                     <View style={{ alignItems: 'flex-end', paddingTop: 15, width: 58 }}>
@@ -969,8 +1015,8 @@ export function ItineraryScreen() {
                         { flex: 1, marginBottom: space.sm },
                         item.reservationLocked
                           ? {
-                              backgroundColor: colors.surfaceMuted,
-                              borderColor: colors.success,
+                              backgroundColor: colors.lockedSurface,
+                              borderColor: colors.lockedBorder,
                             }
                           : undefined,
                       ]}
@@ -980,7 +1026,7 @@ export function ItineraryScreen() {
                           <Text
                             selectable
                             style={{
-                              color: item.reservationLocked ? colors.success : tone,
+                              color: item.reservationLocked ? colors.locked : tone,
                               fontSize: 12,
                               fontWeight: '800',
                             }}
@@ -991,7 +1037,7 @@ export function ItineraryScreen() {
                             selectable
                             style={{ color: colors.text, fontSize: 16, fontWeight: '700' }}
                           >
-                            {entryTitle(item, trip.places)}
+                            {title}
                           </Text>
                           <Text selectable style={{ color: colors.textMuted, fontSize: 13 }}>
                             {scheduleEntryDetail(item)}
@@ -1004,7 +1050,7 @@ export function ItineraryScreen() {
                           }}
                           asChild
                         >
-                          <IconButton label={`Edit ${entryTitle(item, trip.places)}`}>
+                          <IconButton disabled={!canModify} label={`Edit ${title}`}>
                             Edit
                           </IconButton>
                         </Link>
@@ -1029,7 +1075,7 @@ export function ItineraryScreen() {
                         </IconButton>
                       </View>
                       <Button
-                        accessibilityLabel={`Open files and links for ${entryTitle(item, trip.places)}`}
+                        accessibilityLabel={`Open files and links for ${title}`}
                         onPress={() =>
                           router.push({
                             pathname: '/item-details',
@@ -1040,9 +1086,19 @@ export function ItineraryScreen() {
                       >
                         Files &amp; links
                       </Button>
+                      {item.reservationLocked ? (
+                        <Text selectable style={{ color: colors.locked, fontSize: 13 }}>
+                          Unlock this activity to edit, move, or delete it.
+                        </Text>
+                      ) : null}
                       <View style={{ flexDirection: 'row', gap: 8 }}>
                         <IconButton
-                          disabled={!isOnline || scheduleIndex === 0 || reorderMutation.isPending}
+                          disabled={
+                            !canModify ||
+                            scheduleIndex === 0 ||
+                            timeline[scheduleIndex - 1]?.reservationLocked ||
+                            reorderMutation.isPending
+                          }
                           label="Move item earlier"
                           onPress={() => moveItem(scheduleIndex, -1)}
                         >
@@ -1050,8 +1106,9 @@ export function ItineraryScreen() {
                         </IconButton>
                         <IconButton
                           disabled={
-                            !isOnline ||
+                            !canModify ||
                             scheduleIndex === timeline.length - 1 ||
+                            timeline[scheduleIndex + 1]?.reservationLocked ||
                             reorderMutation.isPending
                           }
                           label="Move item later"
@@ -1060,7 +1117,7 @@ export function ItineraryScreen() {
                           ↓
                         </IconButton>
                         <Button
-                          disabled={!isOnline || deleteScheduleMutation.isPending}
+                          disabled={!canModify || deleteScheduleMutation.isPending}
                           onPress={() =>
                             confirmDelete('this item', () => deleteScheduleMutation.mutate(item.id))
                           }

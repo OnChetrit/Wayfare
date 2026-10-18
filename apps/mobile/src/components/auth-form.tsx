@@ -129,7 +129,8 @@ export function AuthForm({ inviteToken: rawInviteToken, mode }: AuthFormProps) {
     }
   }
 
-  const submitLabel = isLogin ? 'Sign in to Wayfare' : 'Create account';
+  const submitLabel = isLogin ? 'Sign in' : 'Create account';
+  const googleLabel = isLogin ? 'Sign in with Google' : 'Continue with Google';
 
   return (
     <KeyboardAvoidingView
@@ -153,7 +154,7 @@ export function AuthForm({ inviteToken: rawInviteToken, mode }: AuthFormProps) {
               selectable
               style={{ color: colors.text, fontSize: 32, fontWeight: '700', letterSpacing: -0.9 }}
             >
-              {isLogin ? 'Continue planning.' : 'Start your next trip.'}
+              {isLogin ? 'Welcome back.' : 'Start your next trip.'}
             </Text>
             <Text selectable style={{ color: colors.textMuted, fontSize: 16, lineHeight: 24 }}>
               {isLogin
@@ -176,7 +177,7 @@ export function AuthForm({ inviteToken: rawInviteToken, mode }: AuthFormProps) {
           }}
         >
           <Pressable
-            accessibilityLabel="Continue with Google"
+            accessibilityLabel={googleLabel}
             disabled={isSubmitting}
             onPress={signInWithGoogle}
             style={({ pressed }) => ({
@@ -200,7 +201,7 @@ export function AuthForm({ inviteToken: rawInviteToken, mode }: AuthFormProps) {
               <Text style={{ color: '#4285F4', fontSize: 19, fontWeight: '700' }}>G</Text>
             )}
             <Text selectable style={{ color: colors.text, fontSize: 16, fontWeight: '700' }}>
-              Continue with Google
+              {googleLabel}
             </Text>
           </Pressable>
 

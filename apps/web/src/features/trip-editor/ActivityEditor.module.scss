@@ -115,6 +115,21 @@
     gap: 10px;
   }
 
+  .amountField {
+    margin-top: 14px;
+  }
+
+  .amountField label {
+    margin-top: 0;
+  }
+
+  .amountControls {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+    margin-top: 6px;
+  }
+
   .labelWithIcon {
     display: inline-flex;
     align-items: center;

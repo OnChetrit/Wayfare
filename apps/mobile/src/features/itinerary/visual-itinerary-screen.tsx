@@ -15,6 +15,7 @@ import { Button, IconButton } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Field } from '@/components/ui/field';
 import { ErrorState, LoadingState, OfflineNotice } from '@/components/ui/state';
+import { canModifyActivity } from '@/features/itinerary/activity-lock';
 import { DayRouteMap } from '@/features/itinerary/day-route-map';
 import {
   flightEventDetail,
@@ -102,66 +103,90 @@ function DayColumn({
               </Text>
             </View>
           ))}
-          {entries.map(item => (
-            <View key={item.id} style={{ gap: 4 }}>
-              {item.startTime ? (
-                <Text
-                  selectable
-                  style={{ color: colors.textMuted, fontSize: 13, fontVariant: ['tabular-nums'] }}
-                >
-                  {item.startTime}
-                </Text>
-              ) : null}
+          {entries.map(item => {
+            const title = entryTitle(item, places);
+            const canModify = canModifyActivity(item, {
+              canEdit: canLock,
+              isOnline: canLock,
+              pending: lockPending,
+            });
+
+            return (
               <View
+                key={item.id}
                 style={{
-                  borderLeftColor: colors.accent,
-                  borderLeftWidth: 3,
+                  backgroundColor: item.reservationLocked ? colors.lockedSurface : 'transparent',
+                  borderColor: item.reservationLocked ? colors.lockedBorder : 'transparent',
+                  borderRadius: 12,
+                  borderWidth: item.reservationLocked ? 1 : 0,
                   gap: 4,
-                  paddingLeft: 9,
+                  padding: item.reservationLocked ? 10 : 0,
                 }}
               >
-                <Text selectable style={{ color: colors.text, fontSize: 14, fontWeight: '700' }}>
-                  {entryTitle(item, places)}
-                </Text>
-                <Text selectable style={{ color: colors.textMuted, fontSize: 13 }}>
-                  {formatDuration(item.duration)}
-                  {item.amount != null && item.currency
-                    ? ` · ${formatMoney(item.amount, item.currency)}`
-                    : ''}
-                  {item.note ? ` · ${item.note}` : ''}
-                </Text>
-                <Button
-                  accessibilityLabel={`Open files and links for ${entryTitle(item, places)}`}
-                  onPress={() => onOpenDocuments(item)}
-                  tone="secondary"
+                {item.startTime ? (
+                  <Text
+                    selectable
+                    style={{ color: colors.textMuted, fontSize: 13, fontVariant: ['tabular-nums'] }}
+                  >
+                    {item.startTime}
+                  </Text>
+                ) : null}
+                <View
+                  style={{
+                    borderLeftColor: item.reservationLocked ? colors.locked : colors.accent,
+                    borderLeftWidth: 3,
+                    gap: 4,
+                    paddingLeft: 9,
+                  }}
                 >
-                  Files &amp; links
-                </Button>
-                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  {item.reservationLocked ? (
+                    <Text
+                      selectable
+                      style={{ color: colors.locked, fontSize: 12, fontWeight: '800' }}
+                    >
+                      🔒 LOCKED ACTIVITY
+                    </Text>
+                  ) : null}
+                  <Text selectable style={{ color: colors.text, fontSize: 14, fontWeight: '700' }}>
+                    {title}
+                  </Text>
+                  <Text selectable style={{ color: colors.textMuted, fontSize: 13 }}>
+                    {formatDuration(item.duration)}
+                    {item.amount != null && item.currency
+                      ? ` · ${formatMoney(item.amount, item.currency)}`
+                      : ''}
+                    {item.note ? ` · ${item.note}` : ''}
+                  </Text>
                   <Button
-                    accessibilityLabel={`Move ${entryTitle(item, places)} to another day`}
-                    onPress={() => onMove(item)}
-                    style={{ flex: 1 }}
-                    tone="quiet"
+                    accessibilityLabel={`Open files and links for ${title}`}
+                    onPress={() => onOpenDocuments(item)}
+                    tone="secondary"
                   >
-                    Move to day
+                    Files &amp; links
                   </Button>
-                  <IconButton
-                    disabled={!canLock}
-                    label={
-                      item.reservationLocked
-                        ? `Unlock ${entryTitle(item, places)}`
-                        : `Lock ${entryTitle(item, places)}`
-                    }
-                    loading={lockPending}
-                    onPress={() => onToggleLock(item)}
-                  >
-                    <Text style={{ fontSize: 17 }}>{item.reservationLocked ? '🔓' : '🔒'}</Text>
-                  </IconButton>
+                  <View style={{ flexDirection: 'row', gap: 8 }}>
+                    <Button
+                      accessibilityLabel={`Move ${title} to another day`}
+                      disabled={!canModify}
+                      onPress={() => onMove(item)}
+                      style={{ flex: 1 }}
+                      tone="quiet"
+                    >
+                      Move to day
+                    </Button>
+                    <IconButton
+                      disabled={!canLock}
+                      label={item.reservationLocked ? `Unlock ${title}` : `Lock ${title}`}
+                      loading={lockPending}
+                      onPress={() => onToggleLock(item)}
+                    >
+                      <Text style={{ fontSize: 17 }}>{item.reservationLocked ? '🔓' : '🔒'}</Text>
+                    </IconButton>
+                  </View>
                 </View>
               </View>
-            </View>
-          ))}
+            );
+          })}
         </View>
       ) : (
         <Text selectable style={{ color: colors.textMuted }}>
@@ -386,7 +411,12 @@ export function VisualItineraryScreen() {
                   .filter(item => item.date === day.date)
                   .sort((a, b) => (a.startTime ?? '99').localeCompare(b.startTime ?? '99'))
                   .map(item => (
-                    <Text selectable key={item.id} style={{ color: colors.text }}>
+                    <Text
+                      selectable
+                      key={item.id}
+                      style={{ color: item.reservationLocked ? colors.locked : colors.text }}
+                    >
+                      {item.reservationLocked ? '🔒 ' : ''}
                       {item.startTime ?? 'Any time'} ·{' '}
                       {item.title ??
                         trip.places.find(place => place.id === item.savedPlaceId)?.name ??

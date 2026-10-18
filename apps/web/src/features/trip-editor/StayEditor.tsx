@@ -1,4 +1,4 @@
-import { CurrencyPicker } from '@/components/CurrencyPicker';
+import { AmountCurrencyPicker } from '@/components/AmountCurrencyPicker';
 import { TripItemTools } from './TripItemTools';
 import { ArrowRight, Search, X } from 'lucide-react';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent } from 'react';
@@ -267,10 +267,11 @@ export function StayEditor({
             />
           </label>
         </div>
-        <div className={styles.editorTwoColumns}>
-          <label>
-            Price
+        <div className={styles.amountField}>
+          <label htmlFor="stay-price">Price</label>
+          <div className={styles.amountControls}>
             <input
+              id="stay-price"
               type="number"
               min="0"
               step="any"
@@ -279,14 +280,11 @@ export function StayEditor({
               placeholder="0.00"
               inputMode="decimal"
             />
-          </label>
-          <label>
-            Currency
-            <CurrencyPicker
+            <AmountCurrencyPicker
               value={draft.priceCurrency}
               onChange={value => onChangeDraft({ priceCurrency: value })}
             />
-          </label>
+          </div>
         </div>
         <div className={styles.editorTwoColumns}>
           <label>

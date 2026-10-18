@@ -130,7 +130,8 @@ export function ItemDetailsScreen() {
       expense.scheduleItemId === itemId,
   );
   const linked = documentsForTarget(documents.data ?? [], documentTarget, payment?.id);
-  const disabled = !isOnline || !trip.access.canEdit || mutation.isPending;
+  const activityLocked = kind === 'ACTIVITY' && Boolean(item?.reservationLocked);
+  const disabled = !isOnline || !trip.access.canEdit || activityLocked || mutation.isPending;
   async function pick() {
     try {
       const result = await DocumentPicker.getDocumentAsync({
@@ -253,6 +254,17 @@ export function ItemDetailsScreen() {
         options={{ title: kind === 'ACTIVITY' ? 'Activity files & links' : 'Details' }}
       />
       <OfflineNotice visible={!isOnline} />
+      {activityLocked ? (
+        <Card style={{ backgroundColor: colors.lockedSurface, borderColor: colors.lockedBorder }}>
+          <Text selectable style={{ color: colors.locked, fontSize: 17, fontWeight: '800' }}>
+            🔒 Activity locked
+          </Text>
+          <Text selectable style={{ color: colors.textMuted, lineHeight: 19 }}>
+            Files and links remain available to view. Unlock the activity before adding, editing, or
+            removing attachments.
+          </Text>
+        </Card>
+      ) : null}
       {item && (kind === 'HOTEL' || kind === 'FLIGHT') && (
         <Card>
           <View style={{ gap: space.xs }}>
@@ -373,7 +385,12 @@ export function ItemDetailsScreen() {
               </Button>
               {editId === document.id ? (
                 <View style={{ gap: space.sm }}>
-                  <Field label="Name" value={editLabel} onChangeText={setEditLabel} />
+                  <Field
+                    editable={!activityLocked}
+                    label="Name"
+                    value={editLabel}
+                    onChangeText={setEditLabel}
+                  />
                   {document.url ? (
                     <Field
                       autoCapitalize="none"
@@ -381,6 +398,7 @@ export function ItemDetailsScreen() {
                       label="HTTP or HTTPS link"
                       value={editUrl}
                       onChangeText={setEditUrl}
+                      editable={!activityLocked}
                     />
                   ) : (
                     <Text selectable style={{ color: colors.textMuted, lineHeight: 19 }}>
@@ -435,8 +453,14 @@ export function ItemDetailsScreen() {
               PDF, JPEG, PNG, or WebP · 20 MB maximum
             </Text>
           </View>
-          <Field label="Link label" value={label} onChangeText={setLabel} />
           <Field
+            editable={!activityLocked}
+            label="Link label"
+            value={label}
+            onChangeText={setLabel}
+          />
+          <Field
+            editable={!activityLocked}
             label="HTTP or HTTPS link"
             value={url}
             onChangeText={setUrl}

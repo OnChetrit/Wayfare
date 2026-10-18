@@ -82,7 +82,7 @@ export function TripDetailsSheet({ kind, trip, initialDate }: TripDetailsSheetPr
           : trip.locationSegments.length > 0;
 
   if (process.env.EXPO_OS === 'ios') {
-    const navigateToEditor = (editorKind: 'place' | 'segment' | 'stay', id: string) => {
+    const navigateToEditor = (editorKind: 'flight' | 'place' | 'segment' | 'stay', id: string) => {
       router.push({ pathname: '/itinerary-editor', params: { kind: editorKind, id } });
     };
 
@@ -145,15 +145,25 @@ export function TripDetailsSheet({ kind, trip, initialDate }: TripDetailsSheetPr
               : null}
             {kind === 'flights'
               ? trip.flights.map(flight => (
-                  <VStack key={flight.id} alignment="leading" spacing={3}>
-                    <Label
-                      title={`${flight.flightNumber} · ${flight.airlineName ?? 'Flight'}`}
-                      systemImage="airplane"
-                    />
-                    {flightDetailRows(flight).map(row => (
-                      <SwiftText key={row}>{row}</SwiftText>
-                    ))}
-                  </VStack>
+                  <SwiftButton
+                    key={flight.id}
+                    modifiers={[buttonStyle('plain')]}
+                    onPress={() => navigateToEditor('flight', flight.id)}
+                  >
+                    <HStack spacing={12}>
+                      <VStack alignment="leading" spacing={3}>
+                        <Label
+                          title={`${flight.flightNumber} · ${flight.airlineName ?? 'Flight'}`}
+                          systemImage="airplane"
+                        />
+                        {flightDetailRows(flight).map(row => (
+                          <SwiftText key={row}>{row}</SwiftText>
+                        ))}
+                      </VStack>
+                      <Spacer />
+                      <SwiftText>›</SwiftText>
+                    </HStack>
+                  </SwiftButton>
                 ))
               : null}
             {kind === 'locations'
@@ -176,9 +186,15 @@ export function TripDetailsSheet({ kind, trip, initialDate }: TripDetailsSheetPr
               : null}
             {!hasItems ? <Label title={copy.emptyTitle} systemImage="tray" /> : null}
           </Section>
-          <Section>
-            <SwiftButton label={addLabel} systemImage="plus" onPress={() => router.push(addHref)} />
-          </Section>
+          {trip.access.canEdit ? (
+            <Section>
+              <SwiftButton
+                label={addLabel}
+                systemImage="plus"
+                onPress={() => router.push(addHref)}
+              />
+            </Section>
+          ) : null}
         </List>
       </Host>
     );
@@ -252,6 +268,18 @@ export function TripDetailsSheet({ kind, trip, initialDate }: TripDetailsSheetPr
                   {row}
                 </Text>
               ))}
+              {trip.access.canEdit ? (
+                <Link
+                  href={{
+                    pathname: '/itinerary-editor',
+                    params: { kind: 'flight', id: flight.id },
+                  }}
+                  push
+                  asChild
+                >
+                  <Button tone="secondary">Edit flight</Button>
+                </Link>
+              ) : null}
             </Card>
           ))
         : null}
@@ -278,9 +306,11 @@ export function TripDetailsSheet({ kind, trip, initialDate }: TripDetailsSheetPr
           ))
         : null}
       {!hasItems ? <EmptyState title={copy.emptyTitle} detail={copy.emptyDetail} /> : null}
-      <Link href={addHref} push asChild>
-        <Button>{addLabel}</Button>
-      </Link>
+      {trip.access.canEdit ? (
+        <Link href={addHref} push asChild>
+          <Button>{addLabel}</Button>
+        </Link>
+      ) : null}
     </ScrollView>
   );
 }

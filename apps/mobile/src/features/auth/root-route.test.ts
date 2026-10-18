@@ -8,8 +8,8 @@ describe('root authentication route', () => {
     expect(rootScreenForAuth(false, true)).toBe('loading');
   });
 
-  it('shows onboarding only to an unauthenticated user', () => {
-    expect(rootScreenForAuth(true, false)).toBe('onboarding');
+  it('shows login to an unauthenticated user', () => {
+    expect(rootScreenForAuth(true, false)).toBe('login');
   });
 
   it('redirects an authenticated user to the itinerary', () => {

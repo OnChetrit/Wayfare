@@ -14,6 +14,9 @@ export const darkColors = {
   dangerSurface: '#422521',
   dangerBorder: '#75453e',
   success: '#4ab58b',
+  locked: '#f4b35e',
+  lockedSurface: '#352716',
+  lockedBorder: '#80591f',
 } as const;
 
 export const lightColors = {
@@ -30,6 +33,9 @@ export const lightColors = {
   dangerSurface: '#fff0eb',
   dangerBorder: '#f0d4cd',
   success: '#17795d',
+  locked: '#8a4b08',
+  lockedSurface: '#fff4e5',
+  lockedBorder: '#e8b66a',
 } as const;
 
 export type ThemeName = 'light' | 'dark';

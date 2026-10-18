@@ -1,4 +1,4 @@
-import { CurrencyPicker } from '@/components/CurrencyPicker';
+import { AmountCurrencyPicker } from '@/components/AmountCurrencyPicker';
 import { Clock3, Lock, MapPin, Timer, X } from 'lucide-react';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import styles from './ActivityEditor.module.scss';
@@ -166,10 +166,13 @@ export function ActivityEditor({
           />
         </label>
 
-        <div className={styles.twoColumns}>
-          <label>
+        <div className={styles.amountField}>
+          <label htmlFor="activity-cost">
             Cost <span className={styles.optional}>(optional)</span>
+          </label>
+          <div className={styles.amountControls}>
             <input
+              id="activity-cost"
               type="number"
               min="0"
               step="any"
@@ -178,11 +181,8 @@ export function ActivityEditor({
               placeholder="0.00"
               inputMode="decimal"
             />
-          </label>
-          <label>
-            Currency
-            <CurrencyPicker value={currency} onChange={setCurrency} />
-          </label>
+            <AmountCurrencyPicker value={currency} onChange={setCurrency} />
+          </div>
         </div>
 
         <div className={styles.twoColumns}>

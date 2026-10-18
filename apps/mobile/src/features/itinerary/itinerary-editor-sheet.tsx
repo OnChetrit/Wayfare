@@ -1,4 +1,3 @@
-import { currencyOptions } from '@/lib/account-preferences';
 import AddIcon from '@expo/material-symbols/add.xml';
 import CheckIcon from '@expo/material-symbols/check.xml';
 import ReminderIcon from '@expo/material-symbols/notifications_active.xml';
@@ -47,7 +46,9 @@ import {
   removePlaceFromSegment,
   searchFlights,
   splitLocationSegment,
+  updateActivityReservationLock,
   updateDayNotes,
+  updateFlight,
   updateLocationSegment,
   updatePlace,
   updateSchedule,
@@ -55,10 +56,12 @@ import {
 } from '@/api/trips';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { CurrencyPicker } from '@/components/ui/currency-picker';
 import { ChipGroup } from '@/components/ui/controls';
 import { DateTimeField } from '@/components/ui/date-time-field';
 import { dateTimeFieldValue, dateTimePickerDate } from '@/components/ui/date-time-field-value';
 import { Field } from '@/components/ui/field';
+import { NativeAmountCurrencyField } from '@/components/ui/native-amount-currency-field';
 import { EmptyState, ErrorState, LoadingState, OfflineNotice } from '@/components/ui/state';
 import {
   linkHotelToStayForm,
@@ -97,7 +100,7 @@ function first(value: string | string[] | undefined) {
 function titleForKind(kind: EditorKind) {
   return {
     day: 'Day note',
-    flight: 'Find a flight',
+    flight: 'Flight',
     place: 'Saved place',
     schedule: 'Itinerary item',
     segment: 'Location',
@@ -180,6 +183,8 @@ function ItineraryEditor({
   const schedule = trip.schedule.find(item => item.id === itemId);
   const place = trip.places.find(item => item.id === itemId);
   const stay = trip.stays.find(item => item.id === itemId);
+  const existingFlight =
+    kind === 'flight' ? trip.flights.find(item => item.id === itemId) : undefined;
   const segment = trip.locationSegments.find(item => item.id === itemId);
   const day =
     trip.days.find(item => item.id === itemId) ?? trip.days.find(item => item.date === initialDate);
@@ -229,8 +234,10 @@ function ItineraryEditor({
     endDate: segment?.endDate ?? trip.endDate,
   }));
   const [dayNotes, setDayNotes] = React.useState(() => day?.notes ?? '');
-  const [flightNumber, setFlightNumber] = React.useState('');
-  const [flightDate, setFlightDate] = React.useState(initialDate ?? trip.startDate);
+  const [flightNumber, setFlightNumber] = React.useState(existingFlight?.flightNumber ?? '');
+  const [flightDate, setFlightDate] = React.useState(
+    existingFlight?.departureDate ?? initialDate ?? trip.startDate,
+  );
   const [flightResults, setFlightResults] = React.useState<Parameters<typeof createFlight>[1][]>(
     [],
   );
@@ -369,13 +376,18 @@ function ItineraryEditor({
   const { mutation: searchFlightMutation } = useTripMutation(trip.id, async () => {
     const number = process.env.EXPO_OS === 'ios' ? nativeFlightNumber.get() : flightNumber;
     if (!number.trim()) throw new Error('Enter a flight number.');
+    setFlightResults([]);
     const response = await searchFlights(trip.id, number.trim(), flightDate);
     setFlightResults(response.flights);
+    if (!response.flights.length) throw new Error('No flights found for that number and date.');
     return response;
   });
-  const { mutation: addFlightMutation } = useTripMutation(
+  const { mutation: saveFlightMutation } = useTripMutation(
     trip.id,
-    (flight: Parameters<typeof createFlight>[1]) => createFlight(trip.id, flight),
+    (flight: Parameters<typeof createFlight>[1]) =>
+      existingFlight
+        ? updateFlight(trip.id, existingFlight.id, flight)
+        : createFlight(trip.id, flight),
   );
   const { mutation: deleteSegmentMutation } = useTripMutation(trip.id, () =>
     deleteLocationSegment(trip.id, segment!.id),
@@ -387,6 +399,10 @@ function ItineraryEditor({
         ? removePlaceFromSegment(trip.id, segment!.id, savedPlaceId)
         : assignPlaceToSegment(trip.id, segment!.id, savedPlaceId),
   );
+  const { mutation: activityLockMutation } = useTripMutation(trip.id, () => {
+    if (!schedule) throw new Error('Activity not found.');
+    return updateActivityReservationLock(trip.id, schedule.id, false);
+  });
 
   const activeError = [
     saveSchedule.error,
@@ -395,9 +411,10 @@ function ItineraryEditor({
     saveSegment.error,
     saveDay.error,
     searchFlightMutation.error,
-    addFlightMutation.error,
+    saveFlightMutation.error,
     deleteSegmentMutation.error,
     assignmentMutation.error,
+    activityLockMutation.error,
   ].find(Boolean);
   const pending =
     saveSchedule.isPending ||
@@ -426,6 +443,65 @@ function ItineraryEditor({
     void nativeStayAddress.set(next.address);
     void nativeStayLocation.set(next.locationLabel);
     void nativeStayName.set(next.name);
+  }
+
+  if (kind === 'flight' && itemId && !existingFlight) {
+    return (
+      <ErrorState title="Flight unavailable" message="This flight is no longer in the trip." />
+    );
+  }
+
+  if (schedule?.reservationLocked) {
+    const scheduleTitle =
+      schedule.title ||
+      trip.places.find(candidate => candidate.id === schedule.savedPlaceId)?.name ||
+      'Activity';
+
+    return (
+      <>
+        <Stack.Screen options={{ title: 'Locked activity' }} />
+        <ScrollView
+          contentInsetAdjustmentBehavior="automatic"
+          contentContainerStyle={{ gap: space.md, padding: space.md, paddingBottom: 36 }}
+          style={{ backgroundColor: nativeColors.background }}
+        >
+          <OfflineNotice visible={!isOnline} />
+          <Card
+            accessibilityLabel="Locked activity"
+            style={{
+              backgroundColor: nativeColors.lockedSurface,
+              borderColor: nativeColors.lockedBorder,
+            }}
+          >
+            <Text
+              selectable
+              style={{ color: nativeColors.locked, fontSize: 17, fontWeight: '800' }}
+            >
+              🔒 Activity locked
+            </Text>
+            <Text selectable style={{ color: nativeColors.text, fontSize: 19, fontWeight: '800' }}>
+              {scheduleTitle}
+            </Text>
+            <Text selectable style={{ color: nativeColors.textMuted, lineHeight: 20 }}>
+              Unlock this activity before editing its details or schedule.
+            </Text>
+            <Button
+              disabled={!isOnline || !trip.access.canEdit || activityLockMutation.isPending}
+              loading={activityLockMutation.isPending}
+              onPress={() => activityLockMutation.mutate()}
+              tone="secondary"
+            >
+              Unlock activity
+            </Button>
+          </Card>
+          {activityLockMutation.error ? (
+            <Text accessibilityRole="alert" selectable style={{ color: nativeColors.danger }}>
+              {messageFromError(activityLockMutation.error)}
+            </Text>
+          ) : null}
+        </ScrollView>
+      </>
+    );
   }
 
   if (process.env.EXPO_OS === 'ios') {
@@ -591,30 +667,17 @@ function ItineraryEditor({
                   </Picker>
                 </Section>
                 <Section title="Cost">
-                  <TextField
-                    onTextChange={amount => setScheduleForm(current => ({ ...current, amount }))}
-                    placeholder="Amount (optional)"
-                    text={nativeScheduleAmount}
-                    modifiers={[
-                      accessibilityLabel('Cost'),
-                      keyboardType('decimal-pad'),
-                      disabled(!isOnline || pending),
-                    ]}
-                  />
-                  <Picker
-                    label="Currency"
-                    onSelectionChange={currency =>
+                  <NativeAmountCurrencyField
+                    amount={nativeScheduleAmount}
+                    onAmountChange={amount => setScheduleForm(current => ({ ...current, amount }))}
+                    currency={scheduleForm.currency}
+                    onCurrencyChange={currency =>
                       setScheduleForm(current => ({ ...current, currency }))
                     }
-                    selection={scheduleForm.currency}
-                    modifiers={[pickerStyle('navigationLink'), disabled(!isOnline || pending)]}
-                  >
-                    {currencyOptions.map(currency => (
-                      <SwiftText key={currency.value} modifiers={[tag(currency.value)]}>
-                        {currency.label}
-                      </SwiftText>
-                    ))}
-                  </Picker>
+                    label="Cost"
+                    placeholder="Amount (optional)"
+                    isDisabled={!isOnline || pending}
+                  />
                 </Section>
                 <Section title="Notes">
                   <TextField
@@ -801,32 +864,19 @@ function ItineraryEditor({
                   />
                 </Section>
                 <Section title="Booking">
-                  <TextField
-                    onTextChange={priceAmount =>
+                  <NativeAmountCurrencyField
+                    amount={nativeStayPrice}
+                    onAmountChange={priceAmount =>
                       setStayForm(current => ({ ...current, priceAmount }))
                     }
-                    placeholder={`Price (${stayForm.priceCurrency})`}
-                    text={nativeStayPrice}
-                    modifiers={[
-                      accessibilityLabel('Price'),
-                      keyboardType('decimal-pad'),
-                      disabled(!isOnline || pending),
-                    ]}
-                  />
-                  <Picker
-                    label="Price currency"
-                    onSelectionChange={priceCurrency =>
+                    currency={stayForm.priceCurrency}
+                    onCurrencyChange={priceCurrency =>
                       setStayForm(current => ({ ...current, priceCurrency }))
                     }
-                    selection={stayForm.priceCurrency}
-                    modifiers={[pickerStyle('navigationLink'), disabled(!isOnline || pending)]}
-                  >
-                    {currencyOptions.map(currency => (
-                      <SwiftText key={currency.value} modifiers={[tag(currency.value)]}>
-                        {currency.label}
-                      </SwiftText>
-                    ))}
-                  </Picker>
+                    label="Price"
+                    placeholder="Price (optional)"
+                    isDisabled={!isOnline || pending}
+                  />
                   <DatePicker
                     displayedComponents={['hourAndMinute']}
                     onDateChange={cancellationTime =>
@@ -1036,7 +1086,13 @@ function ItineraryEditor({
 
             {kind === 'flight' ? (
               <>
-                <Section title="Find a flight">
+                <Section title={existingFlight ? 'Find the correct flight' : 'Find a flight'}>
+                  {existingFlight ? (
+                    <SwiftText>
+                      Search by flight number and departure date, then select the correct match to
+                      update this saved flight.
+                    </SwiftText>
+                  ) : null}
                   <TextField
                     autoFocus
                     onTextChange={setFlightNumber}
@@ -1045,7 +1101,7 @@ function ItineraryEditor({
                     modifiers={[
                       accessibilityLabel('Flight number'),
                       textInputAutocapitalization('characters'),
-                      disabled(!isOnline || searchFlightMutation.isPending),
+                      disabled(!isOnline || !trip.access.canEdit || searchFlightMutation.isPending),
                     ]}
                   />
                   <DatePicker
@@ -1057,7 +1113,7 @@ function ItineraryEditor({
                     title="Departure date"
                     modifiers={[
                       datePickerStyle('compact'),
-                      disabled(!isOnline || searchFlightMutation.isPending),
+                      disabled(!isOnline || !trip.access.canEdit || searchFlightMutation.isPending),
                     ]}
                   />
                   <SwiftButton
@@ -1065,7 +1121,7 @@ function ItineraryEditor({
                     systemImage="magnifyingglass"
                     modifiers={[
                       buttonStyle('borderedProminent'),
-                      disabled(!isOnline || searchFlightMutation.isPending),
+                      disabled(!isOnline || !trip.access.canEdit || searchFlightMutation.isPending),
                     ]}
                     onPress={() =>
                       void searchFlightMutation
@@ -1088,13 +1144,21 @@ function ItineraryEditor({
                         />
                         <SwiftText>{flight.scheduledDepartureLocal}</SwiftText>
                         <SwiftButton
-                          label={addFlightMutation.isPending ? 'Adding…' : 'Add flight'}
+                          label={
+                            saveFlightMutation.isPending
+                              ? 'Saving…'
+                              : existingFlight
+                                ? 'Use this flight'
+                                : 'Add flight'
+                          }
                           modifiers={[
                             buttonStyle('bordered'),
-                            disabled(!isOnline || addFlightMutation.isPending),
+                            disabled(
+                              !isOnline || !trip.access.canEdit || saveFlightMutation.isPending,
+                            ),
                           ]}
                           onPress={() =>
-                            void addFlightMutation
+                            void saveFlightMutation
                               .mutateAsync(flight)
                               .then(() => router.back())
                               .catch(error => setMessage(messageFromError(error)))
@@ -1269,21 +1333,21 @@ function ItineraryEditor({
               onChangeText={title => setScheduleForm(current => ({ ...current, title }))}
               placeholder="Optional when a saved place is selected"
             />
-            <Field
-              label="Cost (optional)"
-              keyboardType="decimal-pad"
-              value={scheduleForm.amount}
-              onChangeText={amount => setScheduleForm(current => ({ ...current, amount }))}
-              placeholder="0.00"
-            />
-            <Text selectable style={{ color: colors.textMuted, fontSize: 13, fontWeight: '700' }}>
-              Currency
-            </Text>
-            <ChipGroup
-              options={currencyOptions}
-              value={scheduleForm.currency}
-              onChange={currency => setScheduleForm(current => ({ ...current, currency }))}
-            />
+            <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: space.sm }}>
+              <View style={{ flex: 1 }}>
+                <Field
+                  label="Cost (optional)"
+                  keyboardType="decimal-pad"
+                  value={scheduleForm.amount}
+                  onChangeText={amount => setScheduleForm(current => ({ ...current, amount }))}
+                  placeholder="0.00"
+                />
+              </View>
+              <CurrencyPicker
+                value={scheduleForm.currency}
+                onChange={currency => setScheduleForm(current => ({ ...current, currency }))}
+              />
+            </View>
             <Text selectable style={{ color: colors.textMuted, fontSize: 13, fontWeight: '700' }}>
               Category
             </Text>
@@ -1435,20 +1499,22 @@ function ItineraryEditor({
               value={stayForm.checkOutDate}
               onChangeText={checkOutDate => setStayForm(current => ({ ...current, checkOutDate }))}
             />
-            <Field
-              label={`Price (${stayForm.priceCurrency})`}
-              keyboardType="decimal-pad"
-              value={stayForm.priceAmount}
-              onChangeText={priceAmount => setStayForm(current => ({ ...current, priceAmount }))}
-            />
-            <Text selectable style={{ color: colors.textMuted, fontSize: 13, fontWeight: '700' }}>
-              Price currency
-            </Text>
-            <ChipGroup
-              options={currencyOptions}
-              value={stayForm.priceCurrency}
-              onChange={priceCurrency => setStayForm(current => ({ ...current, priceCurrency }))}
-            />
+            <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: space.sm }}>
+              <View style={{ flex: 1 }}>
+                <Field
+                  label="Price"
+                  keyboardType="decimal-pad"
+                  value={stayForm.priceAmount}
+                  onChangeText={priceAmount =>
+                    setStayForm(current => ({ ...current, priceAmount }))
+                  }
+                />
+              </View>
+              <CurrencyPicker
+                value={stayForm.priceCurrency}
+                onChange={priceCurrency => setStayForm(current => ({ ...current, priceCurrency }))}
+              />
+            </View>
             <DateTimeField
               label="Cancellation time"
               mode="time"
@@ -1592,6 +1658,12 @@ function ItineraryEditor({
         ) : null}
         {kind === 'flight' ? (
           <>
+            {existingFlight ? (
+              <Text selectable style={{ color: colors.textMuted }}>
+                Search by flight number and departure date, then select the correct match to update
+                this saved flight.
+              </Text>
+            ) : null}
             <Field
               label="Flight number"
               value={flightNumber}
@@ -1606,7 +1678,7 @@ function ItineraryEditor({
               onChangeText={setFlightDate}
             />
             <Button
-              disabled={!isOnline}
+              disabled={!isOnline || !trip.access.canEdit}
               loading={searchFlightMutation.isPending}
               onPress={() =>
                 void searchFlightMutation
@@ -1625,16 +1697,16 @@ function ItineraryEditor({
                   {flight.scheduledDepartureLocal}
                 </Text>
                 <Button
-                  disabled={!isOnline || addFlightMutation.isPending}
-                  loading={addFlightMutation.isPending}
+                  disabled={!isOnline || !trip.access.canEdit || saveFlightMutation.isPending}
+                  loading={saveFlightMutation.isPending}
                   onPress={() =>
-                    void addFlightMutation
+                    void saveFlightMutation
                       .mutateAsync(flight)
                       .then(() => router.back())
                       .catch(error => setMessage(messageFromError(error)))
                   }
                 >
-                  Add flight
+                  {existingFlight ? 'Use this flight' : 'Add flight'}
                 </Button>
               </Card>
             ))}
