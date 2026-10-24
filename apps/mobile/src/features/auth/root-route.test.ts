@@ -12,7 +12,7 @@ describe('root authentication route', () => {
     expect(rootScreenForAuth(true, false)).toBe('login');
   });
 
-  it('redirects an authenticated user to the itinerary', () => {
-    expect(rootScreenForAuth(true, true)).toBe('itinerary');
+  it('redirects an authenticated user to the overview', () => {
+    expect(rootScreenForAuth(true, true)).toBe('overview');
   });
 });

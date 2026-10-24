@@ -8,7 +8,7 @@ export default function IndexRoute() {
   const rootScreen = rootScreenForAuth(isReady, Boolean(session));
 
   if (rootScreen === 'loading') return null;
-  if (rootScreen === 'itinerary') return <Redirect href="/itinerary" />;
+  if (rootScreen === 'overview') return <Redirect href="/overview" />;
 
   return <Redirect href="/login" />;
 }

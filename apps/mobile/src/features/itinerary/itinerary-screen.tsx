@@ -145,7 +145,7 @@ function tripDetailsMenu({
       icon={process.env.EXPO_OS === 'ios' ? 'ellipsis' : MoreIcon}
       title="Trip details"
     >
-      <Stack.Toolbar.MenuAction onPress={() => router.push('/itinerary/visual')}>
+      <Stack.Toolbar.MenuAction onPress={() => router.push('/plan/visual')}>
         Visual itinerary
       </Stack.Toolbar.MenuAction>
       <Stack.Toolbar.MenuAction onPress={() => router.push('/reminders')}>

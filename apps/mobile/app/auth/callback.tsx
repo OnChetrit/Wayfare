@@ -101,7 +101,7 @@ export default function AuthCallbackScreen() {
   if (!isCompleting && isReady && (session || hasEstablishedSession)) {
     if (inviteToken)
       return <Redirect href={{ pathname: '/invite/[token]', params: { token: inviteToken } }} />;
-    return <Redirect href="/itinerary" />;
+    return <Redirect href="/overview" />;
   }
   if (!isCompleting && isReady) return <Redirect href="/login" />;
 

@@ -1,12 +1,9 @@
 import { Stack } from 'expo-router';
 
-import { useTrips } from '@/features/trips/trip-context';
 import { useTheme } from '@/theme/theme-provider';
 
-export default function ItineraryLayout() {
-  const { selectedTrip } = useTrips();
+export default function OverviewLayout() {
   const { colors } = useTheme();
-
   return (
     <Stack
       screenOptions={{
@@ -16,8 +13,7 @@ export default function ItineraryLayout() {
         headerTintColor: colors.text,
       }}
     >
-      <Stack.Screen name="index" options={{ title: selectedTrip?.name ?? 'Itinerary' }} />
-      <Stack.Screen name="visual" options={{ title: 'Visual itinerary' }} />
+      <Stack.Screen name="index" options={{ title: 'Overview' }} />
     </Stack>
   );
 }

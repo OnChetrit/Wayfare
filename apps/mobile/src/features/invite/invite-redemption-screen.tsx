@@ -43,7 +43,7 @@ export function InviteRedemptionScreen({ token }: { token: string | string[] | u
         await queryClient.refetchQueries({ queryKey: tripKeys.all });
         await selectCreatedTrip(tripId);
         await queryClient.invalidateQueries({ queryKey: tripKeys.detail(tripId) });
-        if (isActive) router.replace('/itinerary');
+        if (isActive) router.replace('/overview');
       } catch (error) {
         if (isSessionInvalidError(error)) await signOut();
         if (isActive) setMessage(messageFromError(error, 'This invitation could not be redeemed.'));

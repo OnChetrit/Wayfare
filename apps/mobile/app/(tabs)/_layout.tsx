@@ -18,9 +18,13 @@ export default function TabsLayout() {
       tintColor={colors.accent}
       {...(theme === 'dark' ? { blurEffect: 'systemMaterialDark' as const } : {})}
     >
-      <NativeTabs.Trigger name="itinerary">
+      <NativeTabs.Trigger name="overview">
+        <NativeTabs.Trigger.Icon sf="square.grid.2x2.fill" md="dashboard" />
+        <NativeTabs.Trigger.Label>Overview</NativeTabs.Trigger.Label>
+      </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="plan">
         <NativeTabs.Trigger.Icon sf="list.bullet.rectangle.fill" md="format_list_bulleted" />
-        <NativeTabs.Trigger.Label>Itinerary</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Label>Plan</NativeTabs.Trigger.Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="explore" disableAutomaticContentInsets>
         <NativeTabs.Trigger.Icon sf="map.fill" md="map" />

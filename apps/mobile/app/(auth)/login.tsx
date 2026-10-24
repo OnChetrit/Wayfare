@@ -14,7 +14,7 @@ export default function LoginScreen() {
   if (!isReady) return null;
   if (session && inviteToken)
     return <Redirect href={{ pathname: '/invite/[token]', params: { token: inviteToken } }} />;
-  if (session) return <Redirect href="/itinerary" />;
+  if (session) return <Redirect href="/overview" />;
 
   return <AuthForm inviteToken={inviteToken ?? undefined} mode="login" />;
 }
