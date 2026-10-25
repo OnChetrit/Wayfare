@@ -1860,6 +1860,7 @@ export function TripEditor({
                   kind="ACTIVITY"
                   itemId={editingScheduleItem.id}
                   showReservationLock={false}
+                  showExistingDocumentPicker={false}
                 />
               ) : undefined
             }

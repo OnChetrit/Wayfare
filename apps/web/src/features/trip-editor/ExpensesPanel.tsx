@@ -1,5 +1,6 @@
 'use client';
 import { TripItemTools, TripItemContext } from './TripItemTools';
+import { PaymentTotals } from './PaymentTotals';
 import { useContext, useEffect, useRef, useState } from 'react';
 import {
   AlertCircle,
@@ -22,7 +23,6 @@ import {
   formatMoney,
   moneyMinorUnits,
   paymentStatusLabels,
-  paymentTotals,
   splitMoneyEqually,
   validateAllocation,
   type Expense,
@@ -285,7 +285,6 @@ export function ExpensesPanel(props: Props) {
     ]);
     setCombineIds([]);
   }
-  const totals = paymentTotals(expenses);
   const uncoveredCount = sources.filter(
     source =>
       !expenses.some(expense =>
@@ -311,35 +310,7 @@ export function ExpensesPanel(props: Props) {
       </div>
 
       <div className={styles.summaryGrid}>
-        <div className={`${styles.summaryCard} ${styles.summaryCardTotal}`}>
-          <div className={styles.totalHeading}>
-            <span>Payment totals</span>
-            <small>
-              {expenses.length} {expenses.length === 1 ? 'expense' : 'expenses'}
-            </small>
-          </div>
-          {Object.entries(totals).length ? (
-            <div className={styles.totalAmounts}>
-              {Object.entries(totals).map(([currencyCode, statusTotals]) => (
-                <div className={styles.totalAmount} key={currencyCode}>
-                  <strong>{currencyCode}</strong>
-                  <span>
-                    Paid {formatMoney(statusTotals.PAID, currencyCode)} · Unpaid{' '}
-                    {formatMoney(statusTotals.UNPAID, currencyCode)}
-                  </span>
-                  {Number(statusTotals.NEEDS_REVIEW) > 0 ? (
-                    <span>Needs review {formatMoney(statusTotals.NEEDS_REVIEW, currencyCode)}</span>
-                  ) : null}
-                </div>
-              ))}
-            </div>
-          ) : (
-            <strong className={styles.totalEmpty}>—</strong>
-          )}
-          <small className={styles.totalFooter}>
-            Original currencies stay separate. Changing the trip default does not convert totals.
-          </small>
-        </div>
+        <PaymentTotals expenses={expenses} defaultCurrency={defaultCurrency} />
         <SummaryCard category="FLIGHT" value={categoryMoney(expenses, 'FLIGHT')} />
         <SummaryCard category="HOTEL" value={categoryMoney(expenses, 'HOTEL')} />
         <SummaryCard category="TICKETS" value={categoryMoney(expenses, 'TICKETS')} />

@@ -1,6 +1,6 @@
 .editor {
-  width: min(calc(100% - 32px), 460px);
-  max-height: min(680px, calc(100dvh - 32px));
+  width: min(calc(100% - 32px), 520px);
+  max-height: min(760px, calc(100dvh - 32px));
   margin: auto;
   padding: 0;
   overflow: hidden;
@@ -39,7 +39,7 @@
 
   .body {
     min-height: 0;
-    padding: 8px 28px 28px;
+    padding: 24px 28px 28px;
     overflow-y: auto;
     overscroll-behavior: contain;
   }
@@ -96,10 +96,17 @@
     font-weight: 700;
   }
 
-  label {
+  .field {
     display: grid;
     gap: 8px;
-    margin-top: 18px;
+    margin-top: 20px;
+  }
+
+  .field:first-child {
+    margin-top: 0;
+  }
+
+  .fieldLabel {
     color: var(--ink);
     font-size: 13px;
     font-weight: 700;
@@ -110,7 +117,7 @@
   textarea {
     width: 100%;
     box-sizing: border-box;
-    min-height: 44px;
+    min-height: 46px;
     border: 1px solid var(--line-strong);
     border-radius: 11px;
     padding: 10px 12px;
@@ -127,70 +134,123 @@
   }
 
   textarea {
-    resize: vertical;
+    min-height: 86px;
     line-height: 1.5;
-  }
-
-  .twoColumns {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
-  }
-
-  .amountField {
-    margin-top: 18px;
-  }
-
-  .amountField label {
-    margin-top: 0;
   }
 
   .amountControls {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
     gap: 8px;
-    margin-top: 6px;
   }
 
-  .labelWithIcon {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-  }
+  .timingDetails {
+    margin-top: 24px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--surface-control);
 
-  .timeControl {
-    display: grid;
-    align-content: start;
-    gap: 6px;
-    margin-top: 14px;
-    color: var(--ink);
-    font-size: 13px;
-    font-weight: 700;
+    summary {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-height: 52px;
+      padding: 12px 14px;
+      cursor: pointer;
+      list-style: none;
+    }
 
-    button {
-      width: fit-content;
-      border: 1px solid var(--line);
-      min-height: 44px;
-      border-radius: 11px;
-      padding: 10px 12px;
-      color: var(--green-dark);
-      background: var(--surface-strong);
-      font: inherit;
-      font-size: 14px;
-      font-weight: 700;
+    summary::-webkit-details-marker {
+      display: none;
+    }
+
+    summary:focus-visible {
+      border-radius: 12px;
+      outline: none;
+      box-shadow: var(--focus);
+    }
+
+    &[open] .chevron {
+      transform: rotate(180deg);
     }
   }
 
-  .clearTimeButton {
-    width: fit-content;
-    border: 0;
-    padding: 0;
+  .timingTitle {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--ink);
+    font-size: 13px;
+    font-weight: 700;
+  }
+
+  .timingTitle svg {
+    color: var(--green);
+  }
+
+  .timingSummary {
+    margin-left: auto;
     color: var(--muted);
-    background: transparent;
-    font: inherit;
     font-size: 12px;
-    text-align: left;
-    text-decoration: underline;
+  }
+
+  .chevron {
+    flex: 0 0 auto;
+    color: var(--muted);
+    transition: transform 160ms ease;
+  }
+
+  .timingFields {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+    padding: 0 14px 16px;
+    border-top: 1px solid var(--line);
+
+    .field {
+      margin-top: 14px;
+    }
+  }
+
+  .addTimeButton,
+  .timeInputRow button {
+    min-height: 46px;
+    border: 1px solid var(--line-strong);
+    border-radius: 11px;
+    padding: 10px 12px;
+    color: var(--green-dark);
+    background: var(--surface-strong);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 700;
+  }
+
+  .timeInputRow {
+    display: flex;
+    gap: 6px;
+
+    input {
+      min-width: 0;
+    }
+
+    button {
+      flex: 0 0 auto;
+    }
+  }
+
+  .durationInput {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    input {
+      min-width: 0;
+    }
+
+    > span {
+      color: var(--muted);
+      font-size: 12px;
+    }
   }
 
   .optional {
@@ -205,8 +265,7 @@
   }
 
   .toolsSlot {
-    grid-column: 1 / -1;
-    margin-top: 14px;
+    margin-top: 24px;
   }
 
   .actions {
@@ -279,7 +338,26 @@
     }
 
     .body {
-      padding: 6px 20px 20px;
+      padding: 20px;
+    }
+
+    .timingFields {
+      grid-template-columns: 1fr;
+      gap: 0;
+    }
+
+    .timingDetails summary {
+      flex-wrap: wrap;
+    }
+
+    .timingSummary {
+      order: 3;
+      flex-basis: 100%;
+      margin-left: 24px;
+    }
+
+    .chevron {
+      margin-left: auto;
     }
 
     .actions {
@@ -291,5 +369,11 @@
 @media (max-width: 700px) {
   .editor {
     max-height: calc(100dvh - 88px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .editor .chevron {
+    transition: none;
   }
 }

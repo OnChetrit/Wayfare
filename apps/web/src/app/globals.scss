@@ -133,6 +133,10 @@ textarea {
   font: inherit;
 }
 
+textarea {
+  resize: none;
+}
+
 /* Keep date fields and native selects visually consistent across every form. */
 .wayfareDateInput {
   min-height: 46px !important;

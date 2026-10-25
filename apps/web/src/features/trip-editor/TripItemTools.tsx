@@ -2,16 +2,20 @@
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import {
   Check,
-  Download,
+  ExternalLink,
   FileText,
   Link2,
   Lock,
   Pencil,
+  Plus,
   Trash2,
   Unlock,
   Upload,
+  X,
 } from 'lucide-react';
 import {
+  documentLabelSchema,
+  documentLinkInputSchema,
   formatMoney,
   paymentStatusLabels,
   type DocumentTarget,
@@ -25,16 +29,21 @@ export function TripItemTools({
   kind,
   itemId,
   showReservationLock = true,
-}: DocumentTarget & { showReservationLock?: boolean }) {
+  showExistingDocumentPicker = true,
+}: DocumentTarget & { showReservationLock?: boolean; showExistingDocumentPicker?: boolean }) {
   const trip = useContext(TripItemContext);
   const [documents, setDocuments] = useState<TripDocument[]>([]);
   const [label, setLabel] = useState('');
   const [url, setUrl] = useState('');
+  const [linkFormOpen, setLinkFormOpen] = useState(false);
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameLabel, setRenameLabel] = useState('');
   const [error, setError] = useState('');
   const [retry, setRetry] = useState(false);
   const [progress, setProgress] = useState<number | null>(null);
   const upload = useRef<XMLHttpRequest | null>(null);
   const file = useRef<File | null>(null);
+  const filePicker = useRef<HTMLInputElement>(null);
   const item =
     kind === 'ACTIVITY'
       ? trip?.schedule.find(row => row.id === itemId)
@@ -143,6 +152,34 @@ export function TripItemTools({
     };
     xhr.send(form);
   }
+  function saveRename(documentId: string) {
+    const parsed = documentLabelSchema.safeParse(renameLabel);
+    if (!parsed.success) {
+      setError('Give this attachment a name.');
+      return;
+    }
+    void write(`${base}/${documentId}`, 'PATCH', { label: parsed.data }).then(saved => {
+      if (saved) setRenamingId(null);
+    });
+  }
+  function saveLink() {
+    const parsed = documentLinkInputSchema.safeParse({
+      ...target,
+      label: label.trim(),
+      url: url.trim(),
+    });
+    if (!parsed.success) {
+      setError('Add a name and an HTTP or HTTPS link.');
+      return;
+    }
+    void write(base, 'POST', parsed.data).then(saved => {
+      if (saved) {
+        setLabel('');
+        setUrl('');
+        setLinkFormOpen(false);
+      }
+    });
+  }
   return (
     <section className={styles.tools} aria-label="Reservation, payment and documents">
       {item && showReservationLock && (
@@ -209,152 +246,269 @@ export function TripItemTools({
           </div>
         )
       )}
-      <div className={styles.section}>
-        <div className={styles.sectionHeader}>
-          <h3>Tickets &amp; links</h3>
-          <span className={styles.status}>{linked.length}</span>
+      <div className={styles.documentSection}>
+        <div className={styles.documentHeader}>
+          <div className={styles.documentHeading}>
+            <span className={styles.documentHeadingIcon} aria-hidden="true">
+              <FileText size={17} />
+            </span>
+            <div>
+              <h3>Tickets &amp; links</h3>
+              <p>Keep booking files and useful links together.</p>
+            </div>
+          </div>
+          <span className={styles.documentCount} aria-label={`${linked.length} attachments`}>
+            {linked.length}
+          </span>
         </div>
         <div className={styles.documentList}>
           {linked.map(document => (
             <div className={styles.documentRow} key={document.id}>
-              <p>
-                {document.storage_path ? <FileText size={13} /> : <Link2 size={13} />}{' '}
-                {document.label}
-              </p>
-              <div className={styles.actions}>
+              <span className={styles.documentIcon} aria-hidden="true">
+                {document.storage_path ? <FileText size={16} /> : <Link2 size={16} />}
+              </span>
+              {renamingId === document.id ? (
+                <div className={styles.renameField}>
+                  <input
+                    autoFocus
+                    aria-label={`New name for ${document.label}`}
+                    value={renameLabel}
+                    maxLength={200}
+                    onChange={event => {
+                      setRenameLabel(event.target.value);
+                      setError('');
+                    }}
+                    onKeyDown={event => {
+                      if (event.key === 'Escape') setRenamingId(null);
+                      if (event.key === 'Enter') {
+                        event.preventDefault();
+                        saveRename(document.id);
+                      }
+                    }}
+                  />
+                  <button
+                    type="button"
+                    className={styles.button}
+                    onClick={() => saveRename(document.id)}
+                  >
+                    Save
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.buttonQuiet}
+                    aria-label="Cancel rename"
+                    onClick={() => setRenamingId(null)}
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+              ) : (
+                <div className={styles.documentInfo}>
+                  <strong title={document.label}>{document.label}</strong>
+                  <span>{document.storage_path ? 'File' : 'Link'}</span>
+                </div>
+              )}
+              {renamingId !== document.id && (
+                <div className={styles.actions}>
+                  <button
+                    type="button"
+                    className={styles.buttonQuiet}
+                    onClick={() => void open(document)}
+                  >
+                    <ExternalLink size={13} /> Open
+                  </button>
+                  {trip.access.canEdit && (
+                    <>
+                      <button
+                        type="button"
+                        className={styles.buttonQuiet}
+                        aria-label={`Rename ${document.label}`}
+                        onClick={() => {
+                          setError('');
+                          setRenameLabel(document.label);
+                          setRenamingId(document.id);
+                        }}
+                      >
+                        <Pencil size={13} />
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.buttonDanger}
+                        aria-label={`Remove ${document.label}`}
+                        disabled={
+                          !document.document_links.some(
+                            link => link.kind === kind && link.item_id === itemId,
+                          )
+                        }
+                        title={
+                          document.document_links.some(
+                            link => link.kind === kind && link.item_id === itemId,
+                          )
+                            ? 'Remove from this item'
+                            : 'This attachment belongs to a linked payment'
+                        }
+                        onClick={() => {
+                          if (
+                            window.confirm(
+                              'Remove this attachment from this item? Other references keep their copy. The stored file is deleted only when no references remain.',
+                            )
+                          )
+                            void write(`${base}/${document.id}`, 'DELETE', target);
+                        }}
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+          ))}
+          {!linked.length && (
+            <div className={styles.emptyDocuments}>
+              <FileText size={20} aria-hidden="true" />
+              <p>No tickets or links attached yet.</p>
+            </div>
+          )}
+        </div>
+        {trip.access.canEdit && (
+          <div className={styles.documentComposer}>
+            <div className={styles.addActions}>
+              <button
+                type="button"
+                className={styles.addLinkButton}
+                aria-expanded={linkFormOpen}
+                onClick={() => {
+                  setError('');
+                  setLinkFormOpen(current => !current);
+                }}
+              >
+                <Plus size={15} /> Add link
+              </button>
+              <button
+                type="button"
+                className={styles.uploadButton}
+                disabled={progress !== null}
+                onClick={() => filePicker.current?.click()}
+              >
+                <Upload size={15} /> Upload file
+              </button>
+              <input
+                ref={filePicker}
+                className={styles.fileInput}
+                type="file"
+                accept="application/pdf,image/jpeg,image/png,image/webp"
+                disabled={progress !== null}
+                aria-label="Upload PDF or image"
+                onChange={event => {
+                  file.current = event.target.files?.[0] ?? null;
+                  setRetry(Boolean(file.current));
+                  sendFile();
+                  event.target.value = '';
+                }}
+              />
+            </div>
+            {linkFormOpen && (
+              <div
+                className={styles.linkForm}
+                onKeyDown={event => {
+                  if (event.key === 'Enter' && event.target instanceof HTMLInputElement) {
+                    event.preventDefault();
+                    saveLink();
+                  }
+                }}
+              >
+                <label>
+                  Link name
+                  <input
+                    autoFocus
+                    placeholder="Booking confirmation"
+                    value={label}
+                    maxLength={200}
+                    onChange={event => {
+                      setLabel(event.target.value);
+                      setError('');
+                    }}
+                  />
+                </label>
+                <label>
+                  Web address
+                  <input
+                    type="text"
+                    inputMode="url"
+                    placeholder="https://example.com"
+                    value={url}
+                    onChange={event => {
+                      setUrl(event.target.value);
+                      setError('');
+                    }}
+                  />
+                </label>
+                <div className={styles.linkFormActions}>
+                  <button
+                    type="button"
+                    className={styles.buttonQuiet}
+                    onClick={() => setLinkFormOpen(false)}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.button}
+                    onClick={saveLink}
+                  >
+                    Save link
+                  </button>
+                </div>
+              </div>
+            )}
+            <small className={styles.hint}>PDF, JPEG, PNG, or WebP · 20 MB maximum</small>
+            {progress !== null && (
+              <div className={styles.progress}>
+                <progress max={100} value={progress} aria-label="Upload progress" />
                 <button
                   type="button"
                   className={styles.buttonQuiet}
-                  onClick={() => void open(document)}
+                  onClick={() => upload.current?.abort()}
                 >
-                  <Download size={13} /> Open
+                  Cancel upload
                 </button>
-                {trip.access.canEdit && (
-                  <>
-                    <button
-                      type="button"
-                      className={styles.buttonQuiet}
-                      aria-label={`Rename ${document.label}`}
-                      onClick={() => {
-                        const next = window.prompt('Document label', document.label);
-                        if (next) void write(`${base}/${document.id}`, 'PATCH', { label: next });
-                      }}
-                    >
-                      <Pencil size={13} />
-                    </button>
-                    <button
-                      type="button"
-                      className={styles.buttonDanger}
-                      aria-label={`Remove ${document.label}`}
-                      disabled={
-                        !document.document_links.some(
-                          link => link.kind === kind && link.item_id === itemId,
-                        )
-                      }
-                      onClick={() => {
-                        if (
-                          window.confirm(
-                            'Remove this attachment from this item? Other references keep their copy. The stored file is deleted only when no references remain.',
-                          )
-                        )
-                          void write(`${base}/${document.id}`, 'DELETE', target);
-                      }}
-                    >
-                      <Trash2 size={13} />
-                    </button>
-                  </>
-                )}
               </div>
-            </div>
-          ))}
-          {!linked.length && <p className={styles.hint}>No tickets or links attached yet.</p>}
-        </div>
-      </div>
-      {trip.access.canEdit && (
-        <div className={styles.documentForm}>
-          <input
-            aria-label="Link label"
-            placeholder="Link label"
-            value={label}
-            onChange={event => setLabel(event.target.value)}
-          />
-          <input
-            aria-label="HTTP or HTTPS link"
-            placeholder="https://…"
-            value={url}
-            onChange={event => setUrl(event.target.value)}
-          />
-          <button
-            type="button"
-            className={styles.button}
-            onClick={() =>
-              void write(base, 'POST', { ...target, label, url }).then(saved => {
-                if (saved) {
-                  setLabel('');
-                  setUrl('');
-                }
-              })
-            }
-          >
-            <Link2 size={13} /> Add link
-          </button>
-          <label className={styles.fileButton}>
-            <Upload size={13} /> Upload PDF or image
-            <input
-              type="file"
-              accept="application/pdf,image/jpeg,image/png,image/webp"
-              disabled={progress !== null}
-              onChange={event => {
-                file.current = event.target.files?.[0] ?? null;
-                setRetry(Boolean(file.current));
-                sendFile();
-              }}
-            />
-          </label>
-          <small className={styles.hint}>PDF, JPEG, PNG, or WebP · 20 MB maximum</small>
-          {progress !== null && (
-            <div className={styles.progress}>
-              <progress max={100} value={progress} aria-label="Upload progress" />
-              <button
-                type="button"
-                className={styles.buttonQuiet}
-                onClick={() => upload.current?.abort()}
-              >
-                Cancel upload
+            )}
+            {retry && progress === null && (
+              <button type="button" className={styles.buttonQuiet} onClick={sendFile}>
+                Retry upload
               </button>
-            </div>
-          )}
-          {retry && progress === null && (
-            <button type="button" className={styles.buttonQuiet} onClick={sendFile}>
-              Retry upload
-            </button>
-          )}
-          <label>
-            Use existing trip document
-            <select
-              value=""
-              onChange={event => {
-                if (event.target.value)
-                  void write(base, 'POST', { ...target, documentId: event.target.value });
-              }}
-            >
-              <option value="">Choose a document</option>
-              {documents
-                .filter(document => !linked.includes(document))
-                .map(document => (
-                  <option key={document.id} value={document.id}>
-                    {document.label}
-                  </option>
-                ))}
-            </select>
-          </label>
-        </div>
-      )}
-      {error && (
-        <p className={styles.error} role="alert">
-          {error}
-        </p>
-      )}
+            )}
+            {showExistingDocumentPicker && (
+              <label className={styles.existingDocument}>
+                Use existing trip document
+                <select
+                  value=""
+                  onChange={event => {
+                    if (event.target.value)
+                      void write(base, 'POST', { ...target, documentId: event.target.value });
+                  }}
+                >
+                  <option value="">Choose a document</option>
+                  {documents
+                    .filter(document => !linked.includes(document))
+                    .map(document => (
+                      <option key={document.id} value={document.id}>
+                        {document.label}
+                      </option>
+                    ))}
+                </select>
+              </label>
+            )}
+          </div>
+        )}
+        {error && (
+          <p className={styles.error} role="alert">
+            {error}
+          </p>
+        )}
+      </div>
     </section>
   );
 }
