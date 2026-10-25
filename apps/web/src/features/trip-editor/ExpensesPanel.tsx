@@ -502,177 +502,179 @@ export function ExpensesPanel(props: Props) {
               <X size={17} />
             </button>
           </div>
-          {editing && <TripItemTools kind="EXPENSE" itemId={editing.id} />}
-          <label>
-            Expense name
-            <input required value={title} onChange={event => setTitle(event.target.value)} />
-          </label>
-          <div className={styles.amountField}>
-            <label htmlFor="expense-amount">Amount</label>
-            <div className={styles.amountControls}>
-              <input
-                id="expense-amount"
-                type="number"
-                min="0"
-                step="any"
-                required
-                inputMode="decimal"
-                value={amount}
-                onChange={event => setAmount(event.target.value)}
-              />
-              <AmountCurrencyPicker value={currency} onChange={setCurrency} />
-            </div>
-          </div>
-          <div className={styles.formColumns}>
+          <div className={styles.formBody}>
+            {editing && <TripItemTools kind="EXPENSE" itemId={editing.id} />}
             <label>
-              Category
-              <select
-                value={category}
-                onChange={event => setCategory(event.target.value as ExpenseCategory)}
-              >
-                {expenseCategories.map(item => (
-                  <option key={item} value={item}>
-                    {expenseCategoryLabels[item]}
-                  </option>
-                ))}
-              </select>
+              Expense name
+              <input required value={title} onChange={event => setTitle(event.target.value)} />
             </label>
-            <label>
-              Payment status
-              <select
-                value={status}
-                onChange={event => setStatus(event.target.value as PaymentStatus)}
-              >
-                {status === 'NEEDS_REVIEW' ? (
-                  <option value="NEEDS_REVIEW">Needs review</option>
-                ) : null}
-                <option value="UNPAID">Unpaid</option>
-                <option value="PAID">Paid</option>
-              </select>
-            </label>
-          </div>
-          <label>
-            Expense date
-            <input
-              type="date"
-              required
-              value={date}
-              onChange={event => setDate(event.target.value)}
-            />
-          </label>
-          <label>
-            Payment date (optional)
-            <input
-              type="date"
-              value={paymentDate}
-              onChange={event => setPaymentDate(event.target.value)}
-            />
-          </label>
-          <fieldset className={styles.coverageFieldset}>
-            <legend>Covered reservations</legend>
-            {(['FLIGHT', 'HOTEL', 'ACTIVITY'] as const).map(kind => (
-              <div className={styles.coverageGroup} key={kind}>
-                <strong>
-                  {kind === 'FLIGHT' ? 'Flights' : kind === 'HOTEL' ? 'Hotels' : 'Activities'}
-                </strong>
-                <details className={styles.coverageSelect}>
-                  <summary>
-                    {coverage.filter(item => item.kind === kind).length
-                      ? coverage
-                          .filter(item => item.kind === kind)
-                          .map(item => item.title)
-                          .join(', ')
-                      : `Select ${kind === 'FLIGHT' ? 'flights' : kind === 'HOTEL' ? 'hotels' : 'activities'}`}
-                  </summary>
-                  <div className={styles.coverageOptions}>
-                    <input
-                      className={styles.coverageSearch}
-                      aria-label={`Search ${kind.toLowerCase()}s`}
-                      placeholder="Search items"
-                      value={query[kind]}
-                      onChange={event =>
-                        setQuery(current => ({ ...current, [kind]: event.target.value }))
-                      }
-                    />
-                    {sources
-                      .filter(
-                        item =>
-                          item.kind === kind &&
-                          `${item.title} ${item.date}`
-                            .toLowerCase()
-                            .includes(query[kind].toLowerCase()),
-                      )
-                      .map(item => (
-                        <label className={styles.coverageOption} key={item.itemId}>
-                          <input
-                            type="checkbox"
-                            checked={coverage.some(
-                              link => link.itemId === item.itemId && link.kind === item.kind,
-                            )}
-                            onChange={event =>
-                              setCoverage(current =>
-                                event.target.checked
-                                  ? [...current, item]
-                                  : current.filter(
-                                      link =>
-                                        link.itemId !== item.itemId || link.kind !== item.kind,
-                                    ),
-                              )
-                            }
-                          />
-                          {item.title} · {item.date}
-                        </label>
-                      ))}
-                    {!sources.some(item => item.kind === kind) && <span>No items available</span>}
-                  </div>
-                </details>
-              </div>
-            ))}
-            {coverage.map((item, index) => (
-              <label key={`${item.itemId}:${index}`}>
-                {item.title} share (optional)
+            <div className={styles.amountField}>
+              <label htmlFor="expense-amount">Amount</label>
+              <div className={styles.amountControls}>
                 <input
+                  id="expense-amount"
+                  type="number"
+                  min="0"
+                  step="any"
+                  required
                   inputMode="decimal"
-                  value={item.allocatedAmount ?? ''}
-                  onChange={event =>
-                    setCoverage(current =>
-                      current.map((link, position) =>
-                        position === index
-                          ? { ...link, allocatedAmount: event.target.value || null }
-                          : link,
-                      ),
-                    )
-                  }
+                  value={amount}
+                  onChange={event => setAmount(event.target.value)}
                 />
+                <AmountCurrencyPicker value={currency} onChange={setCurrency} />
+              </div>
+            </div>
+            <div className={styles.formColumns}>
+              <label>
+                Category
+                <select
+                  value={category}
+                  onChange={event => setCategory(event.target.value as ExpenseCategory)}
+                >
+                  {expenseCategories.map(item => (
+                    <option key={item} value={item}>
+                      {expenseCategoryLabels[item]}
+                    </option>
+                  ))}
+                </select>
               </label>
-            ))}
-            <button
-              type="button"
-              className={styles.cancelButton}
-              disabled={!coverage.length}
-              onClick={() => {
-                try {
-                  const shares = splitMoneyEqually(amount, currency, coverage.length);
-                  setCoverage(current =>
-                    current.map((item, index) => ({ ...item, allocatedAmount: shares[index] })),
-                  );
-                } catch (failure) {
-                  setError((failure as Error).message);
-                }
-              }}
-            >
-              Split equally
-            </button>
-          </fieldset>
-          <label>
-            Notes
-            <textarea value={notes} onChange={event => setNotes(event.target.value)} />
-          </label>
-          {error && (
-            <p className={styles.error} role="alert">
-              {error}
-            </p>
-          )}
+              <label>
+                Payment status
+                <select
+                  value={status}
+                  onChange={event => setStatus(event.target.value as PaymentStatus)}
+                >
+                  {status === 'NEEDS_REVIEW' ? (
+                    <option value="NEEDS_REVIEW">Needs review</option>
+                  ) : null}
+                  <option value="UNPAID">Unpaid</option>
+                  <option value="PAID">Paid</option>
+                </select>
+              </label>
+            </div>
+            <label>
+              Expense date
+              <input
+                type="date"
+                required
+                value={date}
+                onChange={event => setDate(event.target.value)}
+              />
+            </label>
+            <label>
+              Payment date (optional)
+              <input
+                type="date"
+                value={paymentDate}
+                onChange={event => setPaymentDate(event.target.value)}
+              />
+            </label>
+            <fieldset className={styles.coverageFieldset}>
+              <legend>Covered reservations</legend>
+              {(['FLIGHT', 'HOTEL', 'ACTIVITY'] as const).map(kind => (
+                <div className={styles.coverageGroup} key={kind}>
+                  <strong>
+                    {kind === 'FLIGHT' ? 'Flights' : kind === 'HOTEL' ? 'Hotels' : 'Activities'}
+                  </strong>
+                  <details className={styles.coverageSelect}>
+                    <summary>
+                      {coverage.filter(item => item.kind === kind).length
+                        ? coverage
+                            .filter(item => item.kind === kind)
+                            .map(item => item.title)
+                            .join(', ')
+                        : `Select ${kind === 'FLIGHT' ? 'flights' : kind === 'HOTEL' ? 'hotels' : 'activities'}`}
+                    </summary>
+                    <div className={styles.coverageOptions}>
+                      <input
+                        className={styles.coverageSearch}
+                        aria-label={`Search ${kind.toLowerCase()}s`}
+                        placeholder="Search items"
+                        value={query[kind]}
+                        onChange={event =>
+                          setQuery(current => ({ ...current, [kind]: event.target.value }))
+                        }
+                      />
+                      {sources
+                        .filter(
+                          item =>
+                            item.kind === kind &&
+                            `${item.title} ${item.date}`
+                              .toLowerCase()
+                              .includes(query[kind].toLowerCase()),
+                        )
+                        .map(item => (
+                          <label className={styles.coverageOption} key={item.itemId}>
+                            <input
+                              type="checkbox"
+                              checked={coverage.some(
+                                link => link.itemId === item.itemId && link.kind === item.kind,
+                              )}
+                              onChange={event =>
+                                setCoverage(current =>
+                                  event.target.checked
+                                    ? [...current, item]
+                                    : current.filter(
+                                        link =>
+                                          link.itemId !== item.itemId || link.kind !== item.kind,
+                                      ),
+                                )
+                              }
+                            />
+                            {item.title} · {item.date}
+                          </label>
+                        ))}
+                      {!sources.some(item => item.kind === kind) && <span>No items available</span>}
+                    </div>
+                  </details>
+                </div>
+              ))}
+              {coverage.map((item, index) => (
+                <label key={`${item.itemId}:${index}`}>
+                  {item.title} share (optional)
+                  <input
+                    inputMode="decimal"
+                    value={item.allocatedAmount ?? ''}
+                    onChange={event =>
+                      setCoverage(current =>
+                        current.map((link, position) =>
+                          position === index
+                            ? { ...link, allocatedAmount: event.target.value || null }
+                            : link,
+                        ),
+                      )
+                    }
+                  />
+                </label>
+              ))}
+              <button
+                type="button"
+                className={styles.cancelButton}
+                disabled={!coverage.length}
+                onClick={() => {
+                  try {
+                    const shares = splitMoneyEqually(amount, currency, coverage.length);
+                    setCoverage(current =>
+                      current.map((item, index) => ({ ...item, allocatedAmount: shares[index] })),
+                    );
+                  } catch (failure) {
+                    setError((failure as Error).message);
+                  }
+                }}
+              >
+                Split equally
+              </button>
+            </fieldset>
+            <label>
+              Notes
+              <textarea value={notes} onChange={event => setNotes(event.target.value)} />
+            </label>
+            {error && (
+              <p className={styles.error} role="alert">
+                {error}
+              </p>
+            )}
+          </div>
           <div className={styles.formActions}>
             <button
               type="button"

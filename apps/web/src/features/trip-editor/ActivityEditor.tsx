@@ -152,115 +152,117 @@ export function ActivityEditor({
           </button>
         </div>
 
-        <label>
-          {nameLabel}
-          <input
-            autoFocus
-            value={name}
-            onChange={event => {
-              setName(event.target.value);
-              setError('');
-            }}
-            placeholder={namePlaceholder}
-            maxLength={200}
-          />
-        </label>
-
-        <div className={styles.amountField}>
-          <label htmlFor="activity-cost">
-            Cost <span className={styles.optional}>(optional)</span>
-          </label>
-          <div className={styles.amountControls}>
-            <input
-              id="activity-cost"
-              type="number"
-              min="0"
-              step="any"
-              value={amount}
-              onChange={event => setAmount(event.target.value)}
-              placeholder="0.00"
-              inputMode="decimal"
-            />
-            <AmountCurrencyPicker value={currency} onChange={setCurrency} />
-          </div>
-        </div>
-
-        <div className={styles.twoColumns}>
+        <div className={styles.body}>
           <label>
-            Category
-            <select
-              value={category}
-              onChange={event => setCategory(event.target.value as PlaceCategory)}
-            >
-              {manualCategories.map(option => (
-                <option key={option} value={option}>
-                  {categoryMeta[option].emoji} {categoryMeta[option].label}
-                </option>
-              ))}
-            </select>
+            {nameLabel}
+            <input
+              autoFocus
+              value={name}
+              onChange={event => {
+                setName(event.target.value);
+                setError('');
+              }}
+              placeholder={namePlaceholder}
+              maxLength={200}
+            />
           </label>
-          {startTime === null ? (
-            <div className={styles.timeControl}>
-              <span className={styles.labelWithIcon}>
-                <Clock3 size={12} /> Start time
-              </span>
-              <button type="button" onClick={() => setStartTime('09:00')}>
-                Add a time
-              </button>
-            </div>
-          ) : (
-            <label>
-              <span className={styles.labelWithIcon}>
-                <Clock3 size={12} /> Start time
-              </span>
-              <input
-                type="time"
-                value={startTime}
-                onChange={event => setStartTime(event.target.value || null)}
-              />
-              <button
-                className={styles.clearTimeButton}
-                type="button"
-                onClick={() => setStartTime(null)}
-              >
-                Clear time
-              </button>
+
+          <div className={styles.amountField}>
+            <label htmlFor="activity-cost">
+              Cost <span className={styles.optional}>(optional)</span>
             </label>
+            <div className={styles.amountControls}>
+              <input
+                id="activity-cost"
+                type="number"
+                min="0"
+                step="any"
+                value={amount}
+                onChange={event => setAmount(event.target.value)}
+                placeholder="0.00"
+                inputMode="decimal"
+              />
+              <AmountCurrencyPicker value={currency} onChange={setCurrency} />
+            </div>
+          </div>
+
+          <div className={styles.twoColumns}>
+            <label>
+              Category
+              <select
+                value={category}
+                onChange={event => setCategory(event.target.value as PlaceCategory)}
+              >
+                {manualCategories.map(option => (
+                  <option key={option} value={option}>
+                    {categoryMeta[option].emoji} {categoryMeta[option].label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {startTime === null ? (
+              <div className={styles.timeControl}>
+                <span className={styles.labelWithIcon}>
+                  <Clock3 size={12} /> Start time
+                </span>
+                <button type="button" onClick={() => setStartTime('09:00')}>
+                  Add a time
+                </button>
+              </div>
+            ) : (
+              <label>
+                <span className={styles.labelWithIcon}>
+                  <Clock3 size={12} /> Start time
+                </span>
+                <input
+                  type="time"
+                  value={startTime}
+                  onChange={event => setStartTime(event.target.value || null)}
+                />
+                <button
+                  className={styles.clearTimeButton}
+                  type="button"
+                  onClick={() => setStartTime(null)}
+                >
+                  Clear time
+                </button>
+              </label>
+            )}
+          </div>
+
+          <label>
+            <span className={styles.labelWithIcon}>
+              <Timer size={12} /> Duration in minutes
+            </span>
+            <input
+              type="number"
+              min="15"
+              max="1440"
+              step="15"
+              value={duration}
+              onChange={event => setDuration(event.target.value)}
+            />
+          </label>
+
+          <label>
+            Note <span className={styles.optional}>(optional)</span>
+            <textarea
+              rows={2}
+              value={note}
+              onChange={event => setNote(event.target.value)}
+              placeholder="Anything worth remembering?"
+              maxLength={1000}
+            />
+          </label>
+
+          {tools ? <div className={styles.toolsSlot}>{tools}</div> : null}
+
+          {error && (
+            <p className={styles.error} role="alert">
+              {error}
+            </p>
           )}
         </div>
-
-        <label>
-          <span className={styles.labelWithIcon}>
-            <Timer size={12} /> Duration in minutes
-          </span>
-          <input
-            type="number"
-            min="15"
-            max="1440"
-            step="15"
-            value={duration}
-            onChange={event => setDuration(event.target.value)}
-          />
-        </label>
-
-        <label>
-          Note <span className={styles.optional}>(optional)</span>
-          <textarea
-            rows={2}
-            value={note}
-            onChange={event => setNote(event.target.value)}
-            placeholder="Anything worth remembering?"
-            maxLength={1000}
-          />
-        </label>
-
-        {tools ? <div className={styles.toolsSlot}>{tools}</div> : null}
-
-        {error && (
-          <p className={styles.error} role="alert">
-            {error}
-          </p>
-        )}
 
         <div className={styles.actions}>
           <div className={styles.secondaryActions}>

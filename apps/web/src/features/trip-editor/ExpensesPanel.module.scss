@@ -60,10 +60,11 @@
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  padding: 10px 14px;
+  min-height: 42px;
+  padding: 10px 16px;
   color: white;
   background: var(--green-button);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   white-space: nowrap;
 }
@@ -81,7 +82,7 @@
   min-width: 0;
   padding: 17px 18px;
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: 16px;
   background: var(--surface);
 }
 
@@ -99,7 +100,7 @@
   align-items: center;
   gap: 5px;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .totalHeading {
@@ -222,7 +223,7 @@
 .listHint {
   margin: 5px 0 0;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .listHeader select,
@@ -232,11 +233,12 @@
   width: 100%;
   min-width: 0;
   border: 1px solid var(--line-strong);
-  border-radius: 7px;
+  min-height: 44px;
+  border-radius: 10px;
   color: var(--ink);
-  background: var(--paper);
+  background: var(--surface-control);
   font: inherit;
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .listHeader select {
@@ -450,37 +452,55 @@
 }
 
 .form {
-  width: min(460px, calc(100% - 32px));
+  width: min(520px, calc(100% - 32px));
   max-height: min(720px, calc(100dvh - 32px));
   margin: auto;
-  overflow: auto;
+  overflow: hidden;
   padding: 0;
   border: 1px solid var(--line);
-  border-radius: 14px;
+  border-radius: 22px;
   color: var(--ink);
   background: var(--surface);
-  box-shadow: var(--shadow-soft);
+  box-shadow: var(--shadow-float);
 
   &::backdrop {
     background: var(--backdrop);
     backdrop-filter: blur(3px);
   }
+
+  &[open] {
+    display: flex;
+    flex-direction: column;
+  }
 }
 
 .formContent {
+  min-height: 0;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+
+.formBody {
+  min-height: 0;
+  padding: 22px 28px;
   display: grid;
-  gap: 14px;
-  padding: 22px;
+  align-content: start;
+  gap: 18px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .formHeader {
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 2px;
+  padding: 24px 28px 18px;
+  border-bottom: 1px solid var(--line);
 }
 
 .form h2 {
   font-size: 25px;
+  letter-spacing: -0.045em;
 }
 
 .formHeader button {
@@ -489,10 +509,10 @@
 
 .form label {
   display: grid;
-  gap: 6px;
+  gap: 8px;
   color: var(--ink);
-  font-size: 11px;
-  font-weight: 600;
+  font-size: 13px;
+  font-weight: 700;
 }
 
 .form label span {
@@ -503,7 +523,7 @@
 .form input,
 .form select,
 .form textarea {
-  padding: 9px 10px;
+  padding: 10px 12px;
 }
 
 .form textarea {
@@ -596,7 +616,7 @@
 .amountField {
   display: grid;
   gap: 6px;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 600;
 }
 
@@ -616,14 +636,17 @@
   display: flex;
   justify-content: flex-end;
   gap: 8px;
-  margin-top: 4px;
+  padding: 18px 28px;
+  border-top: 1px solid var(--line);
+  background: var(--surface);
 }
 
 .cancelButton {
-  padding: 10px 14px;
+  min-height: 42px;
+  padding: 10px 16px;
   color: var(--ink);
   background: var(--paper);
-  font-size: 12px;
+  font-size: 13px;
 }
 
 @media (max-width: 900px) {

@@ -172,18 +172,18 @@
 
 .googleButton {
   width: 100%;
-  height: 46px;
-  border-radius: 11px;
-  font-size: 13px;
+  height: 48px;
+  border-radius: 12px;
+  font-size: 14px;
   font-weight: 700;
 }
 
 .form {
   & > button {
     width: 100%;
-    height: 46px;
-    border-radius: 11px;
-    font-size: 13px;
+    height: 48px;
+    border-radius: 12px;
+    font-size: 14px;
     font-weight: 700;
   }
 }
@@ -238,20 +238,18 @@
   gap: 15px;
 
   label {
-    color: var(--muted);
-    font:
-      500 11px 'DM Mono',
-      monospace;
-    letter-spacing: 0.03em;
+    color: var(--ink);
+    font-size: 13px;
+    font-weight: 700;
   }
 
   input {
     width: 100%;
-    height: 46px;
-    margin-top: 7px;
-    padding: 0 13px;
-    border: 1px solid var(--line);
-    border-radius: 11px;
+    height: 48px;
+    margin-top: 8px;
+    padding: 0 14px;
+    border: 1px solid var(--line-strong);
+    border-radius: 12px;
     outline: 0;
     color: var(--ink);
     background: var(--surface-control);
@@ -265,7 +263,7 @@
   }
 
   input:focus {
-    border-color: var(--line-strong);
+    border-color: var(--green);
     box-shadow: var(--focus);
   }
 

@@ -3,9 +3,9 @@
   max-height: min(720px, calc(100dvh - 32px));
   margin: auto;
   padding: 0;
-  overflow: auto;
+  overflow: hidden;
   border: 1px solid var(--line);
-  border-radius: 16px;
+  border-radius: 22px;
   color: var(--ink);
   background: var(--surface-strong);
   box-shadow: var(--shadow-float);
@@ -15,10 +15,26 @@
     backdrop-filter: blur(3px);
   }
 
+  &[open] {
+    display: flex;
+    flex-direction: column;
+  }
+
   form {
-    padding: 20px;
+    min-height: 0;
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+  }
+
+  .body {
+    min-height: 0;
+    padding: 22px 28px;
     display: grid;
-    gap: 14px;
+    align-content: start;
+    gap: 18px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
   }
 
   header,
@@ -29,13 +45,26 @@
     gap: 12px;
   }
 
+  header {
+    padding: 24px 28px 18px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  footer {
+    padding: 18px 28px;
+    border-top: 1px solid var(--line);
+    background: var(--surface-strong);
+  }
+
   h2,
   p {
     margin: 0;
   }
 
   h2 {
-    font-size: 19px;
+    font-size: 24px;
+    line-height: 1.2;
+    letter-spacing: -0.04em;
   }
 
   header p {
@@ -48,7 +77,7 @@
     display: grid;
     gap: 6px;
     color: var(--muted);
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 700;
   }
 
@@ -57,10 +86,11 @@
     width: 100%;
     box-sizing: border-box;
     border: 1px solid var(--line-strong);
-    border-radius: 9px;
-    padding: 9px 10px;
+    min-height: 44px;
+    border-radius: 11px;
+    padding: 10px 12px;
     color: var(--ink);
-    background: var(--surface);
+    background: var(--surface-control);
     font: inherit;
     font-size: 14px;
     font-weight: 400;
@@ -72,8 +102,9 @@
 
   button {
     border: 0;
-    border-radius: 8px;
-    padding: 8px 11px;
+    min-height: 40px;
+    border-radius: 10px;
+    padding: 9px 14px;
     color: var(--muted);
     background: var(--surface-subtle);
     cursor: pointer;
@@ -83,6 +114,8 @@
   }
 
   header button {
+    width: 36px;
+    height: 36px;
     padding: 5px;
     display: grid;
     place-items: center;

@@ -71,52 +71,54 @@ export function LocationEditor({
             <X size={14} />
           </button>
         </div>
-        {isRange ? (
-          <div className={styles.timelineSelectionSummary}>{selectionSummary}</div>
-        ) : editor.mode === 'add' ? (
+        <div className={styles.body}>
+          {isRange ? (
+            <div className={styles.timelineSelectionSummary}>{selectionSummary}</div>
+          ) : editor.mode === 'add' ? (
+            <label>
+              Split after date
+              <input
+                className="wayfareDateInput"
+                type="date"
+                value={editor.splitDate}
+                onChange={event => onChange({ splitDate: event.target.value })}
+              />
+            </label>
+          ) : null}
           <label>
-            Split after date
+            Location name *
             <input
-              className="wayfareDateInput"
-              type="date"
-              value={editor.splitDate}
-              onChange={event => onChange({ splitDate: event.target.value })}
+              autoFocus
+              required
+              value={editor.draft.locationName}
+              onChange={event => onChangeDraft({ locationName: event.target.value })}
             />
           </label>
-        ) : null}
-        <label>
-          Location name *
-          <input
-            autoFocus
-            required
-            value={editor.draft.locationName}
-            onChange={event => onChangeDraft({ locationName: event.target.value })}
-          />
-        </label>
-        {editor.mode === 'edit' && (
-          <div className={styles.editorTwoColumns}>
-            <label>
-              Start date
-              <input
-                className="wayfareDateInput"
-                type="date"
-                required
-                value={editor.draft.startDate ?? ''}
-                onChange={event => onChangeDraft({ startDate: event.target.value })}
-              />
-            </label>
-            <label>
-              End date
-              <input
-                className="wayfareDateInput"
-                type="date"
-                required
-                value={editor.draft.endDate ?? ''}
-                onChange={event => onChangeDraft({ endDate: event.target.value })}
-              />
-            </label>
-          </div>
-        )}
+          {editor.mode === 'edit' && (
+            <div className={styles.editorTwoColumns}>
+              <label>
+                Start date
+                <input
+                  className="wayfareDateInput"
+                  type="date"
+                  required
+                  value={editor.draft.startDate ?? ''}
+                  onChange={event => onChangeDraft({ startDate: event.target.value })}
+                />
+              </label>
+              <label>
+                End date
+                <input
+                  className="wayfareDateInput"
+                  type="date"
+                  required
+                  value={editor.draft.endDate ?? ''}
+                  onChange={event => onChangeDraft({ endDate: event.target.value })}
+                />
+              </label>
+            </div>
+          )}
+        </div>
         <div className={styles.timelineEditorActions}>
           {onDelete && (
             <button type="button" className={styles.editorDeleteButton} onClick={onDelete}>

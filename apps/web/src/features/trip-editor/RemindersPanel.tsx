@@ -157,6 +157,11 @@ export function RemindersPanel({
           </article>
         ))}
       </div>
+      <footer className={styles.footer}>
+        <button type="button" onClick={onClose}>
+          Close
+        </button>
+      </footer>
     </dialog>
   );
 }

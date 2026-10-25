@@ -64,19 +64,21 @@ export function DayNotesEditor({
           </button>
         </div>
 
-        <label>
-          <span className={styles.labelWithIcon}>
-            <FileText size={12} /> Notes for this day
-          </span>
-          <textarea
-            autoFocus
-            rows={7}
-            value={notes}
-            onChange={event => setNotes(event.target.value)}
-            placeholder="Ideas, reminders, opening hours, or anything else worth remembering…"
-            maxLength={5000}
-          />
-        </label>
+        <div className={styles.body}>
+          <label>
+            <span className={styles.labelWithIcon}>
+              <FileText size={12} /> Notes for this day
+            </span>
+            <textarea
+              autoFocus
+              rows={7}
+              value={notes}
+              onChange={event => setNotes(event.target.value)}
+              placeholder="Ideas, reminders, opening hours, or anything else worth remembering…"
+              maxLength={5000}
+            />
+          </label>
+        </div>
 
         <div className={styles.actions}>
           <button type="button" className={styles.cancelButton} onClick={onClose}>

@@ -90,49 +90,51 @@ export function UserModal({ open, user, onClose, onThemeChange }: UserModalProps
           <X size={17} />
         </button>
       </div>
-      <div className={styles.userSummary}>
-        <div className={styles.dialogAvatar}>{user.name.slice(0, 1).toUpperCase()}</div>
-        <div>
-          <strong>{user.name}</strong>
-          <span>{user.email}</span>
+      <form className={styles.dialogForm} onSubmit={save}>
+        <div className={styles.body}>
+          <div className={styles.userSummary}>
+            <div className={styles.dialogAvatar}>{user.name.slice(0, 1).toUpperCase()}</div>
+            <div>
+              <strong>{user.name}</strong>
+              <span>{user.email}</span>
+            </div>
+          </div>
+          <fieldset className={styles.preferenceGroup} disabled={busy}>
+            <legend>Profile</legend>
+            <label>
+              Display name
+              <input value={name} onChange={event => setName(event.target.value)} />
+            </label>
+          </fieldset>
+          <fieldset className={styles.preferenceGroup} disabled={busy}>
+            <legend>Preferences</legend>
+            <label>
+              Currency
+              <CurrencyPicker
+                value={preferences.currency}
+                onChange={value => updatePreference('currency', value)}
+              />
+            </label>
+            <label>
+              Appearance
+              <select
+                value={preferences.theme}
+                onChange={event =>
+                  updatePreference('theme', event.target.value as UserPreferences['theme'])
+                }
+              >
+                <option value="system">Use device setting</option>
+                <option value="light">Light</option>
+                <option value="dark">Dark</option>
+              </select>
+            </label>
+          </fieldset>
+          {message && (
+            <p className={styles.dialogMessage} role="status">
+              {message}
+            </p>
+          )}
         </div>
-      </div>
-      <form onSubmit={save}>
-        <fieldset className={styles.preferenceGroup} disabled={busy}>
-          <legend>Profile</legend>
-          <label>
-            Display name
-            <input value={name} onChange={event => setName(event.target.value)} />
-          </label>
-        </fieldset>
-        <fieldset className={styles.preferenceGroup} disabled={busy}>
-          <legend>Preferences</legend>
-          <label>
-            Currency
-            <CurrencyPicker
-              value={preferences.currency}
-              onChange={value => updatePreference('currency', value)}
-            />
-          </label>
-          <label>
-            Appearance
-            <select
-              value={preferences.theme}
-              onChange={event =>
-                updatePreference('theme', event.target.value as UserPreferences['theme'])
-              }
-            >
-              <option value="system">Use device setting</option>
-              <option value="light">Light</option>
-              <option value="dark">Dark</option>
-            </select>
-          </label>
-        </fieldset>
-        {message && (
-          <p className={styles.dialogMessage} role="status">
-            {message}
-          </p>
-        )}
         <div className={styles.dialogActions}>
           <button className={styles.savePreferences} type="submit" disabled={busy}>
             <Save size={14} /> {busy ? 'Saving…' : 'Save changes'}

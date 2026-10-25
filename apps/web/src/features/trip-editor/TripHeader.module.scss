@@ -5,7 +5,7 @@
   align-items: center;
   padding: 0 28px;
   border-bottom: 1px solid var(--line);
-  background: var(--surface-glass);
+  background: var(--surface-glass-strong);
   position: relative;
   z-index: 30;
   .brand {
@@ -72,7 +72,7 @@
   }
 
   .tripTitle {
-    font-size: 18px;
+    font-size: 19px;
     font-weight: 700;
     letter-spacing: -0.02em;
   }
@@ -107,9 +107,9 @@
     width: min(310px, calc(100vw - 30px));
     padding: 10px;
     border: 1px solid var(--line);
-    border-radius: 14px;
+    border-radius: 16px;
     background: var(--surface);
-    box-shadow: 0 16px 38px rgba(33, 54, 45, 0.14);
+    box-shadow: var(--shadow-float);
   }
 
   .tripsMenuHeader {

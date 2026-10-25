@@ -2,17 +2,36 @@
   box-sizing: border-box;
   border: 1px solid var(--line);
   background: var(--surface-glass-solid);
-  border-radius: 12px;
+  border-radius: 20px;
   width: min(100%, 520px);
   max-height: min(720px, calc(100dvh - 32px));
   margin: auto;
-  padding: 15px;
-  overflow: auto;
-  box-shadow: 0 12px 28px #21362d26;
+  padding: 0;
+  overflow: hidden;
+  box-shadow: var(--shadow-float);
 
   &::backdrop {
     background: var(--backdrop);
     backdrop-filter: blur(3px);
+  }
+
+  &[open] {
+    display: flex;
+    flex-direction: column;
+  }
+
+  form {
+    min-height: 0;
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+  }
+
+  .body {
+    min-height: 0;
+    padding: 8px 24px 24px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
   }
 
   .timelineSelectionSummary {
@@ -30,14 +49,17 @@
     color: var(--ink);
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 11px;
-    font-size: 14px;
+    padding: 18px 24px;
+    border-bottom: 1px solid var(--line);
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: -0.035em;
     display: flex;
   }
 
   .editorIconButton {
-    width: 22px;
-    height: 22px;
+    width: 34px;
+    height: 34px;
     color: inherit;
     background: var(--surface-glass);
     border: 0;
@@ -52,12 +74,11 @@
   }
 
   label {
-    color: var(--muted);
-    gap: 5px;
-    margin-top: 9px;
-    font:
-      500 11px 'DM Mono',
-      monospace;
+    color: var(--ink);
+    gap: 7px;
+    margin-top: 15px;
+    font-size: 13px;
+    font-weight: 700;
     display: grid;
   }
 
@@ -66,14 +87,14 @@
   textarea {
     border: 1px solid var(--line);
     width: 100%;
-    min-height: 31px;
+    min-height: 44px;
     color: var(--ink);
     background: var(--surface-control);
-    border-radius: 6px;
+    border-radius: 10px;
     outline: 0;
-    padding: 6px 8px;
+    padding: 9px 11px;
     font:
-      13px 'Plus Jakarta Sans',
+      14px 'Plus Jakarta Sans',
       sans-serif;
   }
 
@@ -88,24 +109,27 @@
 
   .editorTwoColumns {
     grid-template-columns: 1fr 1fr;
-    gap: 8px;
+    gap: 12px;
     display: grid;
   }
 
   .timelineEditorActions {
     justify-content: flex-end;
-    gap: 7px;
-    margin-top: 13px;
+    gap: 9px;
+    margin-top: 0;
+    padding: 16px 24px;
+    border-top: 1px solid var(--line);
+    background: var(--surface);
     display: flex;
   }
 
   .editorCancelButton,
   .editorDeleteButton,
   .editorSaveButton {
-    border-radius: 6px;
-    min-height: 30px;
-    padding: 0 10px;
-    font-size: 11px;
+    border-radius: 10px;
+    min-height: 40px;
+    padding: 0 14px;
+    font-size: 13px;
     font-weight: 700;
   }
 

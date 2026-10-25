@@ -328,86 +328,97 @@ export function PlacesPanel({
               <X size={17} />
             </button>
           </div>
-          {activeLocation && (
-            <section className={styles.settingsSection} aria-labelledby="place-view-heading">
-              <span id="place-view-heading" className={styles.settingsLabel}>
-                View
+          <div className={styles.settingsBody}>
+            {activeLocation && (
+              <section className={styles.settingsSection} aria-labelledby="place-view-heading">
+                <span id="place-view-heading" className={styles.settingsLabel}>
+                  View
+                </span>
+                <div className={styles.settingsChoices}>
+                  <button
+                    type="button"
+                    className={!showLocationPlaces ? styles.settingActive : ''}
+                    onClick={() => setLocationScope({ id: activeLocation.id, visible: false })}
+                    aria-pressed={!showLocationPlaces}
+                  >
+                    All saved places
+                  </button>
+                  <button
+                    type="button"
+                    className={showLocationPlaces ? styles.settingActive : ''}
+                    onClick={() => setLocationScope({ id: activeLocation.id, visible: true })}
+                    aria-pressed={showLocationPlaces}
+                  >
+                    <MapPin size={13} />
+                    {activeLocation.locationName} shortlist
+                  </button>
+                </div>
+              </section>
+            )}
+            <section className={styles.settingsSection}>
+              <button
+                type="button"
+                className={styles.settingsSwitch}
+                role="switch"
+                aria-checked={showOnlyVisiblePlaces}
+                onClick={() => onShowOnlyVisiblePlacesChange(!showOnlyVisiblePlaces)}
+              >
+                <span>
+                  <strong>Map area only</strong>
+                  <small>Show places visible on the map</small>
+                </span>
+                <span
+                  className={`${styles.switchTrack} ${showOnlyVisiblePlaces ? styles.switchOn : ''}`}
+                  aria-hidden="true"
+                >
+                  <span className={styles.switchThumb} />
+                </span>
+              </button>
+            </section>
+            <section className={styles.settingsSection} aria-labelledby="place-category-heading">
+              <span id="place-category-heading" className={styles.settingsLabel}>
+                Category
               </span>
-              <div className={styles.settingsChoices}>
-                <button
-                  type="button"
-                  className={!showLocationPlaces ? styles.settingActive : ''}
-                  onClick={() => setLocationScope({ id: activeLocation.id, visible: false })}
-                  aria-pressed={!showLocationPlaces}
-                >
-                  All saved places
-                </button>
-                <button
-                  type="button"
-                  className={showLocationPlaces ? styles.settingActive : ''}
-                  onClick={() => setLocationScope({ id: activeLocation.id, visible: true })}
-                  aria-pressed={showLocationPlaces}
-                >
-                  <MapPin size={13} />
-                  {activeLocation.locationName} shortlist
-                </button>
+              <div className={styles.categoryChoices}>
+                {filterOptions.map(option => (
+                  <button
+                    key={option}
+                    type="button"
+                    className={filter === option ? styles.settingActive : ''}
+                    onClick={() => onFilterChange(option)}
+                    aria-pressed={filter === option}
+                  >
+                    {option === 'ALL'
+                      ? 'All places'
+                      : option === 'FAVORITES'
+                        ? 'Favorites'
+                        : categoryMeta[option].label}
+                  </button>
+                ))}
               </div>
             </section>
-          )}
-          <section className={styles.settingsSection}>
-            <button
-              type="button"
-              className={styles.settingsSwitch}
-              role="switch"
-              aria-checked={showOnlyVisiblePlaces}
-              onClick={() => onShowOnlyVisiblePlacesChange(!showOnlyVisiblePlaces)}
-            >
-              <span>
-                <strong>Map area only</strong>
-                <small>Show places visible on the map</small>
-              </span>
-              <span
-                className={`${styles.switchTrack} ${showOnlyVisiblePlaces ? styles.switchOn : ''}`}
-                aria-hidden="true"
+          </div>
+          <div className={styles.settingsFooter}>
+            {activeFilterCount > 0 && (
+              <button
+                type="button"
+                className={styles.resetSettings}
+                onClick={() => {
+                  onFilterChange('ALL');
+                  onShowOnlyVisiblePlacesChange(false);
+                }}
               >
-                <span className={styles.switchThumb} />
-              </span>
-            </button>
-          </section>
-          <section className={styles.settingsSection} aria-labelledby="place-category-heading">
-            <span id="place-category-heading" className={styles.settingsLabel}>
-              Category
-            </span>
-            <div className={styles.categoryChoices}>
-              {filterOptions.map(option => (
-                <button
-                  key={option}
-                  type="button"
-                  className={filter === option ? styles.settingActive : ''}
-                  onClick={() => onFilterChange(option)}
-                  aria-pressed={filter === option}
-                >
-                  {option === 'ALL'
-                    ? 'All places'
-                    : option === 'FAVORITES'
-                      ? 'Favorites'
-                      : categoryMeta[option].label}
-                </button>
-              ))}
-            </div>
-          </section>
-          {activeFilterCount > 0 && (
+                Reset filters
+              </button>
+            )}
             <button
               type="button"
-              className={styles.resetSettings}
-              onClick={() => {
-                onFilterChange('ALL');
-                onShowOnlyVisiblePlacesChange(false);
-              }}
+              className={styles.settingsDone}
+              onClick={() => setSettingsOpen(false)}
             >
-              Reset filters
+              Done
             </button>
-          )}
+          </div>
         </dialog>
       </div>
       <div className={styles.placeList}>

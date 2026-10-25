@@ -117,44 +117,46 @@ export function ReminderModal({
           </button>
         </header>
 
-        {!isOnline ? (
-          <p className={styles.offline} role="status">
-            You’re offline. Reconnect before saving; reminders are never queued locally.
-          </p>
-        ) : null}
+        <div className={styles.body}>
+          {!isOnline ? (
+            <p className={styles.offline} role="status">
+              You’re offline. Reconnect before saving; reminders are never queued locally.
+            </p>
+          ) : null}
 
-        <label>
-          Title
-          <input
-            autoFocus
-            value={title}
-            maxLength={200}
-            onChange={event => setTitle(event.target.value)}
-          />
-        </label>
-        <label>
-          Reminder note
-          <textarea
-            value={body}
-            rows={5}
-            maxLength={5000}
-            onChange={event => setBody(event.target.value)}
-          />
-        </label>
-        <label>
-          Remind me at
-          <input
-            type="datetime-local"
-            value={remindAt}
-            onChange={event => setRemindAt(event.target.value)}
-          />
-        </label>
+          <label>
+            Title
+            <input
+              autoFocus
+              value={title}
+              maxLength={200}
+              onChange={event => setTitle(event.target.value)}
+            />
+          </label>
+          <label>
+            Reminder note
+            <textarea
+              value={body}
+              rows={5}
+              maxLength={5000}
+              onChange={event => setBody(event.target.value)}
+            />
+          </label>
+          <label>
+            Remind me at
+            <input
+              type="datetime-local"
+              value={remindAt}
+              onChange={event => setRemindAt(event.target.value)}
+            />
+          </label>
 
-        {error ? (
-          <p className={styles.error} role="alert">
-            {error}
-          </p>
-        ) : null}
+          {error ? (
+            <p className={styles.error} role="alert">
+              {error}
+            </p>
+          ) : null}
+        </div>
         <footer>
           <button type="button" onClick={onClose}>
             Cancel

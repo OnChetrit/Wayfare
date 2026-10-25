@@ -39,9 +39,9 @@
   }
 
   .addTripCard {
-    padding: 28px;
+    padding: 32px;
     border: 1px solid var(--line);
-    border-radius: 18px;
+    border-radius: 22px;
     background: var(--surface);
     box-shadow: var(--shadow-soft);
   }
@@ -50,31 +50,28 @@
   .preferenceGroup {
     label {
       display: grid;
-      gap: 6px;
-      color: var(--muted);
-      font:
-        500 12px 'DM Mono',
-        monospace;
+      gap: 8px;
+      color: var(--ink);
+      font-size: 13px;
+      font-weight: 700;
     }
 
     input,
     select {
       width: 100%;
-      height: 42px;
-      padding: 0 11px;
-      border: 1px solid var(--line);
-      border-radius: 9px;
+      height: 46px;
+      padding: 0 13px;
+      border: 1px solid var(--line-strong);
+      border-radius: 11px;
       outline: 0;
       color: var(--ink);
       background: var(--surface-control);
-      font:
-        14px 'Plus Jakarta Sans',
-        sans-serif;
+      font-size: 14px;
     }
 
     input:focus,
     select:focus {
-      border-color: var(--line-strong);
+      border-color: var(--green);
       box-shadow: var(--focus);
     }
   }
@@ -104,17 +101,17 @@
 
   .createTripButton {
     width: 100%;
-    height: 44px;
+    height: 46px;
     margin-top: 19px;
     border: 0;
-    border-radius: 9px;
+    border-radius: 11px;
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 8px;
     color: white;
     background: var(--green-button);
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 700;
 
     &:hover {

@@ -1,37 +1,58 @@
 .settingsDialog {
-  width: min(calc(100% - 32px), 470px);
+  width: min(calc(100% - 32px), 520px);
   max-height: min(720px, calc(100dvh - 32px));
   margin: auto;
-  padding: 25px;
-  overflow: auto;
+  padding: 0;
+  overflow: hidden;
   border: 1px solid var(--line);
-  border-radius: 18px;
+  border-radius: 22px;
   color: var(--ink);
   background: var(--surface);
-  box-shadow: 0 24px 80px rgba(24, 33, 29, 0.2);
+  box-shadow: var(--shadow-float);
 
   &::backdrop {
     background: var(--backdrop);
     backdrop-filter: blur(3px);
   }
+
+  &[open] {
+    display: flex;
+    flex-direction: column;
+  }
+}
+
+.dialogForm {
+  min-height: 0;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+
+.body {
+  min-height: 0;
+  padding: 24px 28px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .dialogHeader {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  margin-bottom: 23px;
+  padding: 24px 28px 18px;
+  border-bottom: 1px solid var(--line);
 
   h2 {
     margin: 0;
-    font-size: 23px;
-    letter-spacing: -0.06em;
+    font-size: 25px;
+    line-height: 1.2;
+    letter-spacing: -0.045em;
   }
 }
 
 .dialogClose {
-  width: 29px;
-  height: 29px;
+  width: 36px;
+  height: 36px;
   border: 0;
   border-radius: 50%;
   display: grid;
@@ -46,17 +67,17 @@
 }
 
 .settingsGroup {
-  margin: 0 0 20px;
+  margin: 0 0 24px;
   padding: 0;
   border: 0;
   display: grid;
-  gap: 12px;
+  gap: 14px;
 
   legend {
     margin-bottom: 10px;
-    color: var(--soft-muted);
+    color: var(--muted);
     font:
-      500 11px 'DM Mono',
+      500 12px 'DM Mono',
       monospace;
     letter-spacing: 0.13em;
     text-transform: uppercase;
@@ -69,11 +90,10 @@
 
   label {
     display: grid;
-    gap: 6px;
-    color: var(--muted);
-    font:
-      500 12px 'DM Mono',
-      monospace;
+    gap: 7px;
+    color: var(--ink);
+    font-size: 13px;
+    font-weight: 700;
   }
 
   label span {
@@ -85,21 +105,19 @@
   input,
   select {
     width: 100%;
-    height: 42px;
-    padding: 0 11px;
-    border: 1px solid var(--line);
-    border-radius: 9px;
+    height: 46px;
+    padding: 0 13px;
+    border: 1px solid var(--line-strong);
+    border-radius: 11px;
     outline: 0;
     color: var(--ink);
     background: var(--surface-control);
-    font:
-      14px 'Plus Jakarta Sans',
-      sans-serif;
+    font-size: 14px;
   }
 
   input:focus,
   select:focus {
-    border-color: var(--line-strong);
+    border-color: var(--green);
     box-shadow: var(--focus);
   }
 }
@@ -132,15 +150,15 @@
 }
 
 .flightSearchButton {
-  height: 38px;
-  border-radius: 8px;
+  height: 42px;
+  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 7px;
   color: white;
   background: var(--green-button);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
 
   &:hover {
@@ -279,13 +297,16 @@
 .dialogActions {
   display: flex;
   gap: 9px;
+  padding: 18px 28px;
+  border-top: 1px solid var(--line);
+  background: var(--surface);
 }
 
 .sharingSection {
   margin: 0 0 22px;
-  padding: 15px 14px 14px;
+  padding: 18px;
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: 14px;
   display: grid;
   gap: 13px;
   background: var(--surface-control);
@@ -594,14 +615,14 @@
 
 .saveButton,
 .cancelButton {
-  height: 40px;
-  padding: 0 13px;
-  border-radius: 8px;
+  height: 44px;
+  padding: 0 16px;
+  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 7px;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
 }
 
@@ -630,7 +651,19 @@
 
 @media (max-width: 480px) {
   .settingsDialog {
-    padding: 21px;
+    width: calc(100% - 20px);
+  }
+
+  .dialogHeader {
+    padding: 18px 20px 14px;
+  }
+
+  .body {
+    padding: 20px;
+  }
+
+  .dialogActions {
+    padding: 14px 20px;
   }
 
   .dateFields {

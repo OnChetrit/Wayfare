@@ -145,7 +145,6 @@ export function StayEditor({
       }}
     >
       <form onSubmit={submit}>
-        {editor.stayId && <TripItemTools kind="HOTEL" itemId={editor.stayId} />}
         <div className={styles.timelineEditorHeader}>
           <strong>{editor.stayId ? 'Edit stay' : 'Add stay'}</strong>
           <button
@@ -157,171 +156,176 @@ export function StayEditor({
             <X size={14} />
           </button>
         </div>
-        <label className={styles.placeSearchField}>
-          Search Google Maps
-          <div
-            ref={placeSearchRef}
-            className={styles.placeSearch}
-            aria-busy={searching || Boolean(selectingPlaceId)}
-          >
-            <Search size={14} />
-            <input
-              value={query}
-              onChange={event => {
-                setQuery(event.target.value);
-                setResults([]);
-                setSearchError('');
-                setSearchOpen(true);
-              }}
-              placeholder={
-                destinationLabel ? `Search hotels in ${destinationLabel}` : 'Search hotels'
-              }
-              aria-label="Search Google Maps for a hotel"
-            />
-            {query && (
-              <button
-                type="button"
-                className={styles.clearPlaceSearch}
-                onClick={() => {
-                  setQuery('');
+        <div className={styles.body}>
+          {editor.stayId && <TripItemTools kind="HOTEL" itemId={editor.stayId} />}
+          <label className={styles.placeSearchField}>
+            Search Google Maps
+            <div
+              ref={placeSearchRef}
+              className={styles.placeSearch}
+              aria-busy={searching || Boolean(selectingPlaceId)}
+            >
+              <Search size={14} />
+              <input
+                value={query}
+                onChange={event => {
+                  setQuery(event.target.value);
                   setResults([]);
-                  setSearchOpen(false);
+                  setSearchError('');
+                  setSearchOpen(true);
                 }}
-                aria-label="Clear hotel search"
-              >
-                <X size={13} />
-              </button>
-            )}
-            {searchOpen && query.trim().length >= 2 && (searching || searchResults.length > 0) && (
-              <div className={styles.placeSearchResults}>
-                {searching && (
-                  <div className={styles.placeSearchStatus}>Searching Google Maps…</div>
+                placeholder={
+                  destinationLabel ? `Search hotels in ${destinationLabel}` : 'Search hotels'
+                }
+                aria-label="Search Google Maps for a hotel"
+              />
+              {query && (
+                <button
+                  type="button"
+                  className={styles.clearPlaceSearch}
+                  onClick={() => {
+                    setQuery('');
+                    setResults([]);
+                    setSearchOpen(false);
+                  }}
+                  aria-label="Clear hotel search"
+                >
+                  <X size={13} />
+                </button>
+              )}
+              {searchOpen &&
+                query.trim().length >= 2 &&
+                (searching || searchResults.length > 0) && (
+                  <div className={styles.placeSearchResults}>
+                    {searching && (
+                      <div className={styles.placeSearchStatus}>Searching Google Maps…</div>
+                    )}
+                    {searchResults.map(place => (
+                      <button
+                        key={place.id}
+                        type="button"
+                        onClick={() => void selectPlace(place)}
+                        disabled={Boolean(selectingPlaceId)}
+                      >
+                        <span
+                          className={styles.placeSearchEmoji}
+                          style={{ backgroundColor: `${place.color}20`, color: place.color }}
+                        >
+                          {place.emoji}
+                        </span>
+                        <span>
+                          <strong>{place.name}</strong>
+                          <small>{place.subtitle}</small>
+                        </span>
+                        <ArrowRight size={14} />
+                      </button>
+                    ))}
+                  </div>
                 )}
-                {searchResults.map(place => (
-                  <button
-                    key={place.id}
-                    type="button"
-                    onClick={() => void selectPlace(place)}
-                    disabled={Boolean(selectingPlaceId)}
-                  >
-                    <span
-                      className={styles.placeSearchEmoji}
-                      style={{ backgroundColor: `${place.color}20`, color: place.color }}
-                    >
-                      {place.emoji}
-                    </span>
-                    <span>
-                      <strong>{place.name}</strong>
-                      <small>{place.subtitle}</small>
-                    </span>
-                    <ArrowRight size={14} />
-                  </button>
-                ))}
-              </div>
-            )}
+            </div>
+            {searchError && <small className={styles.placeSearchError}>{searchError}</small>}
+          </label>
+          <label>
+            Stay name *
+            <input
+              autoFocus
+              required
+              value={draft.name}
+              onChange={event => onChangeDraft({ name: event.target.value })}
+            />
+          </label>
+          <div className={styles.editorTwoColumns}>
+            <label>
+              Check-in
+              <input
+                className="wayfareDateInput"
+                type="date"
+                value={draft.checkInDate}
+                onChange={event => onChangeDraft({ checkInDate: event.target.value })}
+              />
+            </label>
+            <label>
+              Check-out
+              <input
+                className="wayfareDateInput"
+                type="date"
+                value={draft.checkOutDate}
+                onChange={event => onChangeDraft({ checkOutDate: event.target.value })}
+              />
+            </label>
           </div>
-          {searchError && <small className={styles.placeSearchError}>{searchError}</small>}
-        </label>
-        <label>
-          Stay name *
-          <input
-            autoFocus
-            required
-            value={draft.name}
-            onChange={event => onChangeDraft({ name: event.target.value })}
-          />
-        </label>
-        <div className={styles.editorTwoColumns}>
-          <label>
-            Check-in
-            <input
-              className="wayfareDateInput"
-              type="date"
-              value={draft.checkInDate}
-              onChange={event => onChangeDraft({ checkInDate: event.target.value })}
-            />
-          </label>
-          <label>
-            Check-out
-            <input
-              className="wayfareDateInput"
-              type="date"
-              value={draft.checkOutDate}
-              onChange={event => onChangeDraft({ checkOutDate: event.target.value })}
-            />
-          </label>
-        </div>
-        <div className={styles.editorTwoColumns}>
-          <label>
-            Address
-            <input
-              value={draft.address}
-              onChange={event => onChangeDraft({ address: event.target.value })}
-            />
-          </label>
-          <label>
-            City / area
-            <input
-              value={draft.locationLabel}
-              onChange={event => onChangeDraft({ locationLabel: event.target.value })}
-            />
-          </label>
-        </div>
-        <div className={styles.amountField}>
-          <label htmlFor="stay-price">Price</label>
-          <div className={styles.amountControls}>
-            <input
-              id="stay-price"
-              type="number"
-              min="0"
-              step="any"
-              value={draft.price}
-              onChange={event => onChangeDraft({ price: event.target.value })}
-              placeholder="0.00"
-              inputMode="decimal"
-            />
-            <AmountCurrencyPicker
-              value={draft.priceCurrency}
-              onChange={value => onChangeDraft({ priceCurrency: value })}
-            />
+          <div className={styles.editorTwoColumns}>
+            <label>
+              Address
+              <input
+                value={draft.address}
+                onChange={event => onChangeDraft({ address: event.target.value })}
+              />
+            </label>
+            <label>
+              City / area
+              <input
+                value={draft.locationLabel}
+                onChange={event => onChangeDraft({ locationLabel: event.target.value })}
+              />
+            </label>
           </div>
-        </div>
-        <div className={styles.editorTwoColumns}>
+          <div className={styles.amountField}>
+            <label htmlFor="stay-price">Price</label>
+            <div className={styles.amountControls}>
+              <input
+                id="stay-price"
+                type="number"
+                min="0"
+                step="any"
+                value={draft.price}
+                onChange={event => onChangeDraft({ price: event.target.value })}
+                placeholder="0.00"
+                inputMode="decimal"
+              />
+              <AmountCurrencyPicker
+                value={draft.priceCurrency}
+                onChange={value => onChangeDraft({ priceCurrency: value })}
+              />
+            </div>
+          </div>
+          <div className={styles.editorTwoColumns}>
+            <label>
+              Cancellation time
+              <input
+                type="time"
+                value={draft.cancellationTime}
+                onChange={event => onChangeDraft({ cancellationTime: event.target.value })}
+              />
+            </label>
+          </div>
+          <div className={styles.editorTwoColumns}>
+            <label>
+              Confirmation number
+              <input
+                value={draft.confirmationNumber}
+                onChange={event => onChangeDraft({ confirmationNumber: event.target.value })}
+                placeholder="ABC123"
+              />
+            </label>
+            <label>
+              Secret code
+              <input
+                value={draft.secretCode}
+                onChange={event => onChangeDraft({ secretCode: event.target.value })}
+                placeholder="Door or access code"
+              />
+            </label>
+          </div>
           <label>
-            Cancellation time
-            <input
-              type="time"
-              value={draft.cancellationTime}
-              onChange={event => onChangeDraft({ cancellationTime: event.target.value })}
+            Notes
+            <textarea
+              rows={2}
+              value={draft.notes}
+              onChange={event => onChangeDraft({ notes: event.target.value })}
             />
           </label>
         </div>
-        <div className={styles.editorTwoColumns}>
-          <label>
-            Confirmation number
-            <input
-              value={draft.confirmationNumber}
-              onChange={event => onChangeDraft({ confirmationNumber: event.target.value })}
-              placeholder="ABC123"
-            />
-          </label>
-          <label>
-            Secret code
-            <input
-              value={draft.secretCode}
-              onChange={event => onChangeDraft({ secretCode: event.target.value })}
-              placeholder="Door or access code"
-            />
-          </label>
-        </div>
-        <label>
-          Notes
-          <textarea
-            rows={2}
-            value={draft.notes}
-            onChange={event => onChangeDraft({ notes: event.target.value })}
-          />
-        </label>
         <div className={styles.timelineEditorActions}>
           {onDelete && (
             <button type="button" className={styles.editorDeleteButton} onClick={onDelete}>

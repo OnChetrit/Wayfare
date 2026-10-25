@@ -258,192 +258,203 @@ export function TripSettingsModal({
         </button>
       </div>
 
-      <form onSubmit={save}>
-        <fieldset className={styles.settingsGroup} disabled={busy || deleting}>
-          <legend>Trip details</legend>
-          <label>
-            Trip name
-            <input
-              value={form.name}
-              onChange={event => update('name', event.target.value)}
-              required
-              maxLength={80}
-            />
-          </label>
-          <label>
-            Destination
-            <input
-              value={form.destinationLabel}
-              onChange={event => update('destinationLabel', event.target.value)}
-              placeholder="Lisbon"
-              maxLength={120}
-            />
-          </label>
-          <div className={styles.dateFields}>
+      <form className={styles.dialogForm} onSubmit={save}>
+        <div className={styles.body}>
+          <fieldset className={styles.settingsGroup} disabled={busy || deleting}>
+            <legend>Trip details</legend>
             <label>
-              <span>
-                <CalendarDays size={13} /> Start date
-              </span>
+              Trip name
               <input
-                className="wayfareDateInput"
-                type="date"
-                value={form.startDate}
-                onChange={event => update('startDate', event.target.value)}
+                value={form.name}
+                onChange={event => update('name', event.target.value)}
                 required
+                maxLength={80}
               />
             </label>
             <label>
-              <span>
-                <CalendarDays size={13} /> End date
-              </span>
+              Destination
               <input
-                className="wayfareDateInput"
-                type="date"
-                value={form.endDate}
-                min={form.startDate}
-                onChange={event => update('endDate', event.target.value)}
-                required
+                value={form.destinationLabel}
+                onChange={event => update('destinationLabel', event.target.value)}
+                placeholder="Lisbon"
+                maxLength={120}
               />
             </label>
-          </div>
-        </fieldset>
+            <div className={styles.dateFields}>
+              <label>
+                <span>
+                  <CalendarDays size={13} /> Start date
+                </span>
+                <input
+                  className="wayfareDateInput"
+                  type="date"
+                  value={form.startDate}
+                  onChange={event => update('startDate', event.target.value)}
+                  required
+                />
+              </label>
+              <label>
+                <span>
+                  <CalendarDays size={13} /> End date
+                </span>
+                <input
+                  className="wayfareDateInput"
+                  type="date"
+                  value={form.endDate}
+                  min={form.startDate}
+                  onChange={event => update('endDate', event.target.value)}
+                  required
+                />
+              </label>
+            </div>
+          </fieldset>
 
-        <fieldset className={styles.settingsGroup} disabled={busy || deleting}>
-          <legend>Trip defaults</legend>
-          <label>
-            Currency
-            <CurrencyPicker
-              value={form.defaultCurrency}
-              onChange={value => update('defaultCurrency', value)}
-            />
-          </label>
-        </fieldset>
-
-        <fieldset
-          className={`${styles.settingsGroup} ${styles.flightGroup}`}
-          disabled={busy || deleting || flightSearchBusy || flightActionId !== null}
-        >
-          <legend>
-            <Plane size={12} /> Flights
-          </legend>
-          <p className={styles.groupHint}>
-            Add flights to this trip. They appear automatically in the daily plan and can only be
-            removed here.
-          </p>
-          <div className={styles.flightSearchFields}>
+          <fieldset className={styles.settingsGroup} disabled={busy || deleting}>
+            <legend>Trip defaults</legend>
             <label>
-              Flight number
-              <input
-                value={flightNumber}
-                onChange={event => setFlightNumber(event.target.value.toUpperCase())}
-                placeholder="LY315"
-                maxLength={20}
-                autoComplete="off"
-                autoFocus={focusFlights}
+              Currency
+              <CurrencyPicker
+                value={form.defaultCurrency}
+                onChange={value => update('defaultCurrency', value)}
               />
             </label>
-            <label>
-              Flight date
-              <input
-                className="wayfareDateInput"
-                type="date"
-                value={flightDateInput}
-                min={trip.startDate}
-                max={trip.endDate}
-                onChange={event => setFlightDateInput(event.target.value)}
-              />
-            </label>
-          </div>
-          <button type="button" className={styles.flightSearchButton} onClick={searchFlights}>
-            <Search size={14} /> {flightSearchBusy ? 'Searching…' : 'Search flight'}
-          </button>
+          </fieldset>
 
-          {flightResults.length > 0 && (
-            <div className={styles.flightResults}>
-              <span className={styles.resultsLabel}>SEARCH RESULTS</span>
-              {flightResults.map(candidate => {
-                const candidateKey = `add-${candidate.flightNumber}-${candidate.scheduledDepartureUtc}`;
-                const alreadyAdded = flights.some(
-                  flight =>
-                    flight.flightNumber === candidate.flightNumber &&
-                    flight.scheduledDepartureUtc === candidate.scheduledDepartureUtc,
-                );
-                return (
-                  <div className={styles.flightResult} key={candidateKey}>
-                    <div>
-                      <strong>{candidate.flightNumber}</strong>
+          <fieldset
+            className={`${styles.settingsGroup} ${styles.flightGroup}`}
+            disabled={busy || deleting || flightSearchBusy || flightActionId !== null}
+          >
+            <legend>
+              <Plane size={12} /> Flights
+            </legend>
+            <p className={styles.groupHint}>
+              Add flights to this trip. They appear automatically in the daily plan and can only be
+              removed here.
+            </p>
+            <div className={styles.flightSearchFields}>
+              <label>
+                Flight number
+                <input
+                  value={flightNumber}
+                  onChange={event => setFlightNumber(event.target.value.toUpperCase())}
+                  placeholder="LY315"
+                  maxLength={20}
+                  autoComplete="off"
+                  autoFocus={focusFlights}
+                />
+              </label>
+              <label>
+                Flight date
+                <input
+                  className="wayfareDateInput"
+                  type="date"
+                  value={flightDateInput}
+                  min={trip.startDate}
+                  max={trip.endDate}
+                  onChange={event => setFlightDateInput(event.target.value)}
+                />
+              </label>
+            </div>
+            <button type="button" className={styles.flightSearchButton} onClick={searchFlights}>
+              <Search size={14} /> {flightSearchBusy ? 'Searching…' : 'Search flight'}
+            </button>
+
+            {flightResults.length > 0 && (
+              <div className={styles.flightResults}>
+                <span className={styles.resultsLabel}>SEARCH RESULTS</span>
+                {flightResults.map(candidate => {
+                  const candidateKey = `add-${candidate.flightNumber}-${candidate.scheduledDepartureUtc}`;
+                  const alreadyAdded = flights.some(
+                    flight =>
+                      flight.flightNumber === candidate.flightNumber &&
+                      flight.scheduledDepartureUtc === candidate.scheduledDepartureUtc,
+                  );
+                  return (
+                    <div className={styles.flightResult} key={candidateKey}>
+                      <div>
+                        <strong>{candidate.flightNumber}</strong>
+                        <span>
+                          {candidate.departureAirportIata ?? '—'} →{' '}
+                          {candidate.arrivalAirportIata ?? '—'} ·{' '}
+                          {flightTime(candidate.scheduledDepartureLocal)}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        className={styles.addFlightButton}
+                        onClick={() => addFlight(candidate)}
+                        disabled={alreadyAdded || flightActionId !== null}
+                      >
+                        {alreadyAdded ? (
+                          'Added'
+                        ) : flightActionId === candidateKey ? (
+                          'Adding…'
+                        ) : (
+                          <>
+                            <Plus size={13} /> Add
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {flights.length > 0 && (
+              <div className={styles.savedFlights}>
+                <span className={styles.resultsLabel}>TRIP FLIGHTS · {flights.length}</span>
+                {flights.map(flight => (
+                  <div className={styles.savedFlight} key={flight.id}>
+                    <TripItemTools kind="FLIGHT" itemId={flight.id} />
+                    <div className={styles.savedFlightIcon}>
+                      <Plane size={14} />
+                    </div>
+                    <div className={styles.savedFlightDetails}>
+                      <strong>{flight.flightNumber}</strong>
                       <span>
-                        {candidate.departureAirportIata ?? '—'} →{' '}
-                        {candidate.arrivalAirportIata ?? '—'} ·{' '}
-                        {flightTime(candidate.scheduledDepartureLocal)}
+                        {flight.departureAirportIata ?? '—'} → {flight.arrivalAirportIata ?? '—'} ·{' '}
+                        {flightDate(flight.scheduledDepartureLocal)} at{' '}
+                        {flightTime(flight.scheduledDepartureLocal)}
                       </span>
                     </div>
                     <button
                       type="button"
-                      className={styles.addFlightButton}
-                      onClick={() => addFlight(candidate)}
-                      disabled={alreadyAdded || flightActionId !== null}
+                      className={styles.removeFlightButton}
+                      onClick={() => removeFlight(flight.id)}
+                      aria-label={`Remove flight ${flight.flightNumber}`}
+                      disabled={flightActionId !== null}
                     >
-                      {alreadyAdded ? (
-                        'Added'
-                      ) : flightActionId === candidateKey ? (
-                        'Adding…'
-                      ) : (
-                        <>
-                          <Plus size={13} /> Add
-                        </>
-                      )}
+                      {flightActionId === `remove-${flight.id}` ? '…' : <Trash2 size={14} />}
                     </button>
                   </div>
-                );
-              })}
-            </div>
-          )}
+                ))}
+              </div>
+            )}
+            {flightError && (
+              <p className={styles.flightError} role="alert">
+                {flightError}
+              </p>
+            )}
+          </fieldset>
 
-          {flights.length > 0 && (
-            <div className={styles.savedFlights}>
-              <span className={styles.resultsLabel}>TRIP FLIGHTS · {flights.length}</span>
-              {flights.map(flight => (
-                <div className={styles.savedFlight} key={flight.id}>
-                  <TripItemTools kind="FLIGHT" itemId={flight.id} />
-                  <div className={styles.savedFlightIcon}>
-                    <Plane size={14} />
-                  </div>
-                  <div className={styles.savedFlightDetails}>
-                    <strong>{flight.flightNumber}</strong>
-                    <span>
-                      {flight.departureAirportIata ?? '—'} → {flight.arrivalAirportIata ?? '—'} ·{' '}
-                      {flightDate(flight.scheduledDepartureLocal)} at{' '}
-                      {flightTime(flight.scheduledDepartureLocal)}
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    className={styles.removeFlightButton}
-                    onClick={() => removeFlight(flight.id)}
-                    aria-label={`Remove flight ${flight.flightNumber}`}
-                    disabled={flightActionId !== null}
-                  >
-                    {flightActionId === `remove-${flight.id}` ? '…' : <Trash2 size={14} />}
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-          {flightError && (
-            <p className={styles.flightError} role="alert">
-              {flightError}
+          {trip.access.canManageMembers ? <TripSharingPanel tripId={trip.id} /> : null}
+
+          {error && (
+            <p className={styles.dialogError} role="alert">
+              {error}
             </p>
           )}
-        </fieldset>
-
-        {trip.access.canManageMembers ? <TripSharingPanel tripId={trip.id} /> : null}
-
-        {error && (
-          <p className={styles.dialogError} role="alert">
-            {error}
-          </p>
-        )}
+          <section className={styles.dangerZone} aria-labelledby="delete-trip-heading">
+            <div>
+              <h3 id="delete-trip-heading">Delete trip</h3>
+              <p>Permanently remove this trip and all of its plans.</p>
+            </div>
+            <button type="button" onClick={deleteTrip} disabled={busy || deleting}>
+              <Trash2 size={14} /> {deleting ? 'Deleting…' : 'Delete trip'}
+            </button>
+          </section>
+        </div>
         <div className={styles.dialogActions}>
           <button className={styles.saveButton} type="submit" disabled={busy || deleting}>
             <Save size={14} /> {busy ? 'Saving…' : 'Save settings'}
@@ -457,15 +468,6 @@ export function TripSettingsModal({
             Cancel
           </button>
         </div>
-        <section className={styles.dangerZone} aria-labelledby="delete-trip-heading">
-          <div>
-            <h3 id="delete-trip-heading">Delete trip</h3>
-            <p>Permanently remove this trip and all of its plans.</p>
-          </div>
-          <button type="button" onClick={deleteTrip} disabled={busy || deleting}>
-            <Trash2 size={14} /> {deleting ? 'Deleting…' : 'Delete trip'}
-          </button>
-        </section>
       </form>
     </dialog>
   );

@@ -3,8 +3,8 @@
 :root {
   color-scheme: light;
   --ink: #18211d;
-  --muted: #78817c;
-  --soft-muted: #a4ada7;
+  --muted: #586a60;
+  --soft-muted: #718077;
   --paper: #f8f9f5;
   --surface: #ffffff;
   --surface-strong: #ffffff;
@@ -15,8 +15,8 @@
   --surface-glass: rgba(255, 255, 255, 0.8);
   --surface-glass-strong: rgba(255, 255, 255, 0.94);
   --surface-glass-solid: rgba(255, 255, 255, 0.97);
-  --line: #e7ebe5;
-  --line-strong: #cfe5da;
+  --line: #dfe7df;
+  --line-strong: #b8d6c5;
   --green: #17795d;
   --green-dark: #0d5945;
   --green-button: #17795d;
@@ -52,6 +52,8 @@
   --radius-md: 16px;
   --radius-lg: 22px;
   --shadow-soft: 0 8px 30px rgba(33, 54, 45, 0.07);
+  --shadow-float: 0 24px 72px rgba(24, 33, 29, 0.18);
+  --display: 'Plus Jakarta Sans', Arial, sans-serif;
   --focus: 0 0 0 3px rgba(23, 121, 93, 0.2);
 }
 
@@ -59,7 +61,7 @@
   color-scheme: dark;
   --ink: #edf5ef;
   --muted: #a9b8ae;
-  --soft-muted: #7e9185;
+  --soft-muted: #90a296;
   --paper: #090f0b;
   --surface: #17211b;
   --surface-strong: #1d2a22;
@@ -97,6 +99,7 @@
   --map-ring: rgba(76, 117, 94, 0.3);
   --map-landmark: #3d6a59;
   --shadow-soft: 0 8px 30px rgba(0, 0, 0, 0.28);
+  --shadow-float: 0 24px 72px rgba(0, 0, 0, 0.45);
   --focus: 0 0 0 3px rgba(74, 181, 139, 0.28);
 }
 
@@ -116,9 +119,11 @@ body {
   color: var(--ink);
   background: var(--paper);
   font-family: 'Plus Jakarta Sans', Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
   -webkit-font-smoothing: antialiased;
-  -webkit-text-size-adjust: 105%;
-  text-size-adjust: 105%;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 button,
@@ -130,12 +135,12 @@ textarea {
 
 /* Keep date fields and native selects visually consistent across every form. */
 .wayfareDateInput {
-  min-height: 42px !important;
+  min-height: 46px !important;
   padding: 0 42px 0 13px !important;
   border: 1px solid var(--line-strong) !important;
-  border-radius: 11px !important;
+  border-radius: 12px !important;
   color: var(--ink) !important;
-  background: linear-gradient(145deg, var(--surface-strong), var(--surface-control)) !important;
+  background: var(--surface-strong) !important;
   cursor: pointer;
 }
 
@@ -174,7 +179,10 @@ button {
 }
 
 button:focus-visible,
-input:focus-visible {
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+a:focus-visible {
   outline: none;
   box-shadow: var(--focus);
 }
@@ -182,4 +190,12 @@ input:focus-visible {
 ::selection {
   background: var(--mint);
   color: var(--green-dark);
+}
+
+@media (max-width: 700px) {
+  input:not([type='checkbox']):not([type='radio']),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
 }
