@@ -99,6 +99,11 @@ export const activityInputSchema = z.object({
   currency: currencyInputSchema.nullable().optional(),
 });
 
+export const scheduleReorderInputSchema = z
+  .object({ sortOrder: z.number().int().nonnegative() })
+  .strict();
+export type ScheduleReorderInput = z.infer<typeof scheduleReorderInputSchema>;
+
 export const expenseInputSchema = z.object({
   title: z.string().trim().min(1).max(200),
   category: expenseCategorySchema,

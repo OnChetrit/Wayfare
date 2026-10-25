@@ -14,6 +14,7 @@ import {
   type LocationSegment,
   type PlaceCategory,
   type ScheduleItem,
+  type ScheduleReorderInput,
   type SavedPlace,
   type TripEditorTrip,
   type TripFlight,
@@ -316,6 +317,18 @@ export function updateSchedule(
     tripPath(tripId, `/schedule/${encodeURIComponent(scheduleId)}`),
     'PATCH',
     input,
+  );
+}
+
+export function reorderSchedule(
+  tripId: string,
+  scheduleId: string,
+  sortOrder: ScheduleReorderInput['sortOrder'],
+) {
+  return write<{ schedule: Pick<ScheduleItem, 'id' | 'sortOrder'> }>(
+    tripPath(tripId, `/schedule/${encodeURIComponent(scheduleId)}`),
+    'PATCH',
+    { sortOrder },
   );
 }
 

@@ -71,20 +71,23 @@ export const DateStrip = forwardRef<DateStripHandle, DateStripProps>(function Da
     });
   }, [onScrollStateChange]);
 
-  const scrollToDate = useCallback((date: string, behavior: ScrollBehavior = 'smooth') => {
-    const scroller = scrollerRef.current;
-    const card = scroller?.querySelector<HTMLElement>(`[data-date-card="${date}"]`);
-    if (!scroller || !card) return;
+  const scrollToCard = useCallback(
+    (card: HTMLElement | null, behavior: ScrollBehavior = 'smooth') => {
+      const scroller = scrollerRef.current;
+      if (!scroller || !card) return;
 
-    const cardStart = card.offsetLeft;
-    const cardEnd = cardStart + card.offsetWidth;
-    const visibleStart = scroller.scrollLeft;
-    const visibleEnd = visibleStart + scroller.clientWidth;
-    if (cardStart >= visibleStart && cardEnd <= visibleEnd) return;
+      const cardStart = card.offsetLeft;
+      // A location can span more than one viewport. Show its beginning and label.
+      const cardEnd = cardStart + Math.min(card.offsetWidth, scroller.clientWidth);
+      const visibleStart = scroller.scrollLeft;
+      const visibleEnd = visibleStart + scroller.clientWidth;
+      if (cardStart >= visibleStart && cardEnd <= visibleEnd) return;
 
-    const nextScrollLeft = cardStart < visibleStart ? cardStart : cardEnd - scroller.clientWidth;
-    scroller.scrollTo({ left: nextScrollLeft, behavior });
-  }, []);
+      const nextScrollLeft = cardStart < visibleStart ? cardStart : cardEnd - scroller.clientWidth;
+      scroller.scrollTo({ left: nextScrollLeft, behavior });
+    },
+    [],
+  );
 
   useImperativeHandle(
     ref,
@@ -102,9 +105,27 @@ export const DateStrip = forwardRef<DateStripHandle, DateStripProps>(function Da
   );
 
   useLayoutEffect(() => {
-    if (selectedDate) scrollToDate(selectedDate, 'auto');
+    const scroller = scrollerRef.current;
+    if (selectedLocationId) {
+      const locationCard = Array.from(
+        scroller?.querySelectorAll<HTMLElement>('[data-location-card]') ?? [],
+      ).find(card => card.dataset.locationCard === selectedLocationId);
+      scrollToCard(locationCard ?? null, 'auto');
+    } else if (selectedDate) {
+      scrollToCard(
+        scroller?.querySelector<HTMLElement>(`[data-date-card="${selectedDate}"]`) ?? null,
+        'auto',
+      );
+    }
     updateScrollState();
-  }, [days.length, selectedDate, scrollToDate, updateScrollState]);
+  }, [
+    days.length,
+    locationSegments,
+    selectedDate,
+    selectedLocationId,
+    scrollToCard,
+    updateScrollState,
+  ]);
 
   useEffect(() => {
     function clearDragOver() {
@@ -201,6 +222,7 @@ export const DateStrip = forwardRef<DateStripHandle, DateStripProps>(function Da
             return (
               <button
                 key={location.id}
+                data-location-card={location.id}
                 type="button"
                 className={`${selectedLocationId === location.id ? styles.locationCardActive : ''} ${dragOverLocationId === location.id ? styles.locationCardDropTarget : ''}`}
                 style={

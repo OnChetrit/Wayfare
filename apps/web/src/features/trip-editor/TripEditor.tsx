@@ -15,6 +15,7 @@ import type { LocationDraft, StayDraft } from './DateBar';
 import { DateBar } from './DateBar';
 import { DayNotesEditor } from './DayNotesEditor';
 import { DayPlanPanel } from './DayPlanPanel';
+import { readEditorScreen, writeEditorScreen } from './editor-screen-query';
 import { LocationPlanPanel } from './LocationPlanPanel';
 import { PlaceHoverProvider } from './PlaceHoverContext';
 import { PlacesPanel } from './PlacesPanel';
@@ -60,6 +61,7 @@ export type TripEditorProps = {
   trips: TripSummary[];
   initialMode?: EditorMode;
   tripBackHref?: string;
+  initialScreenQuery?: { day?: string; location?: string; activity?: string };
 };
 
 type ActivityEditorState = {
@@ -109,14 +111,27 @@ export function TripEditor({
   trips,
   initialMode = 'map',
   tripBackHref,
+  initialScreenQuery,
 }: TripEditorProps) {
   const router = useRouter();
   const pathname = usePathname();
   const [themePreference, setThemePreference] = useState(user.preferences.theme);
   const [trip, setTrip] = useState(initialTrip);
   const currentTrip = trip ?? initialTrip;
-  const days = currentTrip?.days ?? [];
-  const [selectedDate, setSelectedDate] = useState('');
+  const days = useMemo(() => currentTrip?.days ?? [], [currentTrip?.days]);
+  const initialScreen = useMemo(() => {
+    const params = new URLSearchParams();
+    if (initialScreenQuery?.day) params.set('day', initialScreenQuery.day);
+    if (initialScreenQuery?.location) params.set('location', initialScreenQuery.location);
+    if (initialScreenQuery?.activity) params.set('activity', initialScreenQuery.activity);
+    return readEditorScreen(
+      params,
+      initialTrip?.days ?? [],
+      initialTrip?.locationSegments ?? [],
+      initialTrip?.schedule ?? [],
+    );
+  }, [initialScreenQuery, initialTrip]);
+  const [selectedDate, setSelectedDate] = useState(initialScreen.date);
   const [places, setPlaces] = useState<SavedPlace[]>(initialTrip?.places ?? []);
   const [schedule, setSchedule] = useState<ScheduleItem[]>(initialTrip?.schedule ?? []);
   const [locationSegments, setLocationSegments] = useState<LocationSegment[]>(
@@ -129,13 +144,21 @@ export function TripEditor({
   const [filter, setFilter] = useState<PlacesFilter>('ALL');
   const [libraryQuery, setLibraryQuery] = useState('');
   const [selectedPlaceId, setSelectedPlaceId] = useState<string | null>(null);
-  const [selectedLocationId, setSelectedLocationId] = useState<string | null>(null);
+  const [selectedLocationId, setSelectedLocationId] = useState<string | null>(
+    initialScreen.locationId,
+  );
   const [previewPlace, setPreviewPlace] = useState<SavedPlace | null>(null);
-  const [mode, setMode] = useState<EditorMode>(initialMode);
+  const [mode, setMode] = useState<EditorMode>(
+    initialMode === 'map' && (initialScreen.date || initialScreen.locationId) ? 'day' : initialMode,
+  );
   const [accountOpen, setAccountOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsFlightDate, setSettingsFlightDate] = useState<string | undefined>();
-  const [activityEditorOpen, setActivityEditorOpen] = useState<ActivityEditorState | null>(null);
+  const [activityEditorOpen, setActivityEditorOpen] = useState<ActivityEditorState | null>(
+    initialScreen.activityId
+      ? { kind: 'activity', scheduleItemId: initialScreen.activityId }
+      : null,
+  );
   const [dayNotesOpen, setDayNotesOpen] = useState(false);
   const [showDayPlan, setShowDayPlan] = useState(true);
   const [showSavedPlaces, setShowSavedPlaces] = useState(true);
@@ -152,6 +175,7 @@ export function TripEditor({
   const editorRef = useRef<HTMLDivElement>(null);
   const lastSavedTripId = useRef(user.lastTripId);
   const workspaceTripId = useRef(currentTrip?.id);
+  const restoredScreenQuery = useRef<string | null>(null);
   const { workspaceView, setWorkspaceView } = useTripHeaderLayout({
     user,
     trip: currentTrip,
@@ -184,6 +208,65 @@ export function TripEditor({
   }, [currentTripId]);
 
   useTripRealtimeRefresh(currentTripId, refreshTrip);
+
+  useEffect(() => {
+    if (pathname !== '/editor') return;
+    function restoreScreen() {
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('trip') && urlParams.get('trip') !== currentTripId) return;
+      const screen = readEditorScreen(urlParams, days, locationSegments, schedule);
+      restoredScreenQuery.current = writeEditorScreen(
+        new URLSearchParams(window.location.search),
+        screen,
+      ).toString();
+      setSelectedDate(screen.date);
+      setSelectedLocationId(screen.locationId);
+      setActivityEditorOpen(
+        screen.activityId ? { kind: 'activity', scheduleItemId: screen.activityId } : null,
+      );
+      setMode(screen.date || screen.locationId ? 'day' : 'map');
+    }
+    window.addEventListener('popstate', restoreScreen);
+    return () => window.removeEventListener('popstate', restoreScreen);
+  }, [pathname, currentTripId, days, locationSegments, schedule]);
+
+  useEffect(() => {
+    if (pathname !== '/editor' || !currentTrip) return;
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('trip') && urlParams.get('trip') !== currentTrip.id) return;
+    urlParams.set('trip', currentTrip.id);
+    const screen = readEditorScreen(
+      writeEditorScreen(urlParams, {
+        date: selectedDate,
+        locationId: selectedLocationId,
+        activityId: activityEditorOpen?.scheduleItemId ?? null,
+      }),
+      days,
+      locationSegments,
+      schedule,
+    );
+    const params = writeEditorScreen(urlParams, screen);
+    if (restoredScreenQuery.current === params.toString()) {
+      restoredScreenQuery.current = null;
+      return;
+    }
+    restoredScreenQuery.current = null;
+    if (params.toString() === window.location.search.slice(1)) return;
+    window.history.replaceState(
+      null,
+      '',
+      `${pathname}?${params.toString()}${window.location.hash}`,
+    );
+  }, [
+    pathname,
+    currentTrip,
+    selectedDate,
+    selectedLocationId,
+    activityEditorOpen,
+    days,
+    locationSegments,
+    schedule,
+  ]);
 
   useEffect(() => {
     const tripId = currentTrip?.id;
@@ -344,6 +427,7 @@ export function TripEditor({
   }
 
   function selectLocation(location: LocationSegment) {
+    setSelectedDate('');
     setSelectedLocationId(location.id);
     setSelectedPlaceId(null);
     setPreviewPlace(null);
@@ -1399,16 +1483,12 @@ export function TripEditor({
     try {
       const updatedItems = await Promise.all(
         changedItems.map(async next => {
-          const body = await requestJson<{ schedule: ScheduleItem }>(
+          const body = await requestJson<{ schedule: Pick<ScheduleItem, 'id' | 'sortOrder'> }>(
             `/api/trips/${initialTrip.id}/schedule/${next.id}`,
             {
               method: 'PATCH',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                date: next.date,
-                startTime: next.startTime,
-                sortOrder: next.sortOrder,
-              }),
+              body: JSON.stringify({ sortOrder: next.sortOrder }),
             },
           );
           return body.schedule;

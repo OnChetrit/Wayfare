@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { canModifyActivity } from './activity-lock';
+import { canModifyActivity, canReorderActivity } from './activity-lock';
 
 describe('canModifyActivity', () => {
   it('prevents changes while the activity is locked', () => {
@@ -37,5 +37,14 @@ describe('canModifyActivity', () => {
         { canEdit: true, isOnline: true, pending: true },
       ),
     ).toBe(false);
+  });
+});
+
+describe('canReorderActivity', () => {
+  it('allows an online editor to reorder even when the activity is locked', () => {
+    expect(canReorderActivity({ canEdit: true, isOnline: true })).toBe(true);
+    expect(canReorderActivity({ canEdit: false, isOnline: true })).toBe(false);
+    expect(canReorderActivity({ canEdit: true, isOnline: false })).toBe(false);
+    expect(canReorderActivity({ canEdit: true, isOnline: true, pending: true })).toBe(false);
   });
 });

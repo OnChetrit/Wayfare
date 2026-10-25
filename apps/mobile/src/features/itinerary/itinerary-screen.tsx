@@ -42,14 +42,14 @@ import {
   deleteFlight,
   deleteSchedule,
   deleteStay,
+  reorderSchedule,
   updateActivityReservationLock,
-  updateSchedule,
 } from '@/api/trips';
 import { Button, IconButton } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Screen } from '@/components/ui/screen';
 import { ErrorState, EmptyState, LoadingState, OfflineNotice } from '@/components/ui/state';
-import { canModifyActivity } from '@/features/itinerary/activity-lock';
+import { canModifyActivity, canReorderActivity } from '@/features/itinerary/activity-lock';
 import { dayItineraryEntries, type DayItineraryEntry } from '@/features/itinerary/day-itinerary';
 import { sectionExploreDaysByLocation } from '@/features/explore/explore-trip-days';
 import { flightEventDetail, flightRoute } from '@/features/itinerary/flight-details';
@@ -198,17 +198,8 @@ export function ItineraryScreen() {
   );
   const { mutation: reorderMutation } = useTripMutation(
     trip?.id ?? '',
-    ({
-      id,
-      date,
-      startTime,
-      sortOrder,
-    }: {
-      id: string;
-      date: string;
-      startTime: string | null;
-      sortOrder: number;
-    }) => updateSchedule(trip!.id, id, { date, startTime, sortOrder }),
+    ({ id, sortOrder }: { id: string; sortOrder: number }) =>
+      reorderSchedule(trip!.id, id, sortOrder),
   );
   const { mutation: reservationLockMutation } = useTripMutation(
     trip?.id ?? '',
@@ -248,6 +239,11 @@ export function ItineraryScreen() {
 
   const selectedDay = trip.days.find(day => day.date === currentDate) ?? trip.days[0];
   const timeline = orderScheduleItemsForDay(trip.schedule, selectedDay.date);
+  const canReorder = canReorderActivity({
+    canEdit: trip.access.canEdit,
+    isOnline,
+    pending: reorderMutation.isPending,
+  });
   const dayEntries = dayItineraryEntries(trip.schedule, trip.flights, trip.stays, selectedDay.date);
   const dayLocationSections = sectionExploreDaysByLocation(trip.days, trip.locationSegments);
 
@@ -264,10 +260,7 @@ export function ItineraryScreen() {
     if (
       !next ||
       !current ||
-      !isOnline ||
-      !trip?.access.canEdit ||
-      current.reservationLocked ||
-      next.reservationLocked ||
+      !canReorder ||
       current.sortOrder === undefined ||
       next.sortOrder === undefined
     )
@@ -275,14 +268,10 @@ export function ItineraryScreen() {
     void Promise.all([
       reorderMutation.mutateAsync({
         id: current.id,
-        date: current.date,
-        startTime: current.startTime,
         sortOrder: next.sortOrder,
       }),
       reorderMutation.mutateAsync({
         id: next.id,
-        date: next.date,
-        startTime: next.startTime,
         sortOrder: current.sortOrder,
       }),
     ]).catch(() => undefined);
@@ -511,10 +500,10 @@ export function ItineraryScreen() {
                             systemImage="arrow.up"
                             modifiers={[
                               disabled(
-                                !canModify ||
+                                !canReorder ||
                                   scheduleIndex === 0 ||
-                                  timeline[scheduleIndex - 1]?.reservationLocked ||
-                                  reorderMutation.isPending,
+                                  item.sortOrder === undefined ||
+                                  timeline[scheduleIndex - 1]?.sortOrder === undefined,
                               ),
                               tint(colors.accent),
                             ]}
@@ -525,10 +514,10 @@ export function ItineraryScreen() {
                             systemImage="arrow.down"
                             modifiers={[
                               disabled(
-                                !canModify ||
+                                !canReorder ||
                                   scheduleIndex === timeline.length - 1 ||
-                                  timeline[scheduleIndex + 1]?.reservationLocked ||
-                                  reorderMutation.isPending,
+                                  item.sortOrder === undefined ||
+                                  timeline[scheduleIndex + 1]?.sortOrder === undefined,
                               ),
                               tint(colors.accent),
                             ]}
@@ -1088,16 +1077,16 @@ export function ItineraryScreen() {
                       </Button>
                       {item.reservationLocked ? (
                         <Text selectable style={{ color: colors.locked, fontSize: 13 }}>
-                          Unlock this activity to edit, move, or delete it.
+                          Unlock this activity to edit, move to another day, or delete it.
                         </Text>
                       ) : null}
                       <View style={{ flexDirection: 'row', gap: 8 }}>
                         <IconButton
                           disabled={
-                            !canModify ||
+                            !canReorder ||
                             scheduleIndex === 0 ||
-                            timeline[scheduleIndex - 1]?.reservationLocked ||
-                            reorderMutation.isPending
+                            item.sortOrder === undefined ||
+                            timeline[scheduleIndex - 1]?.sortOrder === undefined
                           }
                           label="Move item earlier"
                           onPress={() => moveItem(scheduleIndex, -1)}
@@ -1106,10 +1095,10 @@ export function ItineraryScreen() {
                         </IconButton>
                         <IconButton
                           disabled={
-                            !canModify ||
+                            !canReorder ||
                             scheduleIndex === timeline.length - 1 ||
-                            timeline[scheduleIndex + 1]?.reservationLocked ||
-                            reorderMutation.isPending
+                            item.sortOrder === undefined ||
+                            timeline[scheduleIndex + 1]?.sortOrder === undefined
                           }
                           label="Move item later"
                           onPress={() => moveItem(scheduleIndex, 1)}

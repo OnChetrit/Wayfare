@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { scheduleReorderInputSchema } from '@wayfare/domain';
 import {
   localDateTimeToUtc,
   scheduleCreateSchema,
@@ -26,5 +27,13 @@ describe('schedule time contracts', () => {
     expect(utc).toBe('2026-03-29T08:30:00.000Z');
     expect(scheduleStartTimeFromUtc(utc, 'Europe/Madrid')).toBe('10:30');
     expect(scheduleStartTimeFromUtc(null, 'Europe/Madrid')).toBeNull();
+  });
+
+  it('accepts only a manual order for same-day reordering', () => {
+    expect(scheduleReorderInputSchema.parse({ sortOrder: 2 })).toEqual({ sortOrder: 2 });
+    expect(scheduleReorderInputSchema.safeParse({ sortOrder: 2, date: '2026-10-10' }).success).toBe(
+      false,
+    );
+    expect(scheduleReorderInputSchema.safeParse({ sortOrder: -1 }).success).toBe(false);
   });
 });

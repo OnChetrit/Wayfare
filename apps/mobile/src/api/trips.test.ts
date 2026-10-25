@@ -15,6 +15,7 @@ import {
   getTripMembers,
   getTrips,
   redeemTripInvitation,
+  reorderSchedule,
   removeTripMember,
   revokeTripInvitation,
   updateTripMember,
@@ -293,6 +294,18 @@ describe('trip API', () => {
     expect(requestWayfareApi).toHaveBeenCalledWith(`/api/trips/${rawTrip.id}/schedule`, {
       method: 'POST',
       body: JSON.stringify(input),
+      headers: { 'Content-Type': 'application/json' },
+    });
+  });
+
+  it('updates only the order when moving an activity within its day', async () => {
+    requestWayfareApi.mockResolvedValueOnce({ schedule: { id: 'activity-1', sortOrder: 2 } });
+
+    await reorderSchedule(rawTrip.id, 'activity-1', 2);
+
+    expect(requestWayfareApi).toHaveBeenCalledWith(`/api/trips/${rawTrip.id}/schedule/activity-1`, {
+      method: 'PATCH',
+      body: JSON.stringify({ sortOrder: 2 }),
       headers: { 'Content-Type': 'application/json' },
     });
   });
