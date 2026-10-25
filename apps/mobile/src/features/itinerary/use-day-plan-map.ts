@@ -184,7 +184,7 @@ export function useDayPlanMap({
       const place = item.savedPlaceId ? placesById.get(item.savedPlaceId) : undefined;
       return place ? [mapPlaceForSavedPlace(place)] : [];
     });
-    const routePlaces = groundRoutePlacesForDay(trip.schedule, trip.places, date).map(
+    const routePlaces = groundRoutePlacesForDay(trip.schedule, trip.places, date, trip.stays).map(
       mapPlaceForSavedPlace,
     );
     const flightRoutes = inputs.flightAirportRoutes

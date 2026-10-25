@@ -442,11 +442,11 @@ export function MapPanel({
     };
   }, [airportPlaces, selectedDayAirports]);
 
-  const allDayRoutes = tripDayRoutes(tripStartDate, tripEndDate, schedule, places);
+  const allDayRoutes = tripDayRoutes(tripStartDate, tripEndDate, schedule, places, stays);
   const visibleDayRoutes = allDayRoutes.filter(day => !selectedDate || day.date === selectedDate);
   const dayRoutePlaces = useMemo(() => {
-    return groundRoutePlacesForDay(schedule, places, selectedDate);
-  }, [places, schedule, selectedDate]);
+    return groundRoutePlacesForDay(schedule, places, selectedDate, stays);
+  }, [places, schedule, selectedDate, stays]);
   const dayPlanPlaces = useMemo(() => {
     const planPlaces = [
       ...selectedDayLocations.map(segment => locationPlaceFromSegment(segment)),
@@ -499,7 +499,15 @@ export function MapPanel({
         showDayPlan,
         showingLocationPlaces: isShowingLocationPlaces,
       }),
-    [dayPlanPlaces, isShowingLocationPlaces, locationPlaces, places, selectedDate, showDayPlan, showSavedPlaces],
+    [
+      dayPlanPlaces,
+      isShowingLocationPlaces,
+      locationPlaces,
+      places,
+      selectedDate,
+      showDayPlan,
+      showSavedPlaces,
+    ],
   );
   const mapPlaces = useMemo(() => {
     // Search results are cleared as soon as one is selected. Keep the selected
@@ -520,11 +528,12 @@ export function MapPanel({
       }
       return !baseMapPlaces.some(candidate => candidate.id === place.id);
     });
-    const routeOnlyPlaces = isShowingLocationPlaces || !showDayPlan
-      ? []
-      : [...dayRoutePlaces, ...flightRoutePlaces.flat()].filter(
-          place => !baseMapPlaces.some(candidate => candidate.id === place.id),
-        );
+    const routeOnlyPlaces =
+      isShowingLocationPlaces || !showDayPlan
+        ? []
+        : [...dayRoutePlaces, ...flightRoutePlaces.flat()].filter(
+            place => !baseMapPlaces.some(candidate => candidate.id === place.id),
+          );
     const searchPlaces = query.trim().length >= 2 ? results : [];
 
     if (!extraPlaces.length && !routeOnlyPlaces.length && !searchPlaces.length)

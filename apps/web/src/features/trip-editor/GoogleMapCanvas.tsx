@@ -412,7 +412,7 @@ export function GoogleMapCanvas({
     // implementation only fitted the initial set of places, so later days
     // could render markers outside the camera's current bounds.
     const routeViewportPlaces = [
-      ...(dayRoutes?.flatMap(day => day.stops.map(stop => stop.place)) ?? routePlaces),
+      ...(dayRoutes?.flatMap(day => day.routePlaces) ?? routePlaces),
       ...flightRoutePlaces.flat(),
     ].filter(
       (place, index, all) => all.findIndex(candidate => candidate.id === place.id) === index,
@@ -466,16 +466,17 @@ export function GoogleMapCanvas({
         dayNumber: 1,
         color: '#477d67',
         stops: routePlaces.map(place => ({ place })),
+        routePlaces,
       },
     ];
     const lines = showRouteLines
       ? groups
-          .filter(day => day.stops.length > 1)
+          .filter(day => day.routePlaces.length > 1)
           .map(
             day =>
               new googleApi.maps.Polyline({
                 map: map.current!,
-                path: day.stops.map(stop => ({ lat: stop.place.lat, lng: stop.place.lng })),
+                path: day.routePlaces.map(place => ({ lat: place.lat, lng: place.lng })),
                 geodesic: true,
                 strokeColor: day.color,
                 strokeOpacity: 0.85,
@@ -485,41 +486,51 @@ export function GoogleMapCanvas({
           )
       : [];
     const AdvancedMarker = googleApi.maps.marker?.AdvancedMarkerElement;
-    const badges = AdvancedMarker && showDayBadges
-      ? groups
-          .filter(day => day.stops.length)
-          .map(day => {
-            const place = day.stops[0].place;
-            const content = document.createElement('button');
-            content.type = 'button';
-            content.textContent = String(day.dayNumber);
-            content.title = `Day ${day.dayNumber} · ${day.date}`;
-            content.setAttribute('aria-label', content.title);
-            Object.assign(content.style, {
-              background: day.color,
-              color: '#fff',
-              border: '2px solid white',
-              borderRadius: '50%',
-              minWidth: '32px',
-              height: '32px',
-              cursor: 'pointer',
-            });
-            content.onclick = () => onSelectDay?.(day.date);
-            return new AdvancedMarker({
-              map: map.current!,
-              position: { lat: place.lat, lng: place.lng },
-              title: content.title,
-              content,
-            });
-          })
-      : [];
+    const badges =
+      AdvancedMarker && showDayBadges
+        ? groups
+            .filter(day => day.stops.length)
+            .map(day => {
+              const place = day.stops[0].place;
+              const content = document.createElement('button');
+              content.type = 'button';
+              content.textContent = String(day.dayNumber);
+              content.title = `Day ${day.dayNumber} · ${day.date}`;
+              content.setAttribute('aria-label', content.title);
+              Object.assign(content.style, {
+                background: day.color,
+                color: '#fff',
+                border: '2px solid white',
+                borderRadius: '50%',
+                minWidth: '32px',
+                height: '32px',
+                cursor: 'pointer',
+              });
+              content.onclick = () => onSelectDay?.(day.date);
+              return new AdvancedMarker({
+                map: map.current!,
+                position: { lat: place.lat, lng: place.lng },
+                title: content.title,
+                content,
+              });
+            })
+        : [];
     return () => {
       lines.forEach(line => line.setMap(null));
       badges.forEach(marker => {
         marker.map = null;
       });
     };
-  }, [dayRoutes, onSelectDay, routePlaces, selectedDate, showDayBadges, showRouteLines, scriptReady, isDarkTheme]);
+  }, [
+    dayRoutes,
+    onSelectDay,
+    routePlaces,
+    selectedDate,
+    showDayBadges,
+    showRouteLines,
+    scriptReady,
+    isDarkTheme,
+  ]);
 
   useEffect(() => {
     if (!showRouteLines || !map.current || !flightRoutePlaces.length) return;

@@ -78,6 +78,74 @@ describe('documents and route contracts', () => {
     expect(days[1].stops).toEqual([]);
     expect(toggleTripDay('2030-01-01', '2030-01-01')).toBe('');
   });
+  it('routes from the morning hotel through activities to the overnight hotel', () => {
+    const places: Parameters<typeof tripDayRoutes>[3] = [
+      {
+        id: 'old-hotel',
+        name: 'Old hotel',
+        subtitle: '',
+        category: 'HOTEL',
+        emoji: '',
+        color: '',
+        lat: 1,
+        lng: 1,
+      },
+      {
+        id: 'museum',
+        name: 'Museum',
+        subtitle: '',
+        category: 'ATTRACTION',
+        emoji: '',
+        color: '',
+        lat: 2,
+        lng: 2,
+      },
+      {
+        id: 'new-hotel',
+        name: 'New hotel',
+        subtitle: '',
+        category: 'HOTEL',
+        emoji: '',
+        color: '',
+        lat: 3,
+        lng: 3,
+      },
+    ];
+    const stays = [
+      {
+        id: 'old',
+        tripId: 'trip',
+        name: 'Old hotel',
+        savedPlaceId: 'old-hotel',
+        checkInDate: '2030-01-01',
+        checkOutDate: '2030-01-02',
+      },
+      {
+        id: 'new',
+        tripId: 'trip',
+        name: 'New hotel',
+        savedPlaceId: 'new-hotel',
+        checkInDate: '2030-01-02',
+        checkOutDate: '2030-01-04',
+      },
+    ];
+    const schedule = [
+      {
+        id: 'museum-visit',
+        savedPlaceId: 'museum',
+        date: '2030-01-02',
+        startTime: '10:00',
+        duration: 60,
+      },
+    ] as Parameters<typeof tripDayRoutes>[2];
+    const days = tripDayRoutes('2030-01-01', '2030-01-03', schedule, places, stays);
+    expect(days.map(day => day.routePlaces.map(place => place.id))).toEqual([
+      ['old-hotel'],
+      ['old-hotel', 'museum', 'new-hotel'],
+      ['new-hotel'],
+    ]);
+    expect(days[1].stops.map(stop => stop.itemId)).toEqual(['museum-visit']);
+  });
   it('binds bulk acknowledgement to each reviewed version', () => {
     expect(
       reservationAcknowledgements({

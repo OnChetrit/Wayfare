@@ -65,4 +65,30 @@ describe('itineraryRouteMapData', () => {
     expect(day.places[0]?.badge).toBe('1');
     expect(day.routes.map(route => route.id)).toEqual(['2026-10-11']);
   });
+
+  it('includes a mapped overnight stay in each day route', () => {
+    const withStay = {
+      ...trip,
+      stays: [
+        {
+          id: 'stay',
+          tripId: 'trip',
+          name: 'Rome hotel',
+          savedPlaceId: 'rome',
+          checkInDate: '2026-10-10',
+          checkOutDate: '2026-10-12',
+        },
+      ],
+    } as TripEditorTrip;
+    const result = itineraryRouteMapData(withStay, '2026-10-11');
+    expect(result.places.map(place => place.name)).toEqual([
+      'Day 2 · Stop 1 · Florence',
+      'Day 2 · Stay · Rome',
+    ]);
+    expect(result.routes[0].coordinates).toEqual([
+      { latitude: 41.9028, longitude: 12.4964 },
+      { latitude: 43.7696, longitude: 11.2558 },
+      { latitude: 41.9028, longitude: 12.4964 },
+    ]);
+  });
 });
